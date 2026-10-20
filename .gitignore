@@ -1,0 +1,77 @@
+# --- Environment and secrets -------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+
+# --- Python (backend) --------------------------------------------------------
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pyright/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+build/
+dist/
+
+# --- Node (frontend) ---------------------------------------------------------
+node_modules/
+frontend/dist/
+.vite/
+*.tsbuildinfo
+.eslintcache
+coverage/
+npm-debug.log*
+
+# --- Playwright --------------------------------------------------------------
+playwright-report/
+test-results/
+blob-report/
+playwright/.cache/
+
+# --- Local databases, dumps, uploads (may contain sensitive data) ------------
+*.sqlite
+*.sqlite3
+*.db
+*.dump
+*.backup
+pgdata/
+.data/
+backups/
+uploads/
+media/
+
+# --- Caddy local state (certificates) ---------------------------------------
+.caddy/
+caddy_data/
+caddy_config/
+
+# --- Logs --------------------------------------------------------------------
+*.log
+logs/
+
+# --- OS / editors ------------------------------------------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# --- AI tooling: local, per-machine state ------------------------------------
+.claude/settings.local.json
+.claude/worktrees/
+.impeccable/config.local.json
+.impeccable/hook.cache.json
+.impeccable/live/
