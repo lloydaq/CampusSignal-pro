@@ -1,7 +1,7 @@
 import json
 import logging
 
-from app.core.logging import REDACTED, JsonFormatter, ScrubFilter, scrub
+from app.core.logging import REDACTED, JsonFormatter, ScrubFilter, configure_logging, scrub
 from app.core.request_context import request_id_var
 
 
@@ -58,3 +58,9 @@ def test_json_formatter_includes_request_id_and_extras() -> None:
     assert payload["route"] == "/healthz"
     assert payload["status"] == 200
     assert payload["level"] == "INFO"
+
+
+def test_configure_logging_quiets_alembic_info() -> None:
+    configure_logging("INFO")
+    assert not logging.getLogger("alembic.runtime.migration").isEnabledFor(logging.INFO)
+    assert logging.getLogger("alembic.runtime.migration").isEnabledFor(logging.WARNING)

@@ -49,7 +49,7 @@ flowchart TB
         pol[policies/<br/>all authorization decisions]
         jobs[Jobs CLI<br/>run hourly by scheduler]
     end
-    db[(PostgreSQL 16)]
+    db[(PostgreSQL 17)]
     mail[(Email provider)]
     spa -- /api/v1 JSON, session cookie --> proxy
     proxy -- static assets --> spa
@@ -83,10 +83,10 @@ The repository's existing `CLAUDE.md` already fixes this stack; this document ad
 | Forms | react-hook-form + zod | **New dependency** — accessible, typed client validation mirroring server schemas; avoids hand-rolled form state. |
 | Backend | Python 3.12 + FastAPI | Already chosen; Pydantic validation at the boundary; dependency injection fits actor/campus resolution. |
 | ORM/migrations | SQLAlchemy 2.x (sync) + Alembic | Already chosen. **Sync** sessions with `def` endpoints: simpler tests and transactions; throughput is adequate for per-college scale. |
-| DB driver | psycopg 3 | Maintained, supports Postgres 16 features. |
+| DB driver | psycopg 3 (`psycopg[binary]`) | Maintained, supports Postgres 17; binary wheels avoid a separate libpq install on Windows. |
 | Validation | Pydantic v2 (`extra="forbid"`) | Rejects unknown fields → blocks mass assignment (PRD §17.4). |
 | Password hashing | argon2-cffi (Argon2id) | Required by `CLAUDE.md` and AUTH-002. |
-| Database | PostgreSQL 16 | Relational integrity, partial unique indexes, composite FKs, `citext`, `timestamptz`. |
+| Database | PostgreSQL 17 | Relational integrity, partial unique indexes, composite FKs, `citext`, `timestamptz`. Development: hosted Supabase project (ADR-14); CI: disposable Postgres 17 service; production: pending P-1. |
 | Python tooling | uv, ruff, pytest, httpx2 TestClient | Already chosen. |
 | Frontend tests | Vitest + Testing Library; Playwright + @axe-core/playwright | Already chosen; axe adds accessibility checks (NFR-A11Y-001). |
 | CI | GitHub Actions | Already chosen. |
@@ -121,7 +121,6 @@ frontend/
     lib/                  # api client, csrf, formatting
   e2e/                    # Playwright
 deploy/                   # Caddyfile, compose.prod.yml
-docker-compose.yml        # local Postgres (+ Mailpit for dev email)
 ```
 
 Folders are created only when a phase needs them (`Rules.md` R-1.9).
@@ -280,6 +279,12 @@ erDiagram
 **Platform admins:** authorized via `users.platform_role`, created only by CLI (ADMIN-005). Platform routes live under `/api/v1/platform/...` and use only platform repositories, which expose college metadata and admin-invite management — not posts, issues, notices, or academic tables (ADMIN-008). [Decision, P-7] A `PLATFORM_ADMIN` account cannot hold or accept a college membership (enforced in membership-request and invite-acceptance services), which closes the path "platform admin invites themselves as college admin and reads academic data". Platform-issued admin invites to colleges that already have a college admin require a reason, are audit-logged, and notify that college's admins.
 
 **PostgreSQL Row-Level Security:** evaluated and **deferred** (P2). RLS would require setting a per-transaction `app.college_id` and maintaining policies on ~25 tables, adding a second place where mistakes can hide; the composite-FK + scoped-repository + test-suite approach covers the MVP. Re-evaluate in Phase 9; if adopted, it is defense in depth and does not replace policies.
+
+**Database privileges for Supabase API roles (migration `0002`, ADR-14):** the backend is the only database client: it connects directly over the session pooler as the owning role (`postgres`). Supabase's Data API is disabled on the development project, but disabling it does not remove PostgreSQL grants, and Supabase grants its API roles `anon` and `authenticated` full access in `public` by default. Migration `0002` therefore, where those roles exist:
+- revokes all their privileges on existing tables, views and sequences in `public` (including `alembic_version`);
+- revokes the default privileges that would grant them access to tables, sequences and functions the migrating role creates in `public` later.
+
+It is a no-op on plain PostgreSQL (CI). Verified on the development project 2026-10-21: no API-role grants on any `public` table; newly created tables and sequences get none. Limits: default privileges are per creating role, so migrations must keep running as the owning role; `supabase_admin`'s own default grants (it owns the citext functions) cannot be changed by `postgres` and are left alone; PostgreSQL still lets `PUBLIC` execute newly created functions, so any function added later must `REVOKE EXECUTE … FROM PUBLIC` (Rules R-2.22). `service_role` (server-side key, unused by the backend) is unchanged. Downgrade of `0002` is a deliberate no-op (§20).
 
 **Limitations (accepted):** a bug in a repository that omits `college_id` is caught by tests and review, not by the database (except for writes, where composite FKs help). Mitigations: repository base helpers that require `college_id`; isolation test suite (§17); code review checklist (`Rules.md` §2).
 
@@ -493,7 +498,7 @@ Not in the MVP (PRD §14). Planned for Phase 11:
 | Level | Tooling | Scope |
 |---|---|---|
 | Unit | pytest | Policies (exhaustive role × object tables), issue state machine, attendance window rules, pagination cursor, token utilities |
-| Service/integration | pytest + real PostgreSQL (docker in CI) | Services with transactions and constraints; each test in a rolled-back transaction |
+| Service/integration | pytest + real PostgreSQL 17 (GitHub Actions `postgres:17.11` service in `.github/workflows/backend.yml`; `integration` marker, needs `TEST_DATABASE_URL`, run only against a positively identified disposable DB — loopback host, database name `*_test`, no Supabase roles on the server — otherwise the run stops; in CI a missing `TEST_DATABASE_URL` fails instead of skipping; covers migration round trips, `alembic check`, `/readyz` ready/pending, and `0002` privileges with and without simulated Supabase roles) | Services with transactions and constraints; each test in a rolled-back transaction |
 | API | pytest + httpx2 TestClient | Every endpoint: allow, cross-college deny (404 + no private fields), wrong-role deny |
 | Tenant isolation | pytest, parametrized | Seeds "Northfield Institute" and "Riverside College" with one object of every type; for every college-scoped route × method, actor from B targets A's object → expect 404/403 and no leaked fields; list endpoints must not include A's items |
 | Route inventory | pytest | Every route is public-allowlisted or carries a policy marker |
@@ -508,8 +513,8 @@ Factories in `tests/factories.py` create users, colleges, memberships with grant
 [Pending P-1 — hosting provider.] Target shape regardless of provider:
 
 - One Linux host or container platform running: `caddy` (TLS, static SPA, proxy), `api` (gunicorn with uvicorn workers, 2–4 workers), scheduled `jobs` hourly (platform cron or systemd timer).
-- Managed PostgreSQL 16 with automated backups and point-in-time recovery if available.
-- Environments: `local` (docker compose Postgres + Mailpit), `ci`, `staging`, `production`. Staging mirrors production config with synthetic data only.
+- Managed PostgreSQL 17 with automated backups and point-in-time recovery if available.
+- Environments: `local` (each developer's Supabase development project via the session pooler, ADR-14; Mailpit standalone binary for email from Phase 2), `ci` (disposable Postgres 17 service), `staging`, `production`. Staging mirrors production config with synthetic data only.
 - Migrations run as a release step before new API containers start (`alembic upgrade head`); migrations must be backward compatible with the previous app version (expand → migrate → contract).
 
 ## 19. Environment configuration
@@ -519,7 +524,8 @@ Settings via pydantic-settings from environment; `.env.example` documents every 
 | Variable | Purpose |
 |---|---|
 | `APP_ENV` | local / ci / staging / production |
-| `DATABASE_URL` | PostgreSQL DSN |
+| `DATABASE_URL` | PostgreSQL DSN, `postgresql+psycopg://…`; non-localhost hosts must set `sslmode=require` or stricter (validated at startup). Held as a secret: never logged or echoed in errors |
+| `TEST_DATABASE_URL` | Integration tests only: a disposable Postgres 17 (CI). Tests refuse Supabase hosts |
 | `APP_ORIGIN` | Allowed origin for CSRF/Origin checks and email links |
 | `SESSION_IDLE_DAYS`, `SESSION_ABSOLUTE_DAYS` | Standard sessions; defaults 7 / 30 |
 | `PRIVILEGED_SESSION_IDLE_HOURS`, `PRIVILEGED_SESSION_ABSOLUTE_DAYS` | Privileged sessions (AUTH-013); defaults 24 / 7 |
@@ -533,9 +539,10 @@ Production refuses to start if `APP_ENV=production` and `APP_ORIGIN` is not HTTP
 
 - Alembic autogenerate, then **manual review** of every revision (constraints, composite FKs, indexes, data migrations).
 - One migration per vertical slice; never edit an applied migration.
-- Each revision has a working `downgrade` unless it is explicitly marked irreversible in its docstring with justification.
+- Each revision has a working `downgrade` unless it is explicitly marked irreversible in its docstring with justification. Security-hardening revisions (e.g. `0002`, revoking Supabase API-role privileges) downgrade as a documented no-op: re-granting access would reopen the exposure, and they create no schema objects, so earlier revisions still run correctly.
+- Migrations run as the role that owns application objects (`postgres` on Supabase); default-privilege changes in `0002` apply only to objects that role creates.
 - Destructive changes follow expand → backfill → switch reads → contract, across separate releases.
-- CI runs `alembic upgrade head` on an empty DB, then `alembic downgrade -1 && alembic upgrade head`, and `alembic check` (no un-generated model changes).
+- CI (`.github/workflows/backend.yml`) runs the integration tests on an empty disposable Postgres 17 — they migrate up, down to `base` and back up, and run `alembic check` — then runs `alembic upgrade head` and `alembic check` on the migrated database.
 
 ## 21. Backup and recovery
 
@@ -559,6 +566,7 @@ Production refuses to start if `APP_ENV=production` and `APP_ORIGIN` is not HTTP
 | Denial of service | Login brute force, spam posts/issues | DB rate limits, pagination caps, request body size limit (1 MB; 2 MB for CSV) |
 | Elevation of privilege | Dept admin grants self college admin | Grant endpoints require COLLEGE_ADMIN; students can't hold grants; last-admin rule |
 | Elevation of privilege | Platform admin reads academic data | No platform route touches academic tables (ADMIN-008); platform admin accounts cannot join colleges (P-7) |
+| Information disclosure | Supabase Data API re-enabled; anyone with the public anon key reads/writes tables | Data API disabled on the project **and** migration `0002` removes `anon`/`authenticated` privileges in `public`, including for future objects |
 | Spoofing | Stolen faculty/admin session used for days | Privileged sessions: 24 h idle / 7 d absolute (AUTH-013) |
 | Information disclosure | Roster probing via roll numbers | Uniform membership-request response (MEMBER-004) + 5/day limit |
 | Information disclosure | Student enumerates members | Directory admin-only; assignee picker coordinator-only |
@@ -581,6 +589,7 @@ Production refuses to start if `APP_ENV=production` and `APP_ORIGIN` is not HTTP
 | ADR-07 | Jobs CLI on a scheduler (hourly in MVP; every minute once NOTICE-011 ships) | Celery/RQ + broker | Coarse granularity; no broker |
 | ADR-12 | Session tier computed per request from current roles (P-8) | Tier stored on session at login | Stricter limits apply immediately on role grant; one extra condition per request |
 | ADR-13 | Separate platform-admin accounts (P-7) | One account with both roles | Closes self-invite escalation; operators who also work at a college need two accounts |
+| ADR-14 | Development database = hosted Supabase Postgres 17 via the session pooler (IPv4, `sslmode=require`), plain SQLAlchemy/psycopg, no Supabase client libraries; Supabase **Data API disabled** and API-role privileges revoked in the database (`0002`); no local Docker; destructive migration tests only on CI's disposable Postgres | Local Docker Postgres | No Docker on dev machines; dev DB pauses after 1 week idle and has no backups (synthetic data only); Supabase approved for development only (production: P-1) |
 | ADR-08 | Sync SQLAlchemy | Async SQLAlchemy | Simpler; thread pool limits concurrency (fine at this scale) |
 | ADR-09 | Same-origin SPA behind Caddy | Separate frontend host + CORS | Simpler cookies/CSRF; one deployable unit |
 | ADR-10 | RLS deferred | RLS now | Less complexity; no DB-level read isolation in MVP |

@@ -12,21 +12,20 @@ These six documents are authoritative. If code and docs disagree, report it; don
 ## Stack
 - Frontend: React + TypeScript (Vite), Tailwind CSS, shadcn/ui, TanStack Query, React Router, react-hook-form + zod
 - Backend: Python 3.12 + FastAPI, SQLAlchemy 2.x (sync), Alembic, Pydantic v2, argon2-cffi, psycopg 3
-- DB: PostgreSQL 16 (docker compose for local dev, with Mailpit for email)
+- DB: PostgreSQL 17 — development on a hosted Supabase project (session pooler, SSL, Data API disabled; plain SQLAlchemy, no Supabase client libraries); CI on a disposable Postgres 17 service. No Docker needed locally
 - Tests: pytest (+ FastAPI/Starlette TestClient on httpx2) for backend; Vitest + Testing Library for frontend; Playwright + axe for E2E
 - CI: GitHub Actions. Deploy: Caddy + API + scheduled jobs CLI (`architecture.md` §18)
 - Not used (see ADRs): microservices, Redis, queues, WebSockets, GraphQL, Kubernetes
 
 ## Commands (`memory.md` §9 records which ones have been verified)
 ```bash
-# Services
-docker compose up -d db
-
 # Backend (from backend/; copy .env.example to .env first)
 uv sync
 uv run alembic upgrade head
 uv run uvicorn app.main:app_factory --factory --reload
-uv run pytest -q
+uv run pytest -q                 # unit tests; integration tests need TEST_DATABASE_URL (CI only)
+# TEST_DATABASE_URL must be a DISPOSABLE Postgres 17 (tests downgrade migrations); never Supabase.
+# The guard requires a localhost host and a *_test database; CI: .github/workflows/backend.yml
 uv run ruff check . && uv run ruff format --check . && uv run mypy
 
 # Frontend (from frontend/)
@@ -99,4 +98,4 @@ Add folders only when a feature needs them.
 - Update `memory.md` after completing work; never claim tests passed unless they ran.
 
 ## Current phase
-Phase 1 — foundation, not started (Phase 0 done 2026-10-20; see `Phases.md`). Update this line as phases complete.
+Phase 1 — foundation, in progress (see `Phases.md`). Update this line as phases complete.

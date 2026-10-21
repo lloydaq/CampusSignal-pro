@@ -572,7 +572,7 @@ Targets are hypotheses for a pilot; they are not claimed results.
 | Dependency | Purpose | MVP? |
 |---|---|---|
 | Transactional email (SMTP/API) | Verification, reset, invites | Yes (provider pending P-2) |
-| PostgreSQL 16 (managed in prod) | Primary datastore | Yes |
+| PostgreSQL 17 (Supabase for development; production host pending P-1) | Primary datastore | Yes |
 | Object storage (S3-compatible) | Attachments, images | No (P1) |
 | College ERP / university systems | — | No; not assumed available |
 

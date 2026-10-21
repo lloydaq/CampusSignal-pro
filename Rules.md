@@ -50,6 +50,7 @@ Sources: requirements in `PRD.md`, structure in `architecture.md`, sequence in `
 | R-2.19 | Academic data in development, demos, screenshots, and tests MUST be synthetic and labelled "Demo data". MUST NOT scrape or connect to college ERPs. |
 | R-2.20 | MUST derive client IP only from the trusted reverse proxy; MUST NOT trust client-supplied forwarding headers. |
 | R-2.21 | MUST NOT add endpoints that let non-admins enumerate members, roster entries, or roll numbers; responses to verification attempts MUST be uniform (MEMBER-004). |
+| R-2.22 | MUST NOT grant any privilege to Supabase's `anon` or `authenticated` roles. Any function created in a migration MUST `REVOKE EXECUTE ON FUNCTION … FROM PUBLIC`; `SECURITY DEFINER` functions need explicit security review. Migrations MUST run as the role that owns application objects. |
 
 **Security review checklist** (copy into each PR touching endpoints):
 - [ ] Policy called for every new route; route inventory test passes.

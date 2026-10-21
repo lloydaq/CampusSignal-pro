@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Last updated | 2026-10-20 |
-| Current phase | **Phase 1 — Foundation, IN PROGRESS** (Step 1 done 2026-10-21, awaiting review) |
+| Current phase | **Phase 1 — Foundation, IN PROGRESS** (Step 1 committed `003384a`; Step 2 implemented, awaiting review) |
 
 Status values: `NOT STARTED` · `IN PROGRESS` · `DONE (verified <date>)`. A phase is DONE only per §4 and `Rules.md` §8 — never because files exist.
 
@@ -83,10 +83,10 @@ Tasks:
 **Status:** IN PROGRESS
 
 Approved execution order (2026-10-21), one reviewed commit per step:
-- [x] Step 1 — Backend skeleton: uv project (Python 3.12), app factory, settings that refuse insecure deployed config, error envelope, request ID + JSON logging + scrub filter, security headers, `/healthz`; tests, ruff, mypy (verified 2026-10-21; awaiting owner review).
-- [ ] Step 2 — Database: docker compose (Postgres 16 + Mailpit), SQLAlchemy engine/session, Alembic + `citext` migration, `/readyz` (+ DB-down test).
+- [x] Step 1 — Backend skeleton: uv project (Python 3.12), app factory, settings that refuse insecure deployed config, error envelope, request ID + JSON logging + scrub filter, security headers, `/healthz`; tests, ruff, mypy (verified 2026-10-21; commit `003384a`).
+- [ ] Step 2 — Database (revised 2026-10-21, ADR-14): Supabase-hosted Postgres 17 for development via session pooler + SSL (no Docker), SQLAlchemy engine/session, Alembic + `citext` migration, `/readyz` (+ DB-down test); integration tests marked for CI's disposable Postgres 17. Includes migration `0002` (revokes Supabase `anon`/`authenticated` privileges in `public`). Implemented and checked against the Supabase dev DB 2026-10-21; **open:** the 6 integration tests have not run yet. CI workflow `.github/workflows/backend.yml` (backend job with a disposable `postgres:17.11` service) was added 2026-10-21 to run them; Step 2 closes when its first run passes.
 - [ ] Step 3 — Frontend shell (see Frontend row below) + token contrast check.
-- [ ] Step 4 — CI workflows and README/setup docs.
+- [ ] Step 4 — CI workflows and README/setup docs. (Backend job already added for Step 2 verification; remaining: frontend job, README/setup docs.)
 **Objective:** Runnable, tested, empty application skeleton with CI.
 **Dependencies:** Phase 0.
 **Included:** project structure, config, DB connection, Alembic, error envelope, logging, health endpoints, frontend shell with design tokens, CI.
@@ -96,14 +96,14 @@ Approved execution order (2026-10-21), one reviewed commit per step:
 |---|---|
 | Backend | `backend/` with uv, FastAPI app factory, pydantic-settings config, SQLAlchemy engine/session, domain exception classes + envelope handler (`architecture.md` §12), request-ID + JSON logging + scrub filter, `/healthz`, `/readyz`, security headers middleware for dev |
 | Frontend | Vite + React + TS strict, Tailwind with tokens from `Design.md` §3, shadcn/ui init, fonts via @fontsource, React Router with `AuthShell` placeholder route only, `apiClient` with envelope parsing, light/dark theme switch |
-| Database | `docker-compose.yml` with Postgres 16 + Mailpit; Alembic initialized; first migration enabling `citext` (`gen_random_uuid()` is built into PostgreSQL 13+) |
-| Tooling | ruff, pytest, Vitest, Playwright, ESLint; `.gitignore`, `.env.example`; GitHub Actions: backend lint+test with Postgres service, frontend typecheck+lint+test+build, Alembic up/down/check |
+| Database | Supabase development project (Postgres 17, session pooler, `sslmode=require`, Data API disabled); Alembic initialized; first migration enabling `citext` (`gen_random_uuid()` is built into PostgreSQL 13+). Mailpit (standalone binary, no Docker) moves to Phase 2 with email |
+| Tooling | ruff, pytest, Vitest, Playwright, ESLint; `.gitignore`, `.env.example`; GitHub Actions: backend lint+test with a Postgres 17 service (runs the `integration` tests), frontend typecheck+lint+test+build, Alembic up/down/check |
 | Security | Settings refuse insecure production config; no secrets in repo |
 | Testing | Tests for error envelope, request ID, readiness failure when DB down; token contrast check script for `Design.md` tokens |
 | Docs | Update `memory.md` with verified layout and commands |
 
 **Deliverables:** skeleton repo; green CI.
-**Definition of done:** `docker compose up -d db`, `alembic upgrade head`, `uvicorn` and `npm run dev` work from a clean clone following README; CI green; `/readyz` returns 200.
+**Definition of done:** with `backend/.env` pointing at a Supabase development project, `alembic upgrade head`, `uvicorn` and `npm run dev` work from a clean clone following README; CI green; `/readyz` returns 200.
 **Exit criteria:** above verified in a session and recorded in `memory.md`.
 **Risks:** Windows-specific tooling issues (owner develops on Windows) — document commands for PowerShell and bash.
 
