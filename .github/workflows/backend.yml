@@ -91,6 +91,25 @@ jobs:
               raise SystemExit("integration tests did not all run")
           PY
 
+      - name: Failed integration tests (annotations)
+        if: failure()
+        run: |
+          uv run python - <<'PY'
+          import xml.etree.ElementTree as ET
+          try:
+              root = ET.parse("integration.xml").getroot()
+          except OSError:
+              raise SystemExit(0)
+          shown = 0
+          for case in root.iter("testcase"):
+              for kind in ("failure", "error"):
+                  found = case.find(kind)
+                  if found is not None and shown < 15:
+                      shown += 1
+                      text = " ".join((found.get("message") or "").split())[:400]
+                      print(f"::error title={case.get('classname')}.{case.get('name')}::{text}")
+          PY
+
       - name: Alembic upgrade + check on the migrated test database
         env:
           APP_ENV: ci
