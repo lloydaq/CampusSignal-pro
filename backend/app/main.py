@@ -48,3 +48,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 def app_factory() -> FastAPI:
     """Entry point for `uvicorn --factory app.main:app_factory`."""
     return create_app()
+
+
+def __getattr__(name: str) -> FastAPI:
+    """Entry point for `uvicorn app.main:app`, built on first access.
+
+    Importing this module must not read settings or `.env` (tests, Alembic and tooling
+    import it), so `app` is created lazily from the same factory and then cached.
+    """
+    if name == "app":
+        instance = create_app()
+        globals()["app"] = instance
+        return instance
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
