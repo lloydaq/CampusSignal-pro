@@ -14,6 +14,8 @@ from datetime import UTC, datetime
 from typing import Any
 
 import pytest
+from alembic import command
+from alembic.config import Config
 from sqlalchemy import Engine, create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -32,8 +34,11 @@ WORKERS = 10  # each Argon2 check holds 64 MiB, so keep the parallelism modest
 
 
 @pytest.fixture
-def committed(test_database_url: str) -> Iterator[tuple[Engine, sessionmaker[Session], datetime]]:
+def committed(
+    config: Config, test_database_url: str
+) -> Iterator[tuple[Engine, sessionmaker[Session], datetime]]:
     """Independent connections on the verified-disposable database, with cleanup."""
+    command.upgrade(config, "head")  # a fresh database (CI) has no tables until migrated
     engine = create_engine(test_database_url, pool_size=WORKERS, hide_parameters=True)
     factory = sessionmaker(bind=engine, expire_on_commit=False)
     started = datetime.now(UTC)
