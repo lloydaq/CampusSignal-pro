@@ -10,10 +10,11 @@ import math
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
+from app.core.errors import RateLimited
 from app.models.rate_limit import RateLimitCounter
 
 
@@ -77,3 +78,46 @@ def hit(session: Session, limit: Limit, key: str, now: datetime) -> RateLimitSta
     )
     count = session.execute(stmt).scalar_one()
     return _state(limit, count, start, now)
+
+
+def clear(session: Session, limit: Limit, key: str, now: datetime) -> None:
+    """Forget the hits in the current window (e.g. failed logins after a successful one)."""
+    session.execute(
+        delete(RateLimitCounter).where(
+            RateLimitCounter.bucket_key == f"{limit.name}:{key}",
+            RateLimitCounter.window_start == _window_start(limit, now),
+        )
+    )
+
+
+def raise_if_exceeded(*states: RateLimitState) -> None:
+    """429 with the longest Retry-After when any of the given limits is used up."""
+    exceeded = [state for state in states if state.exceeded]
+    if exceeded:
+        raise RateLimited(max(state.retry_after_seconds for state in exceeded))
+
+
+def consume(session: Session, limit: Limit, key: str, now: datetime) -> RateLimitState:
+    """Reserve one attempt and reject the one that goes over the limit.
+
+    The increment is a single atomic upsert and is committed before the caller does any
+    slow work, so concurrent requests each get a distinct count: at most `max_hits` of them
+    can proceed, however they interleave. Returns the state including this attempt.
+    """
+    state = hit(session, limit, key, now)
+    session.commit()
+    if state.count > limit.max_hits:
+        raise RateLimited(state.retry_after_seconds)
+    return state
+
+
+def release(session: Session, limit: Limit, key: str, now: datetime) -> None:
+    """Give back one reserved attempt (never below zero). Does not commit."""
+    session.execute(
+        update(RateLimitCounter)
+        .where(
+            RateLimitCounter.bucket_key == f"{limit.name}:{key}",
+            RateLimitCounter.window_start == _window_start(limit, now),
+        )
+        .values(count=func.greatest(RateLimitCounter.count - 1, 0))
+    )

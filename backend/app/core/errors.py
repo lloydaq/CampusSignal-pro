@@ -61,6 +61,26 @@ class Conflict(AppError):
     default_message = "The request conflicts with the current state."
 
 
+class InvalidCredentials(AppError):
+    """One message for every sign-in failure, so responses never reveal which part was wrong."""
+
+    status_code = 401
+    code = "invalid_credentials"
+    default_message = "Email or password is incorrect."
+
+
+class ValidationFailed(AppError):
+    """Business-rule validation failures, shaped like schema validation errors (422)."""
+
+    status_code = 422
+    code = "validation_error"
+    default_message = "Some fields are invalid."
+
+    @classmethod
+    def field(cls, field: str, message: str) -> "ValidationFailed":
+        return cls(details=[{"field": field, "message": message}])
+
+
 class NotReady(AppError):
     status_code = 503
     code = "not_ready"

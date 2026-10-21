@@ -37,6 +37,11 @@ class Settings(BaseSettings):
     privileged_session_idle_hours: int = Field(default=24, ge=1, le=168)
     privileged_session_absolute_days: int = Field(default=7, ge=1, le=30)
 
+    # Number of reverse proxies in front of the API that append to X-Forwarded-For (Caddy = 1).
+    # 0 uses the direct connection address; client-supplied forwarding headers are never
+    # trusted beyond this many hops (architecture.md §10).
+    trusted_proxy_count: int = Field(default=0, ge=0, le=5)
+
     # Email (architecture.md §15). "smtp" sends via SMTP (Mailpit locally on port 1025);
     # "memory" keeps messages in-process for tests. There is deliberately no console
     # backend: emails carry tokens, which must never reach logs (Rules R-2.11).

@@ -6,13 +6,10 @@ usable.
 """
 
 import uuid
-from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from alembic import command
-from alembic.config import Config
-from sqlalchemy import Connection, Engine, text
+from sqlalchemy import Connection, text
 from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.orm import Session
 
@@ -24,21 +21,6 @@ from app.services.audit import record_audit
 pytestmark = pytest.mark.integration
 
 NOW = datetime(2026, 10, 21, 10, 7, tzinfo=UTC)
-
-
-@pytest.fixture
-def conn(config: Config, engine: Engine) -> Iterator[Connection]:
-    command.upgrade(config, "head")
-    with engine.connect() as connection:
-        transaction = connection.begin()
-        yield connection
-        transaction.rollback()
-
-
-@pytest.fixture
-def session(conn: Connection) -> Iterator[Session]:
-    with Session(bind=conn, join_transaction_mode="create_savepoint") as s:
-        yield s
 
 
 def _user(session: Session, email: str = "aarav@northfield.example") -> User:

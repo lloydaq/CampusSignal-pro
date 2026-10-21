@@ -5,6 +5,7 @@ in deployments. `InMemoryMailer` keeps messages for tests. Message bodies contai
 so nothing here logs message content or recipients.
 """
 
+import logging
 import smtplib
 import ssl
 from dataclasses import dataclass, field
@@ -14,6 +15,8 @@ from typing import Protocol
 from app.core.config import Settings
 
 SMTP_TIMEOUT_SECONDS = 10
+
+logger = logging.getLogger("app.mailer")
 
 
 @dataclass(frozen=True)
@@ -66,3 +69,15 @@ def create_mailer(settings: Settings) -> Mailer:
     if settings.email_backend == "memory":
         return InMemoryMailer()
     return SmtpMailer(settings)
+
+
+def send_email(mailer: Mailer, email: OutgoingEmail) -> None:
+    """Send in the background after the request's transaction committed.
+
+    A delivery failure must never fail the request, and the log must not reveal who the
+    email was for or what it said (it carries tokens), so only the error type is logged.
+    """
+    try:
+        mailer.send(email)
+    except Exception as exc:
+        logger.error("email_send_failed", extra={"error_type": type(exc).__name__})

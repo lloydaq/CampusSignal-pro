@@ -8,16 +8,24 @@ CAMPUSSIGNAL_REQUIRE_INTEGRATION=1 (set in CI), where they fail instead.
 """
 
 import os
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import pytest
+from alembic import command
 from alembic.config import Config
-from sqlalchemy import Engine, text
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+from sqlalchemy import Connection, Engine, text
 from sqlalchemy.engine import make_url
+from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import get_settings
 from app.core.db import alembic_config, create_db_engine
-from tests.conftest import disposable_database_problem, make_settings
+from app.core.mailer import InMemoryMailer
+from app.main import create_app
+from tests.conftest import APP_ORIGIN, disposable_database_problem, make_settings
 
 TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL")
 REQUIRE_INTEGRATION = os.environ.get("CAMPUSSIGNAL_REQUIRE_INTEGRATION") == "1"
@@ -79,3 +87,79 @@ def config(monkeypatch: pytest.MonkeyPatch, test_database_url: str) -> Iterator[
     cfg.attributes["configure_logger"] = False
     yield cfg
     get_settings.cache_clear()
+
+
+@pytest.fixture
+def conn(config: Config, engine: Engine) -> Iterator[Connection]:
+    """A connection inside one transaction that is rolled back, so tests don't affect each
+    other. Everything below (sessions, the app under test) shares it."""
+    command.upgrade(config, "head")
+    with engine.connect() as connection:
+        transaction = connection.begin()
+        yield connection
+        transaction.rollback()
+
+
+@pytest.fixture
+def session(conn: Connection) -> Iterator[Session]:
+    with Session(bind=conn, join_transaction_mode="create_savepoint") as s:
+        yield s
+
+
+class Clock:
+    """The app's clock in tests: starts at a fixed instant and only moves when told to."""
+
+    def __init__(self) -> None:
+        self.now = datetime(2026, 10, 21, 12, 0, tzinfo=UTC)
+
+    def __call__(self) -> datetime:
+        return self.now
+
+    def advance(self, **delta: float) -> None:
+        self.now += timedelta(**delta)
+
+
+@pytest.fixture
+def clock() -> Clock:
+    return Clock()
+
+
+@pytest.fixture
+def app_factory(conn: Connection, test_database_url: str, clock: Clock) -> Callable[..., FastAPI]:
+    """Builds the real app on the test transaction, with the test clock and in-memory email."""
+
+    def build(**settings: Any) -> FastAPI:
+        app = create_app(make_settings(database_url=test_database_url, **settings))
+        app.state.session_factory = sessionmaker(
+            bind=conn, join_transaction_mode="create_savepoint", expire_on_commit=False
+        )
+        app.state.clock = clock
+        return app
+
+    return build
+
+
+@pytest.fixture
+def auth_app(app_factory: Callable[..., FastAPI]) -> FastAPI:
+    return app_factory()
+
+
+@pytest.fixture
+def mailer(auth_app: FastAPI) -> InMemoryMailer:
+    mailer = auth_app.state.mailer
+    assert isinstance(mailer, InMemoryMailer)
+    return mailer
+
+
+@pytest.fixture
+def api(auth_app: FastAPI) -> Iterator[TestClient]:
+    """A browser-like client: keeps cookies and sends the SPA's Origin on every request."""
+    with TestClient(auth_app, raise_server_exceptions=False, headers={"Origin": APP_ORIGIN}) as c:
+        yield c
+
+
+@pytest.fixture
+def bare_api(auth_app: FastAPI) -> Iterator[TestClient]:
+    """Same app, no Origin header."""
+    with TestClient(auth_app, raise_server_exceptions=False) as c:
+        yield c
