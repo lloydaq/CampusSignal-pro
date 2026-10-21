@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Last updated | 2026-10-20 |
-| Current phase | **Phase 0 — in progress** (documentation drafted; pending decisions open) |
+| Current phase | **Phase 1 — Foundation, NOT STARTED** (Phase 0 done 2026-10-20) |
 
 Status values: `NOT STARTED` · `IN PROGRESS` · `DONE (verified <date>)`. A phase is DONE only per §4 and `Rules.md` §8 — never because files exist.
 
@@ -55,7 +55,7 @@ Reordering versus the original outline (and why): **notices** precede academics 
 ---
 
 ## Phase 0 — Repository inspection, requirements validation, setup
-**Status:** IN PROGRESS
+**Status:** DONE (verified 2026-10-20, commit `095ffef`)
 **Objective:** A verified starting point and answered blocking decisions.
 **Dependencies:** none.
 **Included:** repository inspection; the six documentation files; decision log.
@@ -70,10 +70,11 @@ Tasks:
 - [x] Pre-development architecture review; documentation fixes applied (2026-10-20).
 - [x] P-7, P-8, P-9 decided and applied to all documents (2026-10-20).
 - [x] `.gitignore` added (R-7.4) and verified with `git check-ignore` (2026-10-20).
-- [ ] Owner decides whether AI-tooling folders (`.agent/`, `.agents/`, `.claude/`, `.codex/`, `.gemini/`, `.impeccable/`, ~86 MB incl. four copies of a Windows binary) are committed.
-- [ ] Owner makes the first commit (docs, `CLAUDE.md`, `.gitignore`); create GitHub repository.
+- [x] AI-tooling folders (`.agent/`, `.agents/`, `.claude/`, `.codex/`, `.gemini/`, `.impeccable/`) kept out of version control by owner decision (2026-10-20).
+- [x] Initial commit `095ffef` with the six docs, `CLAUDE.md`, `.gitignore` (2026-10-20); staged diff reviewed, no secrets.
+- [ ] Create GitHub remote — deferred; not required for Phase 0 exit (needed before CI in Phase 1).
 
-**Definition of done / exit criteria:** owner has approved the documents; P-4, P-7, P-8, P-9 resolved; `.gitignore` in place; first commit exists. (P-1/P-2 are needed later, not for exit.)
+**Definition of done / exit criteria:** owner has approved the documents; P-4, P-7, P-8, P-9 resolved; `.gitignore` in place; first commit exists. (P-1/P-2 are needed later, not for exit.) — **all met 2026-10-20.**
 **Risks:** scope creep from P2 ideas; mitigated by PRD §14.
 
 ---

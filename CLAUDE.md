@@ -99,4 +99,4 @@ Add folders only when a feature needs them.
 - Update `memory.md` after completing work; never claim tests passed unless they ran.
 
 ## Current phase
-Phase 0 — setup (see `Phases.md`). Update this line as phases complete.
+Phase 1 — foundation, not started (Phase 0 done 2026-10-20; see `Phases.md`). Update this line as phases complete.

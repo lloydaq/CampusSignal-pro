@@ -9,9 +9,9 @@ CampusSignal (official name, P-4) — multi-college campus platform: isolated co
 
 ## 2. Repository status (verified 2026-10-20)
 - **No application code exists.** Implementation has not started.
-- Git: branch `master`, **no commits**, no remote. All files untracked.
+- Git: branch `master`, initial commit `095ffef` (2026-10-20) containing the six docs, `CLAUDE.md`, `.gitignore`. No remote; nothing pushed.
 - `.gitignore` exists and was verified with `git check-ignore` (env files, venvs, `node_modules`, build output, local DBs/dumps/uploads, Caddy state, logs, and local AI-tool state: `.claude/settings.local.json`, `.impeccable/config.local.json`, `.impeccable/hook.cache.json`, `.impeccable/live/`).
-- Root: `CLAUDE.md` (rewritten for CampusSignal), the six docs, `.gitignore`, and AI-tooling folders `.agent/`, `.agents/`, `.claude/`, `.codex/`, `.gemini/`, `.impeccable/` (~86 MB; skills/hooks incl. four copies of a Windows binary `impeccable.exe`; not product code). Whether to commit them is an open owner decision.
+- Root: `CLAUDE.md` (rewritten for CampusSignal), the six docs, `.gitignore`, and AI-tooling folders `.agent/`, `.agents/`, `.claude/`, `.codex/`, `.gemini/`, `.impeccable/` (~86 MB; skills/hooks incl. four copies of a Windows binary `impeccable.exe`; not product code). Owner decision (2026-10-20): kept **out** of version control for now; they show as untracked in `git status` — do not stage them.
 - `.impeccable/design.json` describes an unrelated design system ("DataSentry") — `Design.md` is authoritative.
 - No `.env`, keys, or database files present.
 - Directory structure in `architecture.md` §5 is **proposed**, not verified.
@@ -36,10 +36,10 @@ College derived from session's ACTIVE membership on `/api/v1/campus/*` (no clien
 ## 6. Implementation status
 | Phase | Status |
 |---|---|
-| 0 Setup & docs | IN PROGRESS — all doc decisions applied, `.gitignore` added; awaiting owner's first commit and tooling-folder decision |
+| 0 Setup & docs | DONE (verified 2026-10-20, commit `095ffef`) |
 | 1–11 | NOT STARTED |
 
-Completed milestones (2026-10-20): documentation set; pre-development review; owner decisions P-4/P-7/P-8/P-9 applied; `CLAUDE.md` aligned; `.gitignore`. Nothing implemented.
+Completed milestones (2026-10-20): documentation set; pre-development review; owner decisions P-4/P-7/P-8/P-9 applied; `CLAUDE.md` aligned; `.gitignore`; initial commit `095ffef`. Nothing implemented.
 
 ## 7. Known issues / limitations
 - MVP accepts that a network-level retry can create a duplicate post/comment/issue (until NFR-REL-002).
@@ -54,7 +54,6 @@ Completed milestones (2026-10-20): documentation set; pre-development review; ow
 | P-5 | Attendance edit window default (48 h assumed) | Phase 7 |
 | P-6 | Error tracking (Sentry with scrubbing, or none) | Phase 10 |
 | P-10 | Should platform-admin sessions also use privileged limits? (recommended: yes) | Phase 3 |
-| — | Commit AI-tooling folders or keep them local | First commit |
 Resolved: P-4, P-7, P-8, P-9 (2026-10-20). Assumptions to validate: PRD §21 (A1–A4).
 
 ## 9. Commands
@@ -64,4 +63,4 @@ None verified — no code exists. Planned commands are in `CLAUDE.md`; record ve
 No application tests exist. Documentation consistency checks (requirement IDs, phase mapping, rule references) and `git check-ignore` checks were run on 2026-10-20.
 
 ## 11. Next task
-Owner: decide on tooling folders, make the first commit. Then Phase 1, first task: backend skeleton (uv project, FastAPI app factory, settings, error envelope, `/healthz`) + `docker-compose.yml` with Postgres 16 — see `Phases.md` Phase 1.
+Phase 1, first task (propose a plan first): backend skeleton (uv project, FastAPI app factory, settings, error envelope, `/healthz`) + `docker-compose.yml` with Postgres 16 — see `Phases.md` Phase 1.
