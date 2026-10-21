@@ -11,6 +11,9 @@ from app.main import create_app
 # Hosted Supabase databases: pooler hosts end in supabase.com, direct hosts in supabase.co.
 SUPABASE_HOST_SUFFIXES = (".supabase.com", ".supabase.co")
 
+# What a browser sends from the SPA: state-changing requests carry this Origin (AUTH-008).
+APP_ORIGIN = "http://localhost:5173"
+
 # Port 1 on loopback is closed: unit tests never reach a real database or the network.
 UNREACHABLE_DB_URL = (
     "postgresql+psycopg://campussignal:not-a-real-password@127.0.0.1:1/campussignal"
@@ -20,7 +23,7 @@ UNREACHABLE_DB_URL = (
 def make_settings(**overrides: object) -> Settings:
     values: dict[str, object] = {
         "app_env": "ci",
-        "app_origin": "http://localhost:5173",
+        "app_origin": APP_ORIGIN,
         "database_url": UNREACHABLE_DB_URL,
         "email_backend": "memory",
     }
@@ -71,5 +74,12 @@ def app(settings: Settings) -> FastAPI:
 
 @pytest.fixture
 def client(app: FastAPI) -> Iterator[TestClient]:
+    with TestClient(app, raise_server_exceptions=False, headers={"Origin": APP_ORIGIN}) as c:
+        yield c
+
+
+@pytest.fixture
+def bare_client(app: FastAPI) -> Iterator[TestClient]:
+    """A client that sends no Origin, for tests of the Origin check itself."""
     with TestClient(app, raise_server_exceptions=False) as c:
         yield c

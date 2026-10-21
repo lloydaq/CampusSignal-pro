@@ -2,7 +2,7 @@
 
 Concise, verified state for new sessions. Details live in the linked documents; do not copy them here. Never store secrets here.
 
-**Last updated:** 2026-10-21 (Phase 1 complete)
+**Last updated:** 2026-10-21 (Phase 2b implemented on `phase2/auth-api`, awaiting review)
 
 ## 1. Project
 CampusSignal (official name, P-4) — multi-college campus platform: isolated college spaces with official notices, student community, department pages, private academic info (timetable, attendance, results), and campus issue reporting. Spec: `PRD.md`.
@@ -40,7 +40,7 @@ College derived from session's ACTIVE membership on `/api/v1/campus/*` (no clien
 |---|---|
 | 0 Setup & docs | DONE (verified 2026-10-20, commit `095ffef`) |
 | 1 Foundation | DONE (verified 2026-10-21, `master` `b8f5930`: both workflows green; clean-clone README run passed) |
-| 2 Identity | NEXT — not started; propose a plan first |
+| 2 Identity | IN PROGRESS — 2a merged (`988e9d9`); 2b (auth API) implemented on `phase2/auth-api`, uncommitted, 356 tests pass locally (0 skipped); 2c operator CLI and 2d frontend not started |
 | 3–11 | NOT STARTED |
 
 Completed milestones (2026-10-20): documentation set; pre-development review; owner decisions P-4/P-7/P-8/P-9 applied; `CLAUDE.md` aligned; `.gitignore`; initial commit `095ffef`. Nothing implemented.
