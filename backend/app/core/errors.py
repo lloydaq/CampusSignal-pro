@@ -61,6 +61,12 @@ class Conflict(AppError):
     default_message = "The request conflicts with the current state."
 
 
+class NotReady(AppError):
+    status_code = 503
+    code = "not_ready"
+    default_message = "The service is not ready."
+
+
 class RateLimited(AppError):
     status_code = 429
     code = "rate_limited"

@@ -3,21 +3,23 @@ from pydantic import ValidationError
 
 from app.core.config import Settings
 from app.main import create_app
-from tests.conftest import make_settings
+from tests.conftest import UNREACHABLE_DB_URL, make_settings
 
 
 def test_required_settings_have_no_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("APP_ENV", raising=False)
     monkeypatch.delenv("APP_ORIGIN", raising=False)
+    monkeypatch.delenv("DATABASE_URL", raising=False)
     with pytest.raises(ValidationError) as exc:
         Settings(_env_file=None)
     missing = {err["loc"][0] for err in exc.value.errors()}
-    assert missing == {"app_env", "app_origin"}
+    assert missing == {"app_env", "app_origin", "database_url"}
 
 
 def test_settings_read_from_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("APP_ENV", "local")
     monkeypatch.setenv("APP_ORIGIN", "http://localhost:5173")
+    monkeypatch.setenv("DATABASE_URL", UNREACHABLE_DB_URL)
     settings = Settings(_env_file=None)
     assert settings.app_env == "local"
     assert settings.app_origin.host == "localhost"

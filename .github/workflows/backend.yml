@@ -1,0 +1,102 @@
+# Backend checks: lint, types, unit tests, and destructive migration/integration tests
+# against a disposable PostgreSQL 17 service container (never Supabase; ADR-14).
+# The frontend and deployment jobs arrive with Phase 1 Step 3/Step 4.
+name: backend
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+
+    services:
+      postgres:
+        # Same major/minor as the Supabase development project.
+        image: postgres:17.11
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: campussignal_test
+          # Throwaway container reachable only from this job; no password to leak.
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d campussignal_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      # Integration tests must run here: a missing TEST_DATABASE_URL fails instead of skipping.
+      CAMPUSSIGNAL_REQUIRE_INTEGRATION: "1"
+      # Disposable service DB (loopback, *_test, no credentials). The integration suite
+      # refuses anything else, including any Supabase host.
+      TEST_DATABASE_URL: postgresql+psycopg://postgres@localhost:5432/campussignal_test
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+
+      - name: Install dependencies (locked)
+        run: uv sync --locked
+
+      - name: Whitespace errors (whole tracked tree)
+        working-directory: .
+        run: git diff --check "$(git hash-object -t tree /dev/null)" HEAD
+
+      - name: Ruff lint
+        run: uv run ruff check .
+
+      - name: Ruff format
+        run: uv run ruff format --check .
+
+      - name: Mypy
+        run: uv run mypy
+
+      - name: Compile
+        run: uv run python -m compileall -q app alembic tests
+
+      - name: Unit tests
+        run: uv run pytest -q -m "not integration" -W error::DeprecationWarning
+
+      - name: Integration tests (disposable PostgreSQL 17)
+        run: |
+          uv run pytest -q -m integration -rs -W error::DeprecationWarning --junitxml=integration.xml
+          uv run python - <<'PY'
+          import xml.etree.ElementTree as ET
+          suite = ET.parse("integration.xml").getroot().find("testsuite")
+          tests, skipped = int(suite.get("tests")), int(suite.get("skipped"))
+          print(f"integration tests: {tests} collected, {skipped} skipped")
+          if tests < 6 or skipped:
+              raise SystemExit("integration tests did not all run")
+          PY
+
+      - name: Alembic upgrade + check on the migrated test database
+        env:
+          APP_ENV: ci
+          APP_ORIGIN: http://localhost:5173
+          DATABASE_URL: ${{ env.TEST_DATABASE_URL }}
+        run: |
+          uv run alembic upgrade head
+          uv run alembic current
+          uv run alembic check

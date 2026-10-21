@@ -94,6 +94,8 @@ def configure_logging(level: str) -> None:
 
     # Our middleware writes the access log (with request IDs, without query strings).
     logging.getLogger("uvicorn.access").disabled = True
+    # /readyz inspects the migration version on every call; Alembic's INFO lines are noise.
+    logging.getLogger("alembic").setLevel(logging.WARNING)
     for name in ("uvicorn", "uvicorn.error"):
         logging.getLogger(name).handlers = []
         logging.getLogger(name).propagate = True

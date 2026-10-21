@@ -34,6 +34,9 @@ frontend/dist/
 coverage/
 npm-debug.log*
 
+# --- CI test reports -------------------------------------------------------
+integration.xml
+
 # --- Playwright --------------------------------------------------------------
 playwright-report/
 test-results/
