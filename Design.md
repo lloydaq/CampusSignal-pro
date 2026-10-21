@@ -40,7 +40,7 @@ Tokens are CSS custom properties on `:root` / `[data-theme="dark"]`, mapped into
 | `--surface` | `#FFFFFF` | Panels, list containers, dialogs | — |
 | `--surface-sunken` | `#EEF1F5` | Table headers, input backgrounds when filled, code blocks | — |
 | `--border` | `#DDE2EA` | Dividers, list separators (decorative) | — |
-| `--border-strong` | `#8A93A3` | Input borders, focusable component boundaries | 3.10 on surface |
+| `--border-strong` | `#868FA0` | Input borders, focusable component boundaries | 3.26 on surface, 3.04 on bg (darkened from `#8A93A3`, which was 2.89 on bg; found by the Phase 1 contrast check) |
 | `--text` | `#121826` | Primary text | 17.7 on surface |
 | `--text-muted` | `#4A5263` | Secondary text, metadata | 7.8 on surface |
 | `--text-subtle` | `#646C7C` | Timestamps, helper text (never sole carrier of meaning) | 5.3 on surface |
@@ -53,6 +53,7 @@ Tokens are CSS custom properties on `:root` / `[data-theme="dark"]`, mapped into
 | `--success` / `--success-subtle` / `--success-fg` | `#15803D` / `#E7F6EC` / `#166534` | Resolved, present, saved | fg 6.4 on subtle |
 | `--warning` / `--warning-subtle` / `--warning-fg` | `#B7791F` / `#FEF6DC` / `#854D0E` | High priority, attendance low (P1), pending | fg 6.3 on subtle |
 | `--danger` / `--danger-subtle` / `--danger-fg` | `#B42318` / `#FDECEA` / `#912018` | Urgent, errors, destructive, rejected | white on danger 6.6; fg 7.6 on subtle |
+| `--on-danger` | `#FFFFFF` (dark theme: `#0F1420`) | Text and icons on solid `--danger` (destructive buttons) | 6.6 light / 8.1 dark |
 | `--focus-ring` | `#1D3C8F` | 2 px ring + 2 px offset | 10.0 on surface |
 
 Status base colors (`--success`, `--warning`, `--danger`) are for icons, borders and solid fills; text on light backgrounds uses the `-fg` variant (`--warning` is only 3.6:1 on white, so it is never used for text).
@@ -143,6 +144,7 @@ Dark theme uses borders + `--surface` lightness for elevation; shadows at 2× op
 | `--content-max` | 1120 px (app content) |
 | `--reading-max` | 720 px (notice/post detail) |
 | `--rail-width` | 232 px (desktop navigation) |
+| `--container-auth` | 400 px (signed-out screens; Tailwind `max-w-auth`) |
 
 Grid: single column < `lg`; at ≥ `lg`, navigation rail + main column; a secondary column (280 px) only where it carries real context (e.g., issue detail metadata), never for ads/"tips".
 

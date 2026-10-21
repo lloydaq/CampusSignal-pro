@@ -1,0 +1,98 @@
+@import "tailwindcss";
+@import "./tokens.css";
+
+/* Self-hosted fonts, Latin subset only (Design.md §3.4). */
+@import "@fontsource/space-grotesk/latin-500.css";
+@import "@fontsource/space-grotesk/latin-600.css";
+@import "@fontsource/ibm-plex-sans/latin-400.css";
+@import "@fontsource/ibm-plex-sans/latin-500.css";
+@import "@fontsource/ibm-plex-sans/latin-600.css";
+@import "@fontsource/ibm-plex-mono/latin-400.css";
+@import "@fontsource/ibm-plex-mono/latin-500.css";
+
+/*
+ * Tailwind theme = Design.md tokens only. Tailwind's default palette, radii and shadows
+ * are removed so raw values (bg-blue-500, rounded-xl, shadow-lg) do not exist
+ * (Rules.md R-3.1). Font sizes and breakpoints keep Tailwind's defaults, which already
+ * match Design.md §3.4 and §3.8.
+ */
+@theme {
+  --color-*: initial;
+  --radius-*: initial;
+  --shadow-*: initial;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  /* Auth screens: centred single column, max 400 px (Design.md §5, screen 1). */
+  --container-auth: 25rem;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-fg: var(--text);
+  --color-muted: var(--text-muted);
+  --color-subtle: var(--text-subtle);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-subtle: var(--primary-subtle);
+  --color-on-primary: var(--on-primary);
+  --color-accent: var(--accent);
+  --color-accent-subtle: var(--accent-subtle);
+  --color-accent-fg: var(--accent-fg);
+  --color-success: var(--success);
+  --color-success-subtle: var(--success-subtle);
+  --color-success-fg: var(--success-fg);
+  --color-warning: var(--warning);
+  --color-warning-subtle: var(--warning-subtle);
+  --color-warning-fg: var(--warning-fg);
+  --color-danger: var(--danger);
+  --color-danger-subtle: var(--danger-subtle);
+  --color-danger-fg: var(--danger-fg);
+  --color-on-danger: var(--on-danger);
+  --color-focus-ring: var(--focus-ring);
+
+  --font-heading: "Space Grotesk", system-ui, sans-serif;
+  --font-sans: "IBM Plex Sans", system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+
+  --shadow-raised: var(--shadow-1);
+  --shadow-overlay: var(--shadow-2);
+
+  --ease-enter: var(--ease-out);
+  --ease-exit: var(--ease-in);
+
+  /* Every transition-* utility uses the motion tokens, which drop to 0 ms when the
+     user prefers reduced motion (tokens.css). */
+  --default-transition-duration: var(--duration-fast);
+  --default-transition-timing-function: var(--ease-out);
+}
+
+@layer base {
+  html {
+    background-color: var(--bg);
+  }
+
+  body {
+    @apply bg-bg font-sans text-base text-fg antialiased;
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply font-heading;
+  }
+
+  h1,
+  h2 {
+    letter-spacing: -0.01em;
+  }
+
+  /* Visible focus on every interactive element, never removed (Design.md §3.9). */
+  :focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+  }
+}
