@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Last updated | 2026-10-20 |
-| Current phase | **Phase 1 — Foundation, NOT STARTED** (Phase 0 done 2026-10-20) |
+| Current phase | **Phase 1 — Foundation, IN PROGRESS** (Step 1 done 2026-10-21, awaiting review) |
 
 Status values: `NOT STARTED` · `IN PROGRESS` · `DONE (verified <date>)`. A phase is DONE only per §4 and `Rules.md` §8 — never because files exist.
 
@@ -80,7 +80,13 @@ Tasks:
 ---
 
 ## Phase 1 — Foundation
-**Status:** NOT STARTED
+**Status:** IN PROGRESS
+
+Approved execution order (2026-10-21), one reviewed commit per step:
+- [x] Step 1 — Backend skeleton: uv project (Python 3.12), app factory, settings that refuse insecure deployed config, error envelope, request ID + JSON logging + scrub filter, security headers, `/healthz`; tests, ruff, mypy (verified 2026-10-21; awaiting owner review).
+- [ ] Step 2 — Database: docker compose (Postgres 16 + Mailpit), SQLAlchemy engine/session, Alembic + `citext` migration, `/readyz` (+ DB-down test).
+- [ ] Step 3 — Frontend shell (see Frontend row below) + token contrast check.
+- [ ] Step 4 — CI workflows and README/setup docs.
 **Objective:** Runnable, tested, empty application skeleton with CI.
 **Dependencies:** Phase 0.
 **Included:** project structure, config, DB connection, Alembic, error envelope, logging, health endpoints, frontend shell with design tokens, CI.

@@ -87,7 +87,7 @@ The repository's existing `CLAUDE.md` already fixes this stack; this document ad
 | Validation | Pydantic v2 (`extra="forbid"`) | Rejects unknown fields → blocks mass assignment (PRD §17.4). |
 | Password hashing | argon2-cffi (Argon2id) | Required by `CLAUDE.md` and AUTH-002. |
 | Database | PostgreSQL 16 | Relational integrity, partial unique indexes, composite FKs, `citext`, `timestamptz`. |
-| Python tooling | uv, ruff, pytest, httpx TestClient | Already chosen. |
+| Python tooling | uv, ruff, pytest, httpx2 TestClient | Already chosen. |
 | Frontend tests | Vitest + Testing Library; Playwright + @axe-core/playwright | Already chosen; axe adds accessibility checks (NFR-A11Y-001). |
 | CI | GitHub Actions | Already chosen. |
 | Reverse proxy | Caddy | Automatic TLS, simple config, same-origin serving (simplifies cookies/CSRF). |
@@ -494,7 +494,7 @@ Not in the MVP (PRD §14). Planned for Phase 11:
 |---|---|---|
 | Unit | pytest | Policies (exhaustive role × object tables), issue state machine, attendance window rules, pagination cursor, token utilities |
 | Service/integration | pytest + real PostgreSQL (docker in CI) | Services with transactions and constraints; each test in a rolled-back transaction |
-| API | pytest + httpx TestClient | Every endpoint: allow, cross-college deny (404 + no private fields), wrong-role deny |
+| API | pytest + httpx2 TestClient | Every endpoint: allow, cross-college deny (404 + no private fields), wrong-role deny |
 | Tenant isolation | pytest, parametrized | Seeds "Northfield Institute" and "Riverside College" with one object of every type; for every college-scoped route × method, actor from B targets A's object → expect 404/403 and no leaked fields; list endpoints must not include A's items |
 | Route inventory | pytest | Every route is public-allowlisted or carries a policy marker |
 | Query count | pytest fixture | Feeds/lists assert bounded query counts (no N+1) |

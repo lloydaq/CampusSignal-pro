@@ -13,21 +13,21 @@ These six documents are authoritative. If code and docs disagree, report it; don
 - Frontend: React + TypeScript (Vite), Tailwind CSS, shadcn/ui, TanStack Query, React Router, react-hook-form + zod
 - Backend: Python 3.12 + FastAPI, SQLAlchemy 2.x (sync), Alembic, Pydantic v2, argon2-cffi, psycopg 3
 - DB: PostgreSQL 16 (docker compose for local dev, with Mailpit for email)
-- Tests: pytest (+ httpx test client) for backend; Vitest + Testing Library for frontend; Playwright + axe for E2E
+- Tests: pytest (+ FastAPI/Starlette TestClient on httpx2) for backend; Vitest + Testing Library for frontend; Playwright + axe for E2E
 - CI: GitHub Actions. Deploy: Caddy + API + scheduled jobs CLI (`architecture.md` §18)
 - Not used (see ADRs): microservices, Redis, queues, WebSockets, GraphQL, Kubernetes
 
-## Commands (planned — not yet verified; `memory.md` records verified versions after Phase 1)
+## Commands (`memory.md` §9 records which ones have been verified)
 ```bash
 # Services
 docker compose up -d db
 
-# Backend (from backend/)
+# Backend (from backend/; copy .env.example to .env first)
 uv sync
-alembic upgrade head
-uvicorn app.main:app --reload
-pytest -q
-ruff check . && ruff format --check .
+uv run alembic upgrade head
+uv run uvicorn app.main:app_factory --factory --reload
+uv run pytest -q
+uv run ruff check . && uv run ruff format --check . && uv run mypy
 
 # Frontend (from frontend/)
 npm install
