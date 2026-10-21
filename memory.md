@@ -2,14 +2,14 @@
 
 Concise, verified state for new sessions. Details live in the linked documents; do not copy them here. Never store secrets here.
 
-**Last updated:** 2026-10-21 (Phase 1, Steps 3–4 — frontend shell, frontend CI, E2E, README; awaiting review)
+**Last updated:** 2026-10-21 (Phase 1 complete)
 
 ## 1. Project
 CampusSignal (official name, P-4) — multi-college campus platform: isolated college spaces with official notices, student community, department pages, private academic info (timetable, attendance, results), and campus issue reporting. Spec: `PRD.md`.
 
 ## 2. Repository status (verified 2026-10-21)
-- Backend (Steps 1–2) merged on `master` at `0213f34` (PR #1). Uncommitted: the ASGI entry-point fix (`backend/app/main.py` lazy `app`, `backend/tests/test_entrypoints.py`), the Step 3 frontend shell (`frontend/`) and Step 4 (`.github/workflows/frontend.yml`, `frontend/e2e/`, `frontend/playwright.config.ts`, README, architecture.md §18 routing contract).
-- Git: branch `master` tracking `origin` = https://github.com/lloydaq/CampusSignal-pro.git. History: `095ffef` docs → `af1ba7b` README → `fd94cea` Phase 0 → `003384a` Step 1 → `69b3e5b`/`0213f34` Step 2 (merge of PR #1). Owner commits and pushes; Claude does not.
+- Phase 1 complete on `master` `b8f5930`: backend + database (PR #1), ASGI entry-point fix + frontend shell + frontend CI + README (PR #2), EOF whitespace fix (PR #3). Nothing uncommitted apart from the six tooling folders.
+- Git: `origin` = https://github.com/lloydaq/CampusSignal-pro.git. History: `095ffef` docs → `af1ba7b` README → `fd94cea` Phase 0 → `003384a` Step 1 → `0213f34` PR #1 (Step 2) → `5815758`/`4273cd7` → `c62b6ab` PR #2 (Steps 3–4) → `7e4c017` → `b8f5930` PR #3. Work happens on branches merged by PR. Lesson: PR #2 was merged before its fix commit landed, so the fix needed PR #3 — merge only after the final commit's checks pass.
 - `.gitignore` exists and was verified with `git check-ignore` (env files, venvs, `node_modules`, build output, local DBs/dumps/uploads, Caddy state, logs, and local AI-tool state: `.claude/settings.local.json`, `.impeccable/config.local.json`, `.impeccable/hook.cache.json`, `.impeccable/live/`).
 - Root: `CLAUDE.md` (rewritten for CampusSignal), the six docs, `.gitignore`, and AI-tooling folders `.agent/`, `.agents/`, `.claude/`, `.codex/`, `.gemini/`, `.impeccable/` (~86 MB; skills/hooks incl. four copies of a Windows binary `impeccable.exe`; not product code). Owner decision (2026-10-20): kept **out** of version control for now; they show as untracked in `git status` — do not stage them.
 - `.impeccable/design.json` describes an unrelated design system ("DataSentry") — `Design.md` is authoritative.
@@ -38,8 +38,9 @@ College derived from session's ACTIVE membership on `/api/v1/campus/*` (no clien
 | Phase | Status |
 |---|---|
 | 0 Setup & docs | DONE (verified 2026-10-20, commit `095ffef`) |
-| 1 Foundation | IN PROGRESS — Steps 1–2 done (Step 2 verified by CI on `0213f34`); Steps 3–4 implemented and verified locally, awaiting owner review; `frontend.yml` not yet run on GitHub |
-| 2–11 | NOT STARTED |
+| 1 Foundation | DONE (verified 2026-10-21, `master` `b8f5930`: both workflows green; clean-clone README run passed) |
+| 2 Identity | NEXT — not started; propose a plan first |
+| 3–11 | NOT STARTED |
 
 Completed milestones (2026-10-20): documentation set; pre-development review; owner decisions P-4/P-7/P-8/P-9 applied; `CLAUDE.md` aligned; `.gitignore`; initial commit `095ffef`. Nothing implemented.
 
@@ -75,9 +76,11 @@ Verified 2026-10-21 (Windows, Git Bash; uv 0.13.1 provides managed CPython 3.12.
 - CI (passing on `0213f34`): `.github/workflows/backend.yml` — locked `uv sync`, whole-tree `git diff --check`, ruff, format, mypy, compileall, unit tests, integration tests (must all run, 0 skipped), `alembic upgrade head` + `check` on the test DB.
 From `frontend/` (verified 2026-10-21, Node 24.15, npm 11.12): `npm install` · `npm run dev` (Vite on http://localhost:5173 — it listens on the IPv6 loopback, so use `localhost`, not `127.0.0.1`; proxies `/api`, `/healthz`, `/readyz` to `127.0.0.1:8000`) · `npm test` · `npm run lint` · `npm run typecheck` · `npm run build`.
 `npx playwright install chromium` (once) · `npm run e2e` (builds, serves `vite preview` on 127.0.0.1:4173, mocks every backend call; desktop 1280 px + mobile 390 px touch).
-Not yet verified: `.github/workflows/frontend.yml` on GitHub (needs a push). Docker is no longer used.
+CI: `.github/workflows/backend.yml` and `.github/workflows/frontend.yml` both green on `b8f5930`. Before pushing, run the CI whitespace check on the commit: `git diff --check "$(git hash-object -t tree /dev/null)" HEAD` (it also catches blank lines at end of file). Docker is no longer used.
 
 ## 10. Test / verification status
+**Phase 1 exit (2026-10-21):** GitHub Actions on `master` `b8f5930` (merge of PR #3): `backend` (whitespace, ruff, mypy, unit, 6 integration tests on disposable `postgres:17.11`, alembic check) and `frontend` (`checks`: npm ci, ESLint, tsc, Vitest, build; `e2e`: Playwright + axe) all succeeded. Fresh clone of `master` following the README: `uv sync --locked`, `alembic upgrade head`/`current` (dev DB at head, no-op), uvicorn `/healthz` 200 + `/readyz` 200 `ready`, `npm ci` (263 packages), `npm run dev` 200. Settings were passed as environment variables; `.env` was not copied.
+
 **Step 4 (2026-10-21):** Playwright 27 passed, 1 skipped by design (44 px touch-target test runs on the mobile project only); axe found zero WCAG 2.0/2.1/2.2 A/AA violations (light, dark, error state, 404; both viewports). A mutation check (removing the coarse-pointer sizing) made the touch-target test fail, then pass after restore. CI sequence (`npm ci`, lint, typecheck, 83 Vitest, build, e2e) passed from a clean copy with `CI=true`. actionlint clean for both workflows. Built `index.html` has no inline scripts or styles (CSP-ready). README PowerShell commands checked (`Invoke-RestMethod`, `Copy-Item`, env vars). New dev deps: @playwright/test 1.64.1, @axe-core/playwright 4.14.0 (≥5 days old). Note: on Windows, `npm ci` fails with EPERM while a Vite server from the same `node_modules` is running (native lightningcss module locked) — stop dev servers first.
 
 **Step 3 (2026-10-21):** frontend Vitest 83 passed (6 files: API client, retry policy, theme, service status states, routes/404/theme radios, WCAG contrast for both themes); ESLint (type-aware), `tsc -b` (strict), `vite build` clean; initial JS 121.65 kB gzip (NFR-PERF-002 budget 250 kB). Browser check at 1280 px and 390 px, light and dark: live status Running/Ready through the dev proxy against the owner's running backend; explicit Light overrides OS dark; 44 px touch targets on coarse pointers; visible keyboard focus; no horizontal overflow. The contrast check found light `--border-strong` at 2.89:1 on `--bg`, so it was darkened to `#868FA0` (Design.md updated). Backend after the entry-point fix: 72 passed, 6 skipped.
@@ -91,4 +94,4 @@ Not yet verified: `.github/workflows/frontend.yml` on GitHub (needs a push). Doc
 - Backend deps: fastapi 0.156.4, uvicorn 0.54.0, pydantic-settings 2.16.1; dev: pytest 9.1.1, httpx2 2.13.1 + httpcore2 2.13.1 (pinned `==2.13.1`: Starlette ≥1.2 test client prefers httpx2 and deprecates `httpx`; 2.13.1 chosen over the same-day 2.16.0 release), ruff 0.17.1, mypy 2.4.0.
 
 ## 11. Next task
-Owner reviews the ASGI entry-point fix and Steps 3–4, then commits and pushes so `frontend.yml` runs on GitHub. When both workflows are green, mark Steps 3–4 done and close Phase 1 (exit criteria in Phases.md). Next: Phase 2 — identity and platform bootstrap (plan first).
+Phase 2 — identity and platform bootstrap (Phases.md Phase 2: AUTH-001…010, ADMIN-005, ADMIN-006 audit infrastructure; P-2 email provider and P-10 platform-admin session limits are open decisions). Propose a plan and get approval before implementing.
