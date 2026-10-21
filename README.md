@@ -88,7 +88,7 @@ CampusSignal follows a phased development plan.
 
 Refer to [`Phases.md`](Phases.md) for the complete roadmap and acceptance criteria.
 
-**Current status:** Phase 1 (Foundation) is in progress. The backend and database are done; the frontend shell, CI and this setup guide are awaiting review. Accounts don't exist yet — the app's start page says so and shows live service status.
+**Current status:** Phase 1 (Foundation) is complete. Phase 2 (accounts and sign-in) is next. Accounts don't exist yet — the app's start page says so and shows live service status.
 
 ---
 
@@ -114,7 +114,7 @@ The project is being developed with documentation-driven planning.
 * [x] Backend foundation (FastAPI, settings, error envelope, logging, `/healthz`)
 * [x] Database (PostgreSQL 17, SQLAlchemy, Alembic migrations, `/readyz`)
 * [x] Backend CI with integration tests on a disposable PostgreSQL 17
-* [ ] Frontend shell, frontend CI and setup guide (implemented, awaiting review)
+* [x] Frontend shell, frontend CI (Playwright + axe) and this setup guide
 * [ ] Authentication (Phase 2)
 * [ ] Core features (Phase 3 onward)
 * [ ] Deployment (Phase 10)

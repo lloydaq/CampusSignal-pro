@@ -100,4 +100,4 @@ Add folders only when a feature needs them.
 - Update `memory.md` after completing work; never claim tests passed unless they ran.
 
 ## Current phase
-Phase 1 — foundation, in progress (see `Phases.md`). Update this line as phases complete.
+Phase 2 — identity and platform bootstrap, not started (Phase 1 done 2026-10-21; see `Phases.md`). Propose a plan before implementing. Update this line as phases complete.

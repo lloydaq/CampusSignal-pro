@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Last updated | 2026-10-20 |
-| Current phase | **Phase 1 — Foundation, IN PROGRESS** (Steps 1–2 done; Steps 3–4 implemented and verified locally 2026-10-21, uncommitted; frontend CI has not run on GitHub yet) |
+| Current phase | **Phase 2 — Identity and platform bootstrap, NOT STARTED** (Phase 1 done 2026-10-21) |
 
 Status values: `NOT STARTED` · `IN PROGRESS` · `DONE (verified <date>)`. A phase is DONE only per §4 and `Rules.md` §8 — never because files exist.
 
@@ -80,13 +80,13 @@ Tasks:
 ---
 
 ## Phase 1 — Foundation
-**Status:** IN PROGRESS
+**Status:** DONE (verified 2026-10-21, `master` `b8f5930`)
 
 Approved execution order (2026-10-21), one reviewed commit per step:
 - [x] Step 1 — Backend skeleton: uv project (Python 3.12), app factory, settings that refuse insecure deployed config, error envelope, request ID + JSON logging + scrub filter, security headers, `/healthz`; tests, ruff, mypy (verified 2026-10-21; commit `003384a`).
 - [x] Step 2 — Database (revised 2026-10-21, ADR-14): Supabase-hosted Postgres 17 for development via session pooler + SSL (no Docker), SQLAlchemy engine/session, Alembic + `citext` migration, `/readyz` (+ DB-down test), migration `0002` (revokes Supabase `anon`/`authenticated` privileges in `public`). Verified 2026-10-21: merged as `0213f34` (PR #1); GitHub Actions `backend` run on `0213f34` succeeded, including all 6 integration tests on a disposable `postgres:17.11` (the step fails on any skip).
-- [ ] Step 3 — Frontend shell (see Frontend row below) + token contrast check. Implemented and verified locally 2026-10-21 (uncommitted, awaiting owner review): `frontend/` Vite 8 + React 19 + TS 6 strict, Tailwind 4 with Design.md tokens only, shadcn/ui setup + Button, self-hosted fonts, React Router with `AuthShell` (honest "Accounts aren't open yet" page + live service status from `/healthz`/`/readyz`, 404 page), typed `apiClient` with envelope parsing, Light/Dark/System theme, contrast check as a Vitest suite. Playwright E2E + frontend CI job move to Step 4.
-- [ ] Step 4 — CI workflows and README/setup docs. Implemented and verified locally 2026-10-21 (uncommitted): `.github/workflows/frontend.yml` (jobs `checks`: `npm ci`, ESLint, `tsc -b`, Vitest, build; `e2e`: Playwright + axe, report uploaded on failure; actionlint clean; the full sequence passed from a clean `npm ci` copy with `CI=true`), Playwright + axe smoke tests in `frontend/e2e/` (mocked backend states; 1280 px and 390 px touch; zero WCAG 2.x A/AA violations), README setup/testing/troubleshooting for PowerShell and bash, production routing contract in architecture.md §18 (the Caddyfile itself is Phase 10). **Open:** `frontend.yml` has not run on GitHub yet (needs a push); Phase 1's "CI green" closes when it does.
+- [x] Step 3 — Frontend shell + token contrast check: Vite 8 + React 19 + TS 6 strict, Tailwind 4 with Design.md tokens only, shadcn/ui setup + Button, self-hosted fonts, React Router with `AuthShell` ("Accounts aren't open yet" + live service status, 404), typed `apiClient`, Light/Dark/System theme, WCAG contrast suite. Merged in PR #2 (`4273cd7`) + EOF fix PR #3 (`7e4c017`).
+- [x] Step 4 — CI workflows and README/setup docs: `.github/workflows/frontend.yml` (`checks` + `e2e`), Playwright + axe smoke tests (mocked backend, 1280/390 px), README for PowerShell and bash, routing contract in architecture.md §18. Verified 2026-10-21: GitHub Actions on `master` `b8f5930` (merge of PR #3): `backend` (whitespace, ruff, mypy, unit, 6 integration tests on disposable `postgres:17.11`, alembic check) and `frontend` (`checks`: npm ci, ESLint, tsc, Vitest, build; `e2e`: Playwright + axe) all succeeded.
 **Objective:** Runnable, tested, empty application skeleton with CI.
 **Dependencies:** Phase 0.
 **Included:** project structure, config, DB connection, Alembic, error envelope, logging, health endpoints, frontend shell with design tokens, CI.
@@ -104,7 +104,7 @@ Approved execution order (2026-10-21), one reviewed commit per step:
 
 **Deliverables:** skeleton repo; green CI.
 **Definition of done:** with `backend/.env` pointing at a Supabase development project, `alembic upgrade head`, `uvicorn` and `npm run dev` work from a clean clone following README; CI green; `/readyz` returns 200.
-**Exit criteria:** above verified in a session and recorded in `memory.md`.
+**Exit criteria:** above verified in a session and recorded in `memory.md`. — **Met 2026-10-21:** CI green (GitHub Actions on `master` `b8f5930` (merge of PR #3): `backend` (whitespace, ruff, mypy, unit, 6 integration tests on disposable `postgres:17.11`, alembic check) and `frontend` (`checks`: npm ci, ESLint, tsc, Vitest, build; `e2e`: Playwright + axe) all succeeded); a fresh clone of `master` followed the README: `uv sync --locked`, `alembic upgrade head` (Supabase dev DB already at head), uvicorn `/healthz` 200 and `/readyz` 200 `ready`, `npm ci`, `npm run dev` served the app.
 **Risks:** Windows-specific tooling issues (owner develops on Windows) — document commands for PowerShell and bash.
 
 ---
