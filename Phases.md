@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Last updated | 2026-10-20 |
-| Current phase | **Phase 2 — Identity and platform bootstrap, NOT STARTED** (Phase 1 done 2026-10-21) |
+| Current phase | **Phase 2 — Identity and platform bootstrap, IN PROGRESS** (step 2a building blocks implemented 2026-10-21; 2a verified on local PostgreSQL 17.11, awaiting review) |
 
 Status values: `NOT STARTED` · `IN PROGRESS` · `DONE (verified <date>)`. A phase is DONE only per §4 and `Rules.md` §8 — never because files exist.
 
@@ -110,7 +110,14 @@ Approved execution order (2026-10-21), one reviewed commit per step:
 ---
 
 ## Phase 2 — Identity and platform bootstrap
-**Status:** NOT STARTED
+**Status:** IN PROGRESS
+
+Approved plan (2026-10-21), one reviewed PR per step:
+- [ ] 2a — Database and security building blocks: migration `0003` (users, sessions, user_tokens, append-only audit_log, rate_limit_counters), Argon2id + bundled common-password list, tokens, DB rate limiter, audit writer, SMTP/in-memory mailer, session/email settings. Implemented 2026-10-21; unit tests pass; verified 2026-10-21 on local PostgreSQL 17.11 (`campussignal_test`): 122 backend tests passed, 0 skipped (16 integration incl. 10 for `0003`), `alembic check` clean, full downgrade/upgrade round trip. Not yet applied to Supabase; CI pending push.
+- [ ] 2b — Auth API: register, verify, resend, login/logout(-all), CSRF + Origin checks, `/me`, change password, reset; sessions; rate limits; route inventory test.
+- [ ] 2c — Operator CLI: `create-platform-admin`, jobs purge.
+- [ ] 2d — Frontend auth screens, CSRF/401 handling, E2E register → verify (Mailpit) → sign in.
+
 **Objective:** People can register, verify email, sign in/out, reset passwords; platform admin exists.
 **Dependencies:** Phase 1; P-2 for non-local email.
 **Included:** AUTH-001…010, ADMIN-005, audit-log infrastructure (ADMIN-006), rate limiting, CSRF incl. Origin checks on unauthenticated routes, sessions.

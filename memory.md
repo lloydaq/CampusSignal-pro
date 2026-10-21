@@ -29,6 +29,7 @@ React + TypeScript + Vite, Tailwind, shadcn/ui, TanStack Query, React Router, re
 - Membership proof = roster or invite; uniform request responses; admin-only member directory (PRD §9.2, §17).
 - One ACTIVE college membership per user (MEMBER-008). Platform admins cannot read college data (ADMIN-008).
 - No uploads and no events in MVP; RLS deferred (ADR-10).
+- **Phase 2 decisions (2026-10-21):** DB-backed tests run on a local disposable PostgreSQL 17 (`campussignal_test` on localhost; owner installs it) as well as CI; platform-admin sessions use privileged limits (P-10); audit log append-only via trigger now, separate DB roles at deployment hardening; email via SMTP (Mailpit locally, in-memory in tests, no console backend), provider (P-2) deferred.
 - **Dev database = Supabase** (ADR-14, 2026-10-21): Postgres 17 via session pooler (IPv4, port 5432) with `sslmode=require`; plain SQLAlchemy + psycopg 3, no Supabase client libraries; Data API disabled by owner and API-role privileges revoked in the DB by migration `0002`; no Docker locally; destructive integration tests only on CI's disposable Postgres 17; `citext` in `public`. Supabase approved for development only.
 
 ## 5. Tenant isolation model (detail: `architecture.md` §9)
@@ -59,11 +60,11 @@ Completed milestones (2026-10-20): documentation set; pre-development review; ow
 | ID | Decision | Needed by |
 |---|---|---|
 | P-1 | Hosting provider (staging + prod) | Phase 4 |
-| P-2 | Transactional email provider | Phase 2 (non-local email) |
+| P-2 | Transactional email provider (any SMTP with STARTTLS/TLS; local dev uses Mailpit, so not blocking) | Phase 10 (staging needs it earlier) |
 | P-3 | Pilot college + data-processing agreement | Before real data (Phase 10) |
 | P-5 | Attendance edit window default (48 h assumed) | Phase 7 |
 | P-6 | Error tracking (Sentry with scrubbing, or none) | Phase 10 |
-| P-10 | Should platform-admin sessions also use privileged limits? (recommended: yes) | Phase 3 |
+| P-10 | RESOLVED 2026-10-21: platform-admin sessions use the privileged limits (24 h / 7 d) | — |
 Resolved: P-4, P-7, P-8, P-9 (2026-10-20). Assumptions to validate: PRD §21 (A1–A4).
 
 ## 9. Commands
@@ -79,6 +80,8 @@ From `frontend/` (verified 2026-10-21, Node 24.15, npm 11.12): `npm install` · 
 CI: `.github/workflows/backend.yml` and `.github/workflows/frontend.yml` both green on `b8f5930`. Before pushing, run the CI whitespace check on the commit: `git diff --check "$(git hash-object -t tree /dev/null)" HEAD` (it also catches blank lines at end of file). Docker is no longer used.
 
 ## 10. Test / verification status
+**Phase 2a (2026-10-21, local):** local PostgreSQL 17.11 test DB `campussignal_test` on localhost (user-level `TEST_DATABASE_URL`; new shells inherit it, already-open ones do not). 122 backend tests passed, 0 skipped — all 16 integration tests ran, also in CI mode (`CAMPUSSIGNAL_REQUIRE_INTEGRATION=1`). Guarded Alembic CLI on the test DB: `check` clean, `downgrade base` + `upgrade head` round trip, `0003` triggers present, trigger function not executable by PUBLIC. Test runs override `DATABASE_URL` with an unreachable URL so nothing can fall back to Supabase. `0003` NOT applied to Supabase yet.
+
 **Phase 1 exit (2026-10-21):** GitHub Actions on `master` `b8f5930` (merge of PR #3): `backend` (whitespace, ruff, mypy, unit, 6 integration tests on disposable `postgres:17.11`, alembic check) and `frontend` (`checks`: npm ci, ESLint, tsc, Vitest, build; `e2e`: Playwright + axe) all succeeded. Fresh clone of `master` following the README: `uv sync --locked`, `alembic upgrade head`/`current` (dev DB at head, no-op), uvicorn `/healthz` 200 + `/readyz` 200 `ready`, `npm ci` (263 packages), `npm run dev` 200. Settings were passed as environment variables; `.env` was not copied.
 
 **Step 4 (2026-10-21):** Playwright 27 passed, 1 skipped by design (44 px touch-target test runs on the mobile project only); axe found zero WCAG 2.0/2.1/2.2 A/AA violations (light, dark, error state, 404; both viewports). A mutation check (removing the coarse-pointer sizing) made the touch-target test fail, then pass after restore. CI sequence (`npm ci`, lint, typecheck, 83 Vitest, build, e2e) passed from a clean copy with `CI=true`. actionlint clean for both workflows. Built `index.html` has no inline scripts or styles (CSP-ready). README PowerShell commands checked (`Invoke-RestMethod`, `Copy-Item`, env vars). New dev deps: @playwright/test 1.64.1, @axe-core/playwright 4.14.0 (≥5 days old). Note: on Windows, `npm ci` fails with EPERM while a Vite server from the same `node_modules` is running (native lightningcss module locked) — stop dev servers first.
