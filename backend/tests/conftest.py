@@ -22,6 +22,7 @@ def make_settings(**overrides: object) -> Settings:
         "app_env": "ci",
         "app_origin": "http://localhost:5173",
         "database_url": UNREACHABLE_DB_URL,
+        "email_backend": "memory",
     }
     values.update(overrides)
     # _env_file=None: tests must not depend on a developer's local .env.

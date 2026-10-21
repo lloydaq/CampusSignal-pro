@@ -23,7 +23,7 @@ These six documents are authoritative. If code and docs disagree, report it; don
 uv sync
 uv run alembic upgrade head
 uv run uvicorn app.main:app --reload   # or: uvicorn app.main:app_factory --factory --reload
-uv run pytest -q                 # unit tests; integration tests need TEST_DATABASE_URL (CI only)
+uv run pytest -q                 # unit + DB tests; DB tests need TEST_DATABASE_URL (local PG 17 or CI)
 # TEST_DATABASE_URL must be a DISPOSABLE Postgres 17 (tests downgrade migrations); never Supabase.
 # The guard requires a localhost host and a *_test database; CI: .github/workflows/backend.yml
 uv run ruff check . && uv run ruff format --check . && uv run mypy
@@ -100,4 +100,4 @@ Add folders only when a feature needs them.
 - Update `memory.md` after completing work; never claim tests passed unless they ran.
 
 ## Current phase
-Phase 2 — identity and platform bootstrap, not started (Phase 1 done 2026-10-21; see `Phases.md`). Propose a plan before implementing. Update this line as phases complete.
+Phase 2 — identity and platform bootstrap, in progress (step 2a done locally; see `Phases.md`). Update this line as phases complete.

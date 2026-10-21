@@ -254,7 +254,7 @@ erDiagram
 | `campus_issues` | college_id, reporter_membership_id, category, title, description, location_text, status, assignee_membership_id, duplicate_of_id, resolved_at, reporter_reopen_count, version | idx(college_id, status, created_at); composite FKs for assignee and duplicate_of; CHECK(duplicate_of_id <> id) |
 | `issue_updates` | college_id, issue_id, actor_membership_id NULL (system), kind, from_status, to_status, body, is_internal | append-only |
 | `notifications` | user_id, college_id, type, subject_type, subject_id, title, read_at, created_at | idx(user_id, created_at DESC); partial idx(user_id) WHERE read_at IS NULL |
-| `audit_log` | college_id NULL, actor_user_id, action, target_type, target_id, reason, metadata jsonb, created_at | append-only: the application DB role has INSERT/SELECT only; the retention purge (§8.3) runs as a separate maintenance role |
+| `audit_log` | college_id NULL, actor_user_id, action, target_type, target_id, reason, metadata jsonb, created_at | append-only (decided 2026-10-21): a trigger rejects UPDATE/DELETE/TRUNCATE; only the retention purge may DELETE, by setting the transaction-local flag `campussignal.audit_purge = on`. A separate least-privilege DB login for the app is deferred to deployment hardening (Phase 9/10) |
 | `rate_limit_counters` | bucket_key, window_start, count | PK(bucket_key, window_start) |
 
 **Deferred entities/columns** (not created until their phase): `events`, `event_registrations`, `attachments`, `notice_reads`, `idempotency_keys` (NFR-REL-002), `notices.publish_at`/`notified_at` (NOTICE-011), `notices.audience` (NOTICE-012) — all Phase 11; `buildings` (free-text location suffices for MVP).
@@ -321,6 +321,7 @@ sequenceDiagram
 
 - **Sessions** (AUTH-004): 256-bit random token in cookie `cs_session` (`HttpOnly; Secure; SameSite=Lax; Path=/`); DB stores SHA-256 of it. Idle timeout via `last_seen_at` (updated at most once per 5 minutes to limit writes).
 - **Privileged sessions** (AUTH-013): after loading the actor, `current_actor` checks whether the user currently has an ACTIVE FACULTY membership or a COLLEGE_ADMIN/DEPARTMENT_ADMIN grant; if so it applies `PRIVILEGED_SESSION_IDLE_HOURS` (24) against `last_seen_at` and `PRIVILEGED_SESSION_ABSOLUTE_DAYS` (7) against `created_at`, deleting the session and returning 401 when exceeded. No session column stores the tier, so role changes apply immediately. Because `last_seen_at` is written at most every 5 minutes, idle precision is ±5 minutes. Platform-admin sessions: P-10.
+- **Platform-admin sessions** (P-10, decided 2026-10-21): users with `platform_role = PLATFORM_ADMIN` always use the privileged limits (24 h idle / 7 d absolute); implemented in Phase 2 because the role lives on `users`.
 - **CSRF** (AUTH-008): `Origin` must match `APP_ORIGIN` on **every** POST/PUT/PATCH/DELETE, including unauthenticated `/auth/*` routes (blocks login CSRF). With a session, additionally a per-session secret; token exposed via `GET /api/v1/auth/csrf` and a non-HttpOnly `cs_csrf` cookie; required in `X-CSRF-Token`.
 - **Client IP:** taken from the `X-Forwarded-For` value appended by Caddy only (uvicorn/gunicorn `forwarded_allow_ips` set to the proxy address); never from arbitrary client headers. Used for IP rate limits only and not logged in full.
 - **Authorization data freshness:** user status, membership, and grants are loaded on every request, so suspensions and role changes apply immediately (AUTH-004).
@@ -485,7 +486,7 @@ Not in the MVP (PRD §14). Planned for Phase 11:
 - **In-app only** (NOTIF-001..005). Rows in `notifications`, created in the **same transaction** as the triggering change (e.g., issue transition), so they cannot be lost or duplicated.
 - **Fan-out** for HIGH/URGENT notices: one `INSERT ... SELECT` over ACTIVE memberships in the notice's scope, in the publish transaction. (Scheduled notices, P1, will add a `notified_at` guard and fan-out from the Jobs CLI.) Expected size per college ≤ 20k rows per notice — acceptable for PostgreSQL.
 - **Delivery to browser:** polling `unread-count` every 60 s while the tab is visible and on focus. No WebSockets/SSE in MVP.
-- **Account emails** (verification, reset, invites) are sent only after the database transaction commits, via FastAPI `BackgroundTasks` through an `EmailSender` interface (`ConsoleEmailSender` in tests, SMTP in dev via Mailpit, provider in prod). Failure is logged; the user can resend. A durable outbox is P1 if delivery problems appear.
+- **Account emails** (verification, reset, invites) are sent only after the database transaction commits, through a `Mailer` (`app/core/mailer.py`): `SmtpMailer` (Mailpit on `localhost:1025` locally; the P-2 provider's SMTP in deployments, which must use STARTTLS or TLS) or `InMemoryMailer` (tests). There is no console backend: emails carry tokens, which must never reach logs (Rules R-2.11). Links put the token in the URL fragment (`/verify-email#token=…`), which browsers never send to servers, so tokens stay out of access logs and `Referer` headers. Failure is logged without recipient or content; the user can resend.
 
 ## 16. Logging and monitoring
 
@@ -542,11 +543,11 @@ Settings via pydantic-settings from environment; `.env.example` documents every 
 | `APP_ORIGIN` | Allowed origin for CSRF/Origin checks and email links |
 | `SESSION_IDLE_DAYS`, `SESSION_ABSOLUTE_DAYS` | Standard sessions; defaults 7 / 30 |
 | `PRIVILEGED_SESSION_IDLE_HOURS`, `PRIVILEGED_SESSION_ABSOLUTE_DAYS` | Privileged sessions (AUTH-013); defaults 24 / 7 |
-| `EMAIL_BACKEND`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `EMAIL_FROM` | Email |
+| `EMAIL_BACKEND` (`smtp` \| `memory`), `EMAIL_FROM`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURITY` (`none` \| `starttls` \| `tls`), `SMTP_USERNAME`, `SMTP_PASSWORD` | Email; defaults target local Mailpit |
 | `LOG_LEVEL` | Logging |
 | `SENTRY_DSN` (optional) | Pending P-6 |
 
-Production refuses to start if `APP_ENV=production` and `APP_ORIGIN` is not HTTPS or the email backend is `console`.
+Staging and production refuse to start if `APP_ORIGIN` is not HTTPS, `EMAIL_BACKEND` is not `smtp`, or `SMTP_SECURITY` is `none`; privileged session limits may never be looser than standard ones.
 
 ## 20. Database migration strategy
 

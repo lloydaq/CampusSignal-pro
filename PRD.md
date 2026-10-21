@@ -120,7 +120,7 @@ Phase column maps to `Phases.md`.
 | AUTH-010 | User can change password (requires current password; revokes other sessions). | P0 | 2 |
 | AUTH-011 | User can change email (re-verification required before the change takes effect). | P1 | 11 |
 | AUTH-012 | Optional TOTP two-factor authentication for admin roles. | P2 | — |
-| AUTH-013 | [Decision, P-8] **Privileged sessions**: a session whose user currently has an ACTIVE membership of kind FACULTY, or a COLLEGE_ADMIN or DEPARTMENT_ADMIN grant (roles with access to other students' academic records), has an idle timeout of 24 hours and an absolute lifetime of 7 days from sign-in. The tier is evaluated on every request from current roles, so gaining such a role applies the shorter limits immediately (an older session may end at once). Students, staff without these grants, and issue coordinators keep standard limits. Defaults are configurable and subject to the Phase 9 security review. | P0 | 3 |
+| AUTH-013 | [Decision, P-8] **Privileged sessions**: a session whose user currently has an ACTIVE membership of kind FACULTY, or a COLLEGE_ADMIN or DEPARTMENT_ADMIN grant (roles with access to other students' academic records), has an idle timeout of 24 hours and an absolute lifetime of 7 days from sign-in. The tier is evaluated on every request from current roles, so gaining such a role applies the shorter limits immediately (an older session may end at once). Platform-admin accounts always use these privileged limits (P-10, decided 2026-10-21). Students, staff without these grants, and issue coordinators keep standard limits. Defaults are configurable and subject to the Phase 9 security review. | P0 | 3 |
 
 ### 9.2 College membership and verification (MEMBER)
 
