@@ -80,4 +80,3 @@ describe("Service status", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Checking service status");
   });
 });
-
