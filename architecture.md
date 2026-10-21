@@ -129,6 +129,8 @@ Folders are created only when a phase needs them (`Rules.md` R-1.9).
 
 - **Shells by audience:** `AuthShell` (signed out), `CampusShell` (member), `PlatformShell` (platform admin). Navigation items are computed from `/api/v1/me` (membership kind + grants) — UX only.
 - **Data access:** one typed `apiClient` (fetch wrapper) adding `X-CSRF-Token`, `credentials: "same-origin"`, parsing the error envelope (§12) into a typed `ApiError`. Each feature exposes query hooks (`useNotices`, `useIssue(id)`) with stable query keys.
+- **Dev server:** Vite on `localhost:5173` proxies `/api`, `/healthz` and `/readyz` to uvicorn on `127.0.0.1:8000`, so the SPA always uses relative, same-origin URLs. Deployments must route the same three paths to the API (Caddy, §18): the signed-out page's service status calls `/healthz` and `/readyz`.
+- **Design tokens:** `frontend/src/styles/tokens.css` holds the Design.md §3 values; Tailwind's default palette, radii and shadows are removed so only semantic tokens exist (Rules R-3.1). `src/styles/contrast.test.ts` enforces WCAG ratios for every documented pair in both themes.
 - **Auth state:** derived from `GET /api/v1/me`; a 401 from any request clears the cache and redirects to sign-in with a return URL.
 - **Types:** request/response types generated from the FastAPI OpenAPI schema (`openapi-typescript`, dev-only dependency) so client and server cannot drift silently.
 - **Routing:** route-level lazy loading; route guards redirect when the user lacks a membership, but every guarded screen still handles 403/404 from the API.
@@ -516,6 +518,17 @@ Factories in `tests/factories.py` create users, colleges, memberships with grant
 - Managed PostgreSQL 17 with automated backups and point-in-time recovery if available.
 - Environments: `local` (each developer's Supabase development project via the session pooler, ADR-14; Mailpit standalone binary for email from Phase 2), `ci` (disposable Postgres 17 service), `staging`, `production`. Staging mirrors production config with synthetic data only.
 - Migrations run as a release step before new API containers start (`alembic upgrade head`); migrations must be backward compatible with the previous app version (expand → migrate → contract).
+
+**Routing contract for the reverse proxy** (documented in Phase 1 Step 4; the actual `deploy/Caddyfile` is written in Phase 10 once P-1 picks the host). Everything is served from one origin, so the SPA uses relative URLs and cookies stay same-origin (ADR-09):
+
+| Path | Goes to | Notes |
+|---|---|---|
+| `/api/*` | API | Never falls back to `index.html`: an unknown API path must return the API's JSON 404 envelope, not HTML |
+| `/healthz` | API | Liveness; no database access |
+| `/readyz` | API | Readiness for the platform's health checks and the signed-out page's service status. Public by design: it returns only `ready` / `not_ready` with `database: unreachable` or `migrations: pending`, never hosts, versions or error text. Rate-limit at the proxy if it is abused |
+| everything else | `frontend/dist` (static) | SPA fallback: unknown paths serve `index.html`, and the client router renders "Page not found". Hashed assets under `/assets/` get long-lived cache headers; `index.html` is served with `Cache-Control: no-cache` |
+
+The proxy also sets the security headers in NFR-SEC-001/002 (HSTS, CSP without inline scripts — the SPA ships none — `nosniff`, `Referrer-Policy`, `frame-ancestors 'none'`). `/api/v1/docs` and the OpenAPI schema are already disabled by the app outside `local`/`ci`. In development, `frontend/vite.config.ts` proxies the same three API paths to uvicorn (§6).
 
 ## 19. Environment configuration
 

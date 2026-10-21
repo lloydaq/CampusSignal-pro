@@ -22,7 +22,7 @@ These six documents are authoritative. If code and docs disagree, report it; don
 # Backend (from backend/; copy .env.example to .env first)
 uv sync
 uv run alembic upgrade head
-uv run uvicorn app.main:app_factory --factory --reload
+uv run uvicorn app.main:app --reload   # or: uvicorn app.main:app_factory --factory --reload
 uv run pytest -q                 # unit tests; integration tests need TEST_DATABASE_URL (CI only)
 # TEST_DATABASE_URL must be a DISPOSABLE Postgres 17 (tests downgrade migrations); never Supabase.
 # The guard requires a localhost host and a *_test database; CI: .github/workflows/backend.yml
@@ -32,7 +32,9 @@ uv run ruff check . && uv run ruff format --check . && uv run mypy
 npm install
 npm run dev
 npm run typecheck && npm run lint && npm run build
-npm test
+npm test                         # Vitest (unit/component + WCAG token contrast)
+npx playwright install chromium  # once
+npm run e2e                      # Playwright + axe smoke tests (mocked backend, 1280/390 px)
 ```
 Run the relevant tests + lint before saying a task is done (`Rules.md` §8).
 

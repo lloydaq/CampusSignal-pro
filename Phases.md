@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Last updated | 2026-10-20 |
-| Current phase | **Phase 1 — Foundation, IN PROGRESS** (Step 1 committed `003384a`; Step 2 implemented, awaiting review) |
+| Current phase | **Phase 1 — Foundation, IN PROGRESS** (Steps 1–2 done; Steps 3–4 implemented and verified locally 2026-10-21, uncommitted; frontend CI has not run on GitHub yet) |
 
 Status values: `NOT STARTED` · `IN PROGRESS` · `DONE (verified <date>)`. A phase is DONE only per §4 and `Rules.md` §8 — never because files exist.
 
@@ -84,9 +84,9 @@ Tasks:
 
 Approved execution order (2026-10-21), one reviewed commit per step:
 - [x] Step 1 — Backend skeleton: uv project (Python 3.12), app factory, settings that refuse insecure deployed config, error envelope, request ID + JSON logging + scrub filter, security headers, `/healthz`; tests, ruff, mypy (verified 2026-10-21; commit `003384a`).
-- [ ] Step 2 — Database (revised 2026-10-21, ADR-14): Supabase-hosted Postgres 17 for development via session pooler + SSL (no Docker), SQLAlchemy engine/session, Alembic + `citext` migration, `/readyz` (+ DB-down test); integration tests marked for CI's disposable Postgres 17. Includes migration `0002` (revokes Supabase `anon`/`authenticated` privileges in `public`). Implemented and checked against the Supabase dev DB 2026-10-21; **open:** the 6 integration tests have not run yet. CI workflow `.github/workflows/backend.yml` (backend job with a disposable `postgres:17.11` service) was added 2026-10-21 to run them; Step 2 closes when its first run passes.
-- [ ] Step 3 — Frontend shell (see Frontend row below) + token contrast check.
-- [ ] Step 4 — CI workflows and README/setup docs. (Backend job already added for Step 2 verification; remaining: frontend job, README/setup docs.)
+- [x] Step 2 — Database (revised 2026-10-21, ADR-14): Supabase-hosted Postgres 17 for development via session pooler + SSL (no Docker), SQLAlchemy engine/session, Alembic + `citext` migration, `/readyz` (+ DB-down test), migration `0002` (revokes Supabase `anon`/`authenticated` privileges in `public`). Verified 2026-10-21: merged as `0213f34` (PR #1); GitHub Actions `backend` run on `0213f34` succeeded, including all 6 integration tests on a disposable `postgres:17.11` (the step fails on any skip).
+- [ ] Step 3 — Frontend shell (see Frontend row below) + token contrast check. Implemented and verified locally 2026-10-21 (uncommitted, awaiting owner review): `frontend/` Vite 8 + React 19 + TS 6 strict, Tailwind 4 with Design.md tokens only, shadcn/ui setup + Button, self-hosted fonts, React Router with `AuthShell` (honest "Accounts aren't open yet" page + live service status from `/healthz`/`/readyz`, 404 page), typed `apiClient` with envelope parsing, Light/Dark/System theme, contrast check as a Vitest suite. Playwright E2E + frontend CI job move to Step 4.
+- [ ] Step 4 — CI workflows and README/setup docs. Implemented and verified locally 2026-10-21 (uncommitted): `.github/workflows/frontend.yml` (jobs `checks`: `npm ci`, ESLint, `tsc -b`, Vitest, build; `e2e`: Playwright + axe, report uploaded on failure; actionlint clean; the full sequence passed from a clean `npm ci` copy with `CI=true`), Playwright + axe smoke tests in `frontend/e2e/` (mocked backend states; 1280 px and 390 px touch; zero WCAG 2.x A/AA violations), README setup/testing/troubleshooting for PowerShell and bash, production routing contract in architecture.md §18 (the Caddyfile itself is Phase 10). **Open:** `frontend.yml` has not run on GitHub yet (needs a push); Phase 1's "CI green" closes when it does.
 **Objective:** Runnable, tested, empty application skeleton with CI.
 **Dependencies:** Phase 0.
 **Included:** project structure, config, DB connection, Alembic, error envelope, logging, health endpoints, frontend shell with design tokens, CI.

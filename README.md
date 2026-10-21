@@ -79,16 +79,16 @@ Real student or college data will not be introduced until the pilot college and 
 
 CampusSignal follows a phased development plan.
 
-| Phase          | Focus                                                               |
-| -------------- | ------------------------------------------------------------------- |
-| Phase 0        | Planning, requirements, architecture, and project setup             |
-| Phase 1        | Backend foundation                                                  |
-| Phase 2        | Authentication and account management                               |
-| Phase 3 onward | Core platform capabilities, security, and supporting infrastructure |
+| Phase          | Focus                                                                       |
+| -------------- | --------------------------------------------------------------------------- |
+| Phase 0        | Planning, requirements, architecture, and project setup                     |
+| Phase 1        | Foundation: backend, database, frontend shell, CI                           |
+| Phase 2        | Identity: registration, email verification, sessions, platform admin        |
+| Phase 3 onward | Colleges and tenant isolation, notices, issues, community, Academic Hub ... |
 
 Refer to [`Phases.md`](Phases.md) for the complete roadmap and acceptance criteria.
 
-**Current status:** Phase 0 is complete. Phase 1 — Backend Foundation — is next.
+**Current status:** Phase 1 (Foundation) is in progress. The backend and database are done; the frontend shell, CI and this setup guide are awaiting review. Accounts don't exist yet — the app's start page says so and shows live service status.
 
 ---
 
@@ -110,27 +110,179 @@ The project is being developed with documentation-driven planning.
 
 ## 🚧 Project Status
 
-CampusSignal is currently in the planning-to-development transition.
+* [x] Product requirements, architecture, security and design documented
+* [x] Backend foundation (FastAPI, settings, error envelope, logging, `/healthz`)
+* [x] Database (PostgreSQL 17, SQLAlchemy, Alembic migrations, `/readyz`)
+* [x] Backend CI with integration tests on a disposable PostgreSQL 17
+* [ ] Frontend shell, frontend CI and setup guide (implemented, awaiting review)
+* [ ] Authentication (Phase 2)
+* [ ] Core features (Phase 3 onward)
+* [ ] Deployment (Phase 10)
 
-* [x] Product requirements documented
-* [x] Architecture and security requirements documented
-* [x] Design specifications documented
-* [x] Development roadmap established
-* [x] Initial documentation committed to Git
-* [ ] Backend foundation implemented
-* [ ] Authentication implemented
-* [ ] Core features implemented
-* [ ] Testing and deployment
-
-The checklist will be updated as work is completed and verified.
+The checklist is updated only when work is completed and verified.
 
 ---
 
 ## 🧰 Technology Stack
 
-The implementation stack is defined in [`architecture.md`](architecture.md).
+| Layer    | Choice |
+| -------- | ------ |
+| Frontend | React 19, TypeScript, Vite, Tailwind CSS 4, shadcn/ui, TanStack Query, React Router |
+| Backend  | Python 3.12, FastAPI, SQLAlchemy 2 (sync), Alembic, Pydantic v2, psycopg 3 |
+| Database | PostgreSQL 17 — a hosted Supabase project for development; a disposable PostgreSQL 17 in CI |
+| Tests    | pytest, Vitest + Testing Library, Playwright + axe |
+| CI       | GitHub Actions (`.github/workflows/backend.yml`, `.github/workflows/frontend.yml`) |
 
-Backend infrastructure and application code will be introduced during the relevant development phases.
+Details and the reasons behind each choice are in [`architecture.md`](architecture.md). Docker is not needed.
+
+---
+
+## 🚀 Getting Started
+
+Commands are shown for **Windows PowerShell** and **bash** (macOS, Linux, Git Bash) where they differ. Run each block from the repository root unless it says otherwise.
+
+### Prerequisites
+
+| Tool | Version | Notes |
+| ---- | ------- | ----- |
+| [uv](https://docs.astral.sh/uv/) | 0.13 or later | Installs and pins Python 3.12 for the backend automatically |
+| [Node.js](https://nodejs.org/) | 22 or later (CI uses 24) | Includes npm |
+| Git | any recent | |
+| A Supabase project | free plan is fine | Development database only. Use the **Session pooler** connection string and turn **off** the Data API (Dashboard → Integrations → Data API) |
+
+### 1. Configure the backend
+
+```powershell
+# PowerShell
+cd backend
+Copy-Item .env.example .env
+```
+
+```bash
+# bash
+cd backend
+cp .env.example .env
+```
+
+Edit `backend/.env` and set:
+
+* `APP_ENV=local` and `APP_ORIGIN=http://localhost:5173` (already in the example).
+* `DATABASE_URL` — your Supabase **Session pooler** string, with two changes: the scheme becomes `postgresql+psycopg://`, and `?sslmode=require` goes on the end. URL-encode special characters in the password.
+
+`.env` is git-ignored. Never commit it, paste it into issues, or share it.
+
+### 2. Install dependencies and migrate the database
+
+```bash
+# backend/ (same command in PowerShell and bash)
+uv sync
+uv run alembic upgrade head
+```
+
+`alembic upgrade head` only moves the database forward. Never run `alembic downgrade` against Supabase.
+
+```bash
+# frontend/ (same command in PowerShell and bash)
+cd ../frontend
+npm ci
+```
+
+### 3. Start the app (two terminals)
+
+```bash
+# Terminal 1 — backend/
+uv run uvicorn app.main:app --reload
+```
+
+```bash
+# Terminal 2 — frontend/
+npm run dev
+```
+
+Open **http://localhost:5173**. The start page shows the live API and database status. The Vite dev server forwards `/api`, `/healthz` and `/readyz` to the backend on port 8000.
+
+Quick checks with the backend running:
+
+```powershell
+# PowerShell
+Invoke-RestMethod http://127.0.0.1:8000/healthz   # status: ok
+Invoke-RestMethod http://127.0.0.1:8000/readyz    # status: ready
+```
+
+```bash
+# bash
+curl http://127.0.0.1:8000/healthz   # {"status":"ok"}
+curl http://127.0.0.1:8000/readyz    # {"status":"ready"}
+```
+
+API docs (local only): http://127.0.0.1:8000/api/v1/docs
+
+---
+
+## 🧪 Testing
+
+Backend, from `backend/`:
+
+```bash
+uv run pytest -q                                  # unit tests; 6 integration tests skip locally
+uv run ruff check . ; uv run ruff format --check . ; uv run mypy
+```
+
+Frontend, from `frontend/`:
+
+```bash
+npm test             # Vitest: components, API client, theme, WCAG token contrast
+npm run lint
+npm run typecheck
+npm run build
+```
+
+Browser smoke tests (Playwright + axe), from `frontend/`. The first run needs the Chromium build:
+
+```bash
+npx playwright install chromium
+npm run e2e
+```
+
+The browser tests build the app, serve it on port 4173 and mock every backend call, so they don't need the backend or a database. They run at 1280 px and 390 px (touch) and fail on any WCAG A/AA violation that axe finds.
+
+### Integration tests
+
+The six database integration tests **downgrade migrations and create roles**, so they only run against a throwaway PostgreSQL 17 and refuse anything else: the host must be `localhost`, the database name must end in `_test`, and Supabase hosts are always rejected. GitHub Actions runs them on every push and pull request. To run them yourself against a local disposable PostgreSQL 17:
+
+```powershell
+# PowerShell, backend/
+$env:TEST_DATABASE_URL = "postgresql+psycopg://postgres:postgres@localhost:5432/campussignal_test"
+uv run pytest -m integration -rs
+Remove-Item Env:TEST_DATABASE_URL
+```
+
+```bash
+# bash, backend/
+TEST_DATABASE_URL="postgresql+psycopg://postgres:postgres@localhost:5432/campussignal_test" uv run pytest -m integration -rs
+```
+
+**Never point `TEST_DATABASE_URL` at Supabase.**
+
+---
+
+## 🛠️ Troubleshooting
+
+| Symptom | Cause and fix |
+| ------- | ------------- |
+| Backend exits with `validation error for Settings` | A required setting is missing or invalid. Check `backend/.env` has `APP_ENV`, `APP_ORIGIN` and `DATABASE_URL`; the URL must start with `postgresql+psycopg://` and end with `sslmode=require`. The error names the setting but never prints its value. |
+| `Error loading ASGI app. Attribute "app" not found` | Run uvicorn from `backend/` with `app.main:app` (or `app.main:app_factory --factory`). |
+| `[Errno 10048]` / `address already in use` on port 8000 | Another backend is already running. Stop it, or find it: PowerShell `Get-NetTCPConnection -LocalPort 8000`, bash `lsof -i :8000`. The frontend proxy expects port 8000. |
+| `/readyz` returns 503 with `"database": "unreachable"` | The database can't be reached. Free Supabase projects **pause after a week of inactivity** — restore it from the Supabase dashboard. Also check your network and the `DATABASE_URL` host. |
+| `/readyz` returns 503 with `"migrations": "pending"` | Run `uv run alembic upgrade head` in `backend/`. |
+| The page loads at `http://127.0.0.1:5173` but not, or vice versa | Vite listens on `localhost`, which can resolve to IPv6 only. Use **http://localhost:5173**. |
+| The start page says the API is unreachable | The backend isn't running on port 8000. Start it (terminal 1) and click **Check again**. |
+| PowerShell: `npm.ps1 cannot be loaded because running scripts is disabled` | Use `npm.cmd` instead of `npm`, or allow scripts for your user: `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`. |
+| Windows: `npm ci` fails with `EPERM: operation not permitted, unlink ... .node` | A running Vite dev or preview server has the native module open. Stop `npm run dev` / `npm run e2e`, then rerun `npm ci`. If it was interrupted, `npm install` restores `node_modules`. |
+| `npm run e2e`: `Executable doesn't exist` | Install the browser once: `npx playwright install chromium`. |
+| `npm run e2e`: port 4173 already in use | Stop the other `vite preview`, or let Playwright reuse it (it does locally). |
+| Integration tests show `SKIPPED` | Expected locally without `TEST_DATABASE_URL`. They run in CI. |
+| `uv` can't find Python 3.12 | `uv sync` downloads it automatically; check your network, or run `uv python install 3.12`. |
 
 ---
 
