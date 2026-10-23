@@ -22,8 +22,7 @@ class AuditLog(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         Uuid, primary_key=True, server_default=text("gen_random_uuid()")
     )
-    # The foreign key to colleges is added when that table exists (Phase 3).
-    college_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    college_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("colleges.id"))
     actor_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
     action: Mapped[str] = mapped_column(Text)
     target_type: Mapped[str | None] = mapped_column(Text)

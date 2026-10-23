@@ -18,6 +18,8 @@ from app.core.ratelimit import hashed_key
 from app.core.request_guards import client_address
 from app.models.auth_session import AuthSession
 from app.models.user import User
+from app.policies.campus import CampusContext, campus_access_problem
+from app.repositories import memberships
 from app.services.sessions import (
     CSRF_HEADER,
     SESSION_COOKIE,
@@ -118,3 +120,36 @@ def current_session(
 
 Auth = Annotated[AuthContext, Depends(current_session)]
 OptionalAuth = Annotated[AuthContext | None, Depends(optional_session)]
+
+
+def campus_context(auth: Auth, db: Db) -> CampusContext:
+    """Every /api/v1/campus route depends on this (TENANT-001; the route inventory checks it).
+
+    The acting college is the one of the user's single ACTIVE membership, read from the
+    database on every request; nothing the client sends (query, body, header) can choose it.
+    Without an ACTIVE membership in an ACTIVE college the answer is 403 with
+    `membership_required`, `membership_inactive` or `college_inactive`.
+    """
+    active = memberships.active_membership(db, auth.user.id)
+    suspended = active is None and memberships.has_suspended_membership(db, auth.user.id)
+    problem = campus_access_problem(active, suspended)
+    if problem is not None or active is None:
+        raise Forbidden(
+            _CAMPUS_MESSAGES.get(problem or "", "You don't have access to this."), code=problem
+        )
+    membership, college = active
+    return CampusContext(
+        user=auth.user,
+        membership=membership,
+        college=college,
+        grants=memberships.grants_of(db, membership),
+    )
+
+
+_CAMPUS_MESSAGES = {
+    "membership_required": "Join your college to use this.",
+    "membership_inactive": "Your college membership is suspended.",
+    "college_inactive": "Your college isn't available right now.",
+}
+
+Campus = Annotated[CampusContext, Depends(campus_context)]

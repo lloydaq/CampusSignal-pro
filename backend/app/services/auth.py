@@ -230,7 +230,13 @@ def _consume_token(
     ).scalar_one_or_none()
 
 
-def verify_email(db: Session, *, token: str, ip_key: str, now: datetime) -> None:
+def verify_email(
+    db: Session, *, token: str, ip_key: str, now: datetime, session_token: str | None = None
+) -> None:
+    """AUTH-003. Verifying also ends the account's other sessions (decided 2026-10-23,
+    security review W1): whoever registered the address first and stayed signed in loses
+    that session when the owner verifies. `session_token` is the verifying browser's own
+    session cookie, which survives if it belongs to this account."""
     ratelimit.consume(db, TOKEN_ATTEMPTS_IP, ip_key, now)
     digest = token_digest(token)
     user_id = _consume_token(db, digest, TokenPurpose.VERIFY_EMAIL, now)
@@ -241,6 +247,8 @@ def verify_email(db: Session, *, token: str, ip_key: str, now: datetime) -> None
         .where(User.id == user_id, User.email_verified_at.is_(None))
         .values(email_verified_at=now)
     )
+    keep = token_digest(session_token) if session_token else None
+    sessions.revoke_other_sessions(db, user_id, keep=keep)
     db.commit()
 
 

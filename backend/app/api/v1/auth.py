@@ -60,8 +60,16 @@ def register(
 
 
 @router.post("/verify-email")
-def verify_email(body: VerifyEmailRequest, db: Db, now: Now, ip_key: IpKey) -> MessageResponse:
-    auth_service.verify_email(db, token=body.token, ip_key=ip_key, now=now)
+def verify_email(
+    body: VerifyEmailRequest, request: Request, db: Db, now: Now, ip_key: IpKey
+) -> MessageResponse:
+    auth_service.verify_email(
+        db,
+        token=body.token,
+        ip_key=ip_key,
+        now=now,
+        session_token=request.cookies.get(SESSION_COOKIE),
+    )
     return MessageResponse(message="Your email is verified.")
 
 

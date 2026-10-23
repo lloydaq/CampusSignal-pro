@@ -14,7 +14,6 @@ from app.services.sessions import (
     SESSION_COOKIE,
     IssuedSession,
     csrf_token_for,
-    is_privileged,
     limits_for,
 )
 from tests.conftest import make_settings
@@ -25,21 +24,24 @@ def _user(**fields: object) -> User:
 
 
 def test_standard_users_get_the_prd_limits() -> None:
-    limits = limits_for(_user(), make_settings())
+    limits = limits_for(_user(), make_settings(), privileged_role=False)
     assert (limits.idle, limits.absolute) == (timedelta(days=7), timedelta(days=30))
 
 
 def test_platform_admins_always_get_the_privileged_limits() -> None:
     admin = _user(platform_role=PlatformRole.PLATFORM_ADMIN)
-    assert is_privileged(admin)
-    limits = limits_for(admin, make_settings())
+    limits = limits_for(admin, make_settings(), privileged_role=False)
     assert (limits.idle, limits.absolute) == (timedelta(hours=24), timedelta(days=7))
-    assert not is_privileged(_user())
+
+
+def test_a_privileged_college_role_gets_the_privileged_limits() -> None:
+    limits = limits_for(_user(), make_settings(), privileged_role=True)
+    assert (limits.idle, limits.absolute) == (timedelta(hours=24), timedelta(days=7))
 
 
 def test_limits_follow_configuration() -> None:
     settings = make_settings(session_idle_days=2, session_absolute_days=10)
-    limits = limits_for(_user(), settings)
+    limits = limits_for(_user(), settings, privileged_role=False)
     assert (limits.idle, limits.absolute) == (timedelta(days=2), timedelta(days=10))
 
 
