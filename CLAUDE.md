@@ -100,4 +100,4 @@ Add folders only when a feature needs them.
 - Update `memory.md` after completing work; never claim tests passed unless they ran.
 
 ## Current phase
-Phase 2 — identity and platform bootstrap, in progress (2a–2d merged; exit waits on the owner's manual Mailpit check; see `Phases.md`). Update this line as phases complete.
+Phase 3 — colleges, membership, departments, roles, tenant isolation: not started (Phase 2 done 2026-10-23; see `Phases.md`). Update this line as phases complete.
