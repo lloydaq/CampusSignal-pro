@@ -40,6 +40,8 @@ integration.xml
 # --- Playwright --------------------------------------------------------------
 playwright-report/
 test-results/
+playwright-report-fullstack/
+test-results-fullstack/
 blob-report/
 playwright/.cache/
 

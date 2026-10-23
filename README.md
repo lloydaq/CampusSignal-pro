@@ -287,6 +287,31 @@ TEST_DATABASE_URL="postgresql+psycopg://postgres:postgres@localhost:5432/campuss
 
 **Never point `TEST_DATABASE_URL` at Supabase.**
 
+### Full-stack E2E (real API, database and email)
+
+This test runs the account journeys against the real backend. It registers, opens the verification link from the email, signs in and out, and resets a password.
+
+* Emails are caught by [Mailpit](https://mailpit.axllent.org/), and the test reads them through Mailpit's API.
+* The run writes accounts to the database. Use a **separate** disposable database whose name ends in `_test`, on `localhost`; the config refuses anything else.
+* Each run creates three accounts from one address. The API allows 10 registrations per address per hour, so locally you can run it three times an hour.
+* GitHub Actions runs it on every push and pull request, using Postgres and Mailpit service containers.
+
+To run it yourself, start Mailpit (the standalone binary, no Docker needed) and create an empty database such as `campussignal_e2e_test`. Then, from `frontend/`:
+
+```powershell
+# PowerShell, frontend/  (Mailpit running: mailpit --smtp 127.0.0.1:1025 --listen 127.0.0.1:8025)
+$env:E2E_DATABASE_URL = "postgresql+psycopg://postgres:postgres@localhost:5432/campussignal_e2e_test"
+npm run e2e:fullstack
+Remove-Item Env:E2E_DATABASE_URL
+```
+
+```bash
+# bash, frontend/  (Mailpit running: mailpit --smtp 127.0.0.1:1025 --listen 127.0.0.1:8025)
+E2E_DATABASE_URL="postgresql+psycopg://postgres:postgres@localhost:5432/campussignal_e2e_test" npm run e2e:fullstack
+```
+
+The run migrates that database, then starts uvicorn on port 8000 and `vite preview` on port 4174, which forwards `/api` to the API. Stop any backend already using port 8000 first. Mailpit's inbox is at http://127.0.0.1:8025.
+
 ---
 
 ## 🛠️ Troubleshooting
