@@ -2,7 +2,7 @@
 
 Concise, verified state for new sessions. Details live in the linked documents; do not copy them here. Never store secrets here.
 
-**Last updated:** 2026-10-23 (Phase 2c operator CLI implemented on `phase2/operator-cli`, awaiting review)
+**Last updated:** 2026-10-23 (2c merged; 2d part 1 auth screens implemented on `phase2/auth-frontend`, awaiting review)
 
 ## 1. Project
 CampusSignal (official name, P-4) — multi-college campus platform: isolated college spaces with official notices, student community, department pages, private academic info (timetable, attendance, results), and campus issue reporting. Spec: `PRD.md`.
@@ -40,7 +40,7 @@ College derived from session's ACTIVE membership on `/api/v1/campus/*` (no clien
 |---|---|
 | 0 Setup & docs | DONE (verified 2026-10-20, commit `095ffef`) |
 | 1 Foundation | DONE (verified 2026-10-21, `master` `b8f5930`: both workflows green; clean-clone README run passed) |
-| 2 Identity | IN PROGRESS — 2a merged (PR #5, `988e9d9`); 2b auth API merged (PR #6, `eb9f242`); 2c operator CLI implemented on `phase2/operator-cli` (376 tests pass, 0 skipped, local PG 16), awaiting review/CI; 2d frontend not started |
+| 2 Identity | IN PROGRESS — 2a merged (PR #5, `988e9d9`); 2b auth API merged (PR #6, `eb9f242`); 2c operator CLI merged (PR #7, `5ee1ada`; CI green on PG 17); 2d part 1 (auth screens) on `phase2/auth-frontend` awaiting review; 2d part 2 (full-stack E2E + Mailpit) not started |
 | 3–11 | NOT STARTED |
 
 Completed milestones (2026-10-20): documentation set; pre-development review; owner decisions P-4/P-7/P-8/P-9 applied; `CLAUDE.md` aligned; `.gitignore`; initial commit `095ffef`. Nothing implemented.
@@ -81,6 +81,7 @@ From `frontend/` (verified 2026-10-21, Node 24.15, npm 11.12): `npm install` · 
 CI: `.github/workflows/backend.yml` and `.github/workflows/frontend.yml` both green on `b8f5930`. Before pushing, run the CI whitespace check on the commit: `git diff --check "$(git hash-object -t tree /dev/null)" HEAD` (it also catches blank lines at end of file). Docker is no longer used.
 
 ## 10. Test / verification status
+**Phase 2d part 1 (2026-10-23, cloud session, `phase2/auth-frontend`):** `npm run typecheck`, `npm run lint`, `npm test` (147 Vitest, 3 stable runs), `npm run build` (JS 162 kB gzip, budget 250 kB; was 122 kB — zod is most of the growth) and Playwright (64 passed, 2 skipped by design; run with a local-only config pointing at the container's pre-installed Chromium because the pinned Playwright expects a newer build). Screenshots of sign-in, register, verify-expired and account at 390/1280 px in light and dark were checked. New deps: react-hook-form 7.90.0, zod 4.6.7 (≥ 5 days old; zod was already a transitive dep). `@hookform/resolvers` was dropped: npm 11 installs its optional `ajv` peer and that pulled `fast-uri@3.1.9` (4 days old) — a 15-line `lib/zodResolver.ts` replaces it. Bug found by E2E and fixed with a regression test: a `/me` request in flight when verification succeeds was joined (not replaced) by `invalidateQueries`, so the account page showed "Not verified"; verify now cancels first.
 **Phase 2c (2026-10-23, cloud session):** `app/cli` (`create-platform-admin`), `app/jobs` (`run-due`), `services/platform_admins.py`, `services/retention.py`. 376 backend tests passed, 0 skipped (`CAMPUSSIGNAL_REQUIRE_INTEGRATION=1`, `-W error::DeprecationWarning`), on a local **PostgreSQL 16** (`campussignal_test`; the container had no 17), so CI on 17 is still owed. New: 12 unit tests (argument handling, no `--password` option, prompts, mismatch/weak/cancel, failing purge isolated) and 8 integration tests (admin created verified + audited, existing email refused not promoted, re-run refused, admin signs in with 7-day cookie; purge cutoffs incl. boundary rows, second run deletes nothing, audit purge flag doesn't outlive its transaction, `run-due` logs counts). Mutation check: dropping the `audit_purge` flag made 3 retention tests fail. Real entry points run as subprocesses against the test DB: admin created, duplicate refused, `run-due` exit 0 with 4 JSON lines. No new dependencies (stdlib `argparse`/`getpass`). Note: with piped stdin `getpass` warns that input may echo; use a terminal.
 **Phase 2a (2026-10-21, local):** local PostgreSQL 17.11 test DB `campussignal_test` on localhost (user-level `TEST_DATABASE_URL`; new shells inherit it, already-open ones do not). 122 backend tests passed, 0 skipped — all 16 integration tests ran, also in CI mode (`CAMPUSSIGNAL_REQUIRE_INTEGRATION=1`). Guarded Alembic CLI on the test DB: `check` clean, `downgrade base` + `upgrade head` round trip, `0003` triggers present, trigger function not executable by PUBLIC. Test runs override `DATABASE_URL` with an unreachable URL so nothing can fall back to Supabase. `0003` NOT applied to Supabase yet.
 
@@ -99,4 +100,4 @@ CI: `.github/workflows/backend.yml` and `.github/workflows/frontend.yml` both gr
 - Backend deps: fastapi 0.156.4, uvicorn 0.54.0, pydantic-settings 2.16.1; dev: pytest 9.1.1, httpx2 2.13.1 + httpcore2 2.13.1 (pinned `==2.13.1`: Starlette ≥1.2 test client prefers httpx2 and deprecates `httpx`; 2.13.1 chosen over the same-day 2.16.0 release), ruff 0.17.1, mypy 2.4.0.
 
 ## 11. Next task
-Get `phase2/operator-cli` (2c) reviewed and merged once CI is green, then Phase 2d — frontend auth screens, CSRF/401 handling, E2E register → verify (Mailpit) → sign in (Phases.md Phase 2). Propose a plan and get approval before implementing. 2c decisions (2026-10-23, owner "go"): `create-platform-admin` refuses existing emails (no `--promote`); the 2-year audit purge ships now under the PRD §21 retention assumption.
+Get `phase2/auth-frontend` (2d part 1) reviewed and merged once CI is green, then 2d part 2: the full-stack E2E job (Postgres 17 + uvicorn + Mailpit + `vite preview` proxy; plan approved 2026-10-23). 2d decisions (2026-10-23, owner "go"): expired session → redirect to sign-in with `next` in Phase 2, Design.md's modal in Phase 3; resending verification needs sign-in (no auto sign-in after register). 2c decisions (2026-10-23, owner "go"): `create-platform-admin` refuses existing emails (no `--promote`); the 2-year audit purge ships now under the PRD §21 retention assumption.
