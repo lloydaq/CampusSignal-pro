@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import Connection
 
 from app.core.mailer import InMemoryMailer, OutgoingEmail
+from tests.conftest import APP_ORIGIN
 from tests.integration.auth_helpers import (
     EMAIL,
     NAME,
@@ -300,3 +301,49 @@ def test_old_unused_tokens_are_deleted_not_accumulated(
     for _ in range(3):
         api.post(f"{PREFIX}/auth/resend-verification", headers=csrf(api))
     assert scalar(conn, "SELECT count(*) FROM user_tokens WHERE used_at IS NULL") == 1
+
+
+# --- verification ends other sessions (decided 2026-10-23, security review W1) -------------
+
+
+def test_verifying_ends_the_accounts_other_sessions_but_keeps_this_one(
+    api: TestClient, auth_app: FastAPI, mailer: InMemoryMailer, conn: Connection
+) -> None:
+    """Someone who registered the address first and stayed signed in loses that session the
+    moment the owner verifies. The browser that verifies keeps its session."""
+    assert register(api).status_code == 201
+    token = token_from(mailer)
+    elsewhere = TestClient(auth_app, raise_server_exceptions=False, headers={"Origin": APP_ORIGIN})
+    assert login(elsewhere).status_code == 200
+    assert login(api).status_code == 200
+
+    assert verify(api, token).status_code == 200
+    assert api.get(f"{PREFIX}/me").status_code == 200
+    assert elsewhere.get(f"{PREFIX}/me").status_code == 401
+    assert scalar(conn, "SELECT count(*) FROM sessions") == 1
+
+
+def test_verifying_from_a_signed_out_browser_ends_every_session(
+    api: TestClient, auth_app: FastAPI, mailer: InMemoryMailer, conn: Connection
+) -> None:
+    assert register(api).status_code == 201
+    token = token_from(mailer)
+    assert login(api).status_code == 200
+    other = TestClient(auth_app, raise_server_exceptions=False, headers={"Origin": APP_ORIGIN})
+    assert verify(other, token).status_code == 200
+    assert api.get(f"{PREFIX}/me").status_code == 401
+    assert scalar(conn, "SELECT count(*) FROM sessions") == 0
+
+
+def test_verifying_while_signed_in_as_someone_else_keeps_that_session(
+    api: TestClient, auth_app: FastAPI, mailer: InMemoryMailer, conn: Connection
+) -> None:
+    create_user(api, mailer, email="other@riverside.example")
+    assert login(api, "other@riverside.example").status_code == 200
+    assert register(api).status_code == 201
+    owner = TestClient(auth_app, raise_server_exceptions=False, headers={"Origin": APP_ORIGIN})
+    assert login(owner).status_code == 200
+
+    assert verify(api, token_from(mailer)).status_code == 200
+    assert api.get(f"{PREFIX}/me").json()["user"]["email"] == "other@riverside.example"
+    assert owner.get(f"{PREFIX}/me").status_code == 401

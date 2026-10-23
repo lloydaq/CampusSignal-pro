@@ -16,8 +16,10 @@ from sqlalchemy.orm import Session
 from app.core.config import Settings
 from app.core.security import new_token, token_digest
 from app.models.auth_session import AuthSession
-from app.models.user import PlatformRole, User
+from app.models.user import User
 from app.policies.auth import can_sign_in
+from app.policies.campus import uses_privileged_session_limits
+from app.repositories.memberships import holds_privileged_role
 
 SESSION_COOKIE = "cs_session"
 CSRF_COOKIE = "cs_csrf"
@@ -48,17 +50,10 @@ class LoadedSession:
     session: AuthSession
 
 
-def is_privileged(user: User) -> bool:
-    """Accounts whose sessions get the shorter limits (AUTH-013, P-10).
-
-    Platform admins today; Phase 3 adds faculty members and college/department admins,
-    which are derived from memberships and role grants on each request.
-    """
-    return user.platform_role == PlatformRole.PLATFORM_ADMIN
-
-
-def limits_for(user: User, settings: Settings) -> SessionLimits:
-    if is_privileged(user):
+def limits_for(user: User, settings: Settings, *, privileged_role: bool) -> SessionLimits:
+    """Standard or privileged limits (AUTH-013, P-10). `privileged_role` is whether the user
+    holds a privileged college role right now; callers read it fresh on every request."""
+    if uses_privileged_session_limits(user, privileged_role):
         return SessionLimits(
             idle=timedelta(hours=settings.privileged_session_idle_hours),
             absolute=timedelta(days=settings.privileged_session_absolute_days),
@@ -78,7 +73,7 @@ def create_session(db: Session, user: User, settings: Settings, now: datetime) -
     never reused across sign-in or password changes, which prevents session fixation."""
     token, digest = new_token()
     secret = secrets.token_bytes(CSRF_SECRET_BYTES)
-    limits = limits_for(user, settings)
+    limits = limits_for(user, settings, privileged_role=holds_privileged_role(db, user.id))
     db.add(
         AuthSession(
             id_hash=digest,
@@ -108,7 +103,7 @@ def load_session(
     if row is None:
         return None
     session, user = row
-    limits = limits_for(user, settings)
+    limits = limits_for(user, settings, privileged_role=holds_privileged_role(db, user.id))
     expired = (
         now >= session.expires_at
         or now >= session.created_at + limits.absolute
@@ -130,6 +125,14 @@ def revoke_session(db: Session, session_id_hash: bytes) -> None:
 
 def revoke_session_by_token(db: Session, token: str) -> None:
     revoke_session(db, token_digest(token))
+
+
+def revoke_other_sessions(db: Session, user_id: object, *, keep: bytes | None) -> None:
+    """Delete the user's sessions except the one whose digest is `keep` (if any)."""
+    statement = delete(AuthSession).where(AuthSession.user_id == user_id)
+    if keep is not None:
+        statement = statement.where(AuthSession.id_hash != keep)
+    db.execute(statement)
 
 
 def revoke_all_sessions(db: Session, user_id: object) -> None:

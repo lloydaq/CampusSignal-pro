@@ -9,6 +9,7 @@ from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 from pydantic_core import PydanticCustomError
 
 from app.models.user import User
+from app.schemas.campus import MembershipOut, RoleOut
 
 _EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]{2,}$")
 EMAIL_MAX_LENGTH = 254
@@ -94,6 +95,11 @@ class MessageResponse(BaseModel):
 
 class MeResponse(BaseModel):
     user: UserOut
+    # The open college membership (ACTIVE, else PENDING or SUSPENDED), its roles, and what the
+    # navigation may offer (Design.md §4). Roles count only on an ACTIVE membership.
+    membership: MembershipOut | None = None
+    roles: list[RoleOut] = []
+    capabilities: list[str] = []
 
 
 class LoginResponse(BaseModel):

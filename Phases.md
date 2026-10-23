@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Last updated | 2026-10-20 |
-| Current phase | **Phase 3 — Colleges, membership, departments, roles, tenant isolation, NOT STARTED** (Phase 2 DONE, verified 2026-10-23) |
+| Current phase | **Phase 3 — Colleges, membership, departments, roles, tenant isolation, IN PROGRESS** (3a implemented 2026-10-23 on `phase3/tenancy-foundation`, awaiting review) |
 
 Status values: `NOT STARTED` · `IN PROGRESS` · `DONE (verified <date>)`. A phase is DONE only per §4 and `Rules.md` §8 — never because files exist.
 
@@ -142,7 +142,17 @@ Approved plan (2026-10-21), one reviewed PR per step:
 ---
 
 ## Phase 3 — Colleges, membership, departments, roles, tenant isolation
-**Status:** NOT STARTED
+**Status:** IN PROGRESS
+
+Approved plan (2026-10-23), one reviewed PR per step, in order:
+- [ ] 3a — Schema and isolation foundation: migration `0004` (colleges, departments, roster_entries, college_memberships, role_grants, invites; composite `(college_id, id)` FKs; partial uniques; `audit_log.college_id` FK), `campus_context` (403 `membership_required` / `membership_inactive` / `college_inactive`), `get_in_college` repository helper, `/me` membership + roles + capabilities, AUTH-013 privileged sessions from roles, verify-email ends other sessions, two-college fixtures, route-inventory checks (campus routes need `campus_context`; every campus route registered in the tenant-isolation suite). Implemented 2026-10-23 on `phase3/tenancy-foundation`: 441 backend tests passed, 0 skipped (local PostgreSQL 16; CI runs 17), `alembic check` clean, `0004` downgrade/upgrade round trip. Not applied to Supabase.
+- [ ] 3b — Platform admin: college create/activate/suspend, first-admin invite (email), invite acceptance, user suspend/unsuspend, platform audit log; P-7/ADMIN-008 deny tests.
+- [ ] 3c — College admin: departments, roster CSV import (all-or-nothing), faculty/staff invites, member directory, member department/suspend/end (last-admin 409), role grants (student 422), college audit log.
+- [ ] 3d — Joining: `/colleges` directory, roll-number membership requests (verified email only, uniform response, flags, 5/24 h), approval queue scoped by department, approve/reject with audit.
+- [ ] 3e — Frontend for members: signed-in app shell + navigation from `/me` capabilities, college picker + roll number, pending/rejected states, invite acceptance, session-ended modal (Design.md §7).
+- [ ] 3f — Frontend for admins: Manage (members queue/directory/invites/roles, departments, roster import), Platform → Colleges, `seed-demo` CLI for the exit demo.
+
+Decisions (2026-10-23, owner "go"): accepting an invite requires being signed in as the invited email, marks it verified and ends that account's other sessions; verifying an email ends the account's other sessions (implemented in 3a).
 **Objective:** A college can be onboarded and populated with verified members holding correct roles, with isolation proven by tests.
 **Dependencies:** Phase 2.
 **Included:** ADMIN-001…004, 007, 008; MEMBER-001…011; DEPT-001/002; TENANT-001…005; AUTH-013 (privileged sessions need roles, so they land here).

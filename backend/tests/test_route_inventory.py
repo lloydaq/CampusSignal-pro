@@ -15,9 +15,10 @@ from fastapi import FastAPI, Security
 from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 
-from app.api.deps import SESSION_SCHEME_NAME, current_session
+from app.api.deps import SESSION_SCHEME_NAME, Campus, campus_context, current_session
 from app.main import create_app
 from tests.conftest import make_settings
+from tests.tenant_isolation_cases import CASES
 
 # Operations that may be called without signing in. Adding to this set is a security
 # decision: say why in the review.
@@ -106,6 +107,47 @@ def test_the_inventory_detects_an_unprotected_route() -> None:
         return {}
 
     assert unprotected(app, PUBLIC) == ["GET /api/v1/oops"]
+
+
+CAMPUS_PREFIX = "/api/v1/campus"
+
+
+def _calls(dependant: Any) -> Iterator[Any]:
+    for sub in dependant.dependencies:
+        yield sub.call
+        yield from _calls(sub)
+
+
+def campus_routes_without_context(app: FastAPI) -> list[str]:
+    """Campus routes must take their college from `campus_context` (TENANT-001)."""
+    return sorted(
+        f"{sorted(route.methods or [])} {route.path}"
+        for route in api_routes(app)
+        if route.path.startswith(CAMPUS_PREFIX) and campus_context not in _calls(route.dependant)
+    )
+
+
+def test_every_campus_route_uses_the_campus_context(real_app: FastAPI) -> None:
+    assert campus_routes_without_context(real_app) == []
+
+
+def test_the_campus_check_detects_a_route_without_the_context() -> None:
+    app = create_app(make_settings())
+
+    @app.get(f"{CAMPUS_PREFIX}/oops")
+    def oops(_: Any = Security(current_session)) -> dict[str, str]:  # noqa: B008
+        return {}  # signed in, but no college context: it could read any college
+
+    @app.get(f"{CAMPUS_PREFIX}/fine")
+    def fine(_: Campus) -> dict[str, str]:
+        return {}
+
+    assert campus_routes_without_context(app) == [f"['GET'] {CAMPUS_PREFIX}/oops"]
+
+
+def test_every_campus_operation_is_in_the_tenant_isolation_suite(real_app: FastAPI) -> None:
+    campus = {(m, p) for (m, p) in operations(real_app) if p.startswith(CAMPUS_PREFIX)}
+    assert campus == set(CASES), "add the new campus route to tests/tenant_isolation_cases.py"
 
 
 def test_the_protected_operations_are_the_ones_we_expect(real_app: FastAPI) -> None:
