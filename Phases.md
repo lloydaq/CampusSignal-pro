@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Last updated | 2026-10-20 |
-| Current phase | **Phase 2 — Identity and platform bootstrap, IN PROGRESS** (2a merged in PR #5, 2b merged in PR #6; 2c merged in PR #7; 2d part 1 merged in PR #8; 2d part 2 (full-stack E2E with Mailpit) implemented 2026-10-23 on `phase2/auth-e2e`, awaiting review/CI) |
+| Current phase | **Phase 2 — Identity and platform bootstrap, IN PROGRESS** (2a merged in PR #5, 2b merged in PR #6; 2c merged in PR #7; 2a–2d merged (PRs #5–#9); remaining exit item: owner's manual email check via Mailpit) |
 
 Status values: `NOT STARTED` · `IN PROGRESS` · `DONE (verified <date>)`. A phase is DONE only per §4 and `Rules.md` §8 — never because files exist.
 
@@ -116,9 +116,9 @@ Approved plan (2026-10-21), one reviewed PR per step:
 - [x] 2a — Database and security building blocks: migration `0003` (users, sessions, user_tokens, append-only audit_log, rate_limit_counters), Argon2id + bundled common-password list, tokens, DB rate limiter, audit writer, SMTP/in-memory mailer, session/email settings. Implemented 2026-10-21; unit tests pass; verified 2026-10-21 on local PostgreSQL 17.11 (`campussignal_test`): 122 backend tests passed, 0 skipped (16 integration incl. 10 for `0003`), `alembic check` clean, full downgrade/upgrade round trip. Not yet applied to Supabase. Merged to `master` in PR #5 (`988e9d9`).
 - [x] 2b — Auth API: register, verify, resend, login/logout(-all), CSRF + Origin checks, `/me`, change password, reset; sessions; rate limits; route inventory test. Merged to `master` in PR #6 (`eb9f242`); verified on local PostgreSQL 17.11 (`campussignal_test`): 356 backend tests passed, 0 skipped (incl. 12 multi-connection concurrency tests, B1 fixed), `-W error::DeprecationWarning`, ruff check/format, mypy strict, migration tests (round trip, drift) green. Decisions: password reset does not verify the email; a successful login clears that email's failed-login counter; writes with a missing/mismatched Origin are refused. Not applied to Supabase.
 - [x] 2c — Operator CLI: `create-platform-admin`, jobs purge. Merged to `master` in PR #7 (`5ee1ada`); CI green on Postgres 17 for the PR head `e2e8d72`: `python -m app.cli create-platform-admin --email … --display-name …` (password prompted twice, never an argument; existing emails refused, not promoted; new account verified; audited `platform.admin_created`) and `python -m app.jobs run-due` (purges dead sessions, tokens 7 d past expiry, rate counters > 1 d, audit entries > 2 years; each in its own transaction; JSON count per purge; exit 1 on any failure). 376 backend tests passed, 0 skipped, on local PostgreSQL **16** (container had no 17) — CI on 17 is the real check.
-- [ ] 2d — Frontend auth screens, CSRF/401 handling, E2E register → verify (Mailpit) → sign in. Approved 2026-10-23 as two PRs:
+- [x] 2d — Frontend auth screens, CSRF/401 handling, E2E register → verify (Mailpit) → sign in. Approved 2026-10-23 as two PRs:
   - [x] Part 1 (merged in PR #8, `e987ec8`): sign-in, register, check-email, verify-email, forgot/reset password, `/account` (profile + resend with cooldown, change password, sign out / everywhere), CSRF header + one retry on `csrf_failed`, 401 → `/sign-in?next=` (same-site only), `/status` keeps the service status. Implemented 2026-10-23, awaiting review: 147 Vitest, 64 Playwright + axe (2 skipped by design), screenshots checked at 390/1280 px light/dark.
-  - [ ] Part 2 (`phase2/auth-e2e`): CI job `e2e-fullstack` with Postgres 17 + Mailpit v1.31.6 (pinned by digest) service containers, uvicorn (SMTP), `vite preview` proxy; three journeys: register → verify via emailed link (reuse → "already used") → sign in/out; re-register an existing email → owner notice, no second verification email; reset by email → old password refused, new works, email still unverified. Implemented 2026-10-23, awaiting CI: 3/3 passed twice locally (PostgreSQL 16 + Mailpit binary extracted from the pinned image), mocked suite 64 passed, actionlint clean.
+  - [x] Part 2 (merged in PR #9, `88f2bc5`; CI `e2e-fullstack` green on Postgres 17.11 for the PR head `c49af33`): CI job `e2e-fullstack` with Postgres 17 + Mailpit v1.31.6 (pinned by digest) service containers, uvicorn (SMTP), `vite preview` proxy; three journeys: register → verify via emailed link (reuse → "already used") → sign in/out; re-register an existing email → owner notice, no second verification email; reset by email → old password refused, new works, email still unverified. Locally 3/3 passed twice (PostgreSQL 16 + Mailpit binary extracted from the pinned image), mocked suite 64 passed, actionlint clean.
 
 **Objective:** People can register, verify email, sign in/out, reset passwords; platform admin exists.
 **Dependencies:** Phase 1; P-2 for non-local email.
@@ -135,6 +135,8 @@ Approved plan (2026-10-21), one reviewed PR per step:
 | Docs | ADR updates if hashing params or session details change; `memory.md` |
 
 **Definition of done:** US-01 criteria pass in automated tests; manual check of email flow via Mailpit.
+- [x] US-01 criteria automated: backend API tests (2b) + full-stack E2E with Mailpit in CI (2d), verified 2026-10-23.
+- [ ] Manual check of the email flow via Mailpit on the owner's machine (needs migration `0003` applied to the Supabase dev DB first — not done yet).
 **Risks:** email deliverability (verification emails in spam) — pick provider with SPF/DKIM (P-2).
 
 ---
