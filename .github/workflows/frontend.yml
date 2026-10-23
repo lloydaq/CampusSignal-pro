@@ -1,6 +1,7 @@
-# Frontend checks: lockfile install, ESLint, TypeScript, Vitest, production build, and
-# Playwright + axe browser smoke tests (architecture.md §17). The tests mock every backend
-# call, so no API or database runs here. Whole-tree whitespace checks run in backend.yml.
+# Frontend checks: lockfile install, ESLint, TypeScript, Vitest, production build,
+# Playwright + axe browser smoke tests against a mocked backend (architecture.md §17), and a
+# full-stack E2E journey (Phases.md 2d): the real API on a disposable PostgreSQL 17 with
+# emails caught by Mailpit. Whole-tree whitespace checks run in backend.yml.
 name: frontend
 
 on:
@@ -80,4 +81,79 @@ jobs:
           path: |
             frontend/playwright-report
             frontend/test-results
+          retention-days: 7
+
+  e2e-fullstack:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:17.11
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: campussignal_e2e_test
+          # Throwaway container reachable only from this job; no password to leak.
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d campussignal_e2e_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      mailpit:
+        # v1.31.6, pinned by digest (released 2026-10-15).
+        image: axllent/mailpit@sha256:23fe39e81bde596a918000b3135c0f85dc8bb4c9ea6be274b051143f3e300387
+        ports:
+          - 1025:1025
+          - 8025:8025
+        options: >-
+          --health-cmd "/mailpit readyz"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      # Disposable service DB (loopback, *_test); playwright.fullstack.config.ts refuses anything else.
+      E2E_DATABASE_URL: postgresql+psycopg://postgres@localhost:5432/campussignal_e2e_test
+      MAILPIT_URL: http://127.0.0.1:8025
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install backend dependencies (locked)
+        working-directory: backend
+        run: uv sync --locked
+
+      - name: Install frontend dependencies (lockfile)
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Register → verify by email → sign in, and password reset (real API + Mailpit)
+        run: npm run e2e:fullstack
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: playwright-report-fullstack
+          path: |
+            frontend/playwright-report-fullstack
+            frontend/test-results-fullstack
           retention-days: 7
