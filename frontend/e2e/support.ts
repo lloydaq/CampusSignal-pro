@@ -28,11 +28,14 @@ function notReady(route: Route, details: Record<string, string>) {
 }
 
 /**
- * Route /healthz and /readyz to a synthetic state. Any other API call fails the test,
- * so the shell can't silently depend on endpoints that don't exist yet.
+ * Route /healthz and /readyz to a synthetic state and answer /api/v1/me as signed out.
+ * Any other API call fails the test, so screens can't silently depend on unmocked endpoints.
  */
 export async function mockBackend(page: Page, state: BackendState): Promise<void> {
   await page.route("**/api/**", (route) => route.abort("blockedbyclient"));
+  await page.route("**/api/v1/me", (route) =>
+    json(route, 401, { error: { code: "not_authenticated", message: "Sign in to continue.", details: null, request_id: "e2e-401" } }, "e2e-401"),
+  );
 
   await page.route("**/healthz", (route) => {
     if (state === "api_unreachable") return route.abort("connectionrefused");
@@ -73,4 +76,88 @@ export async function expectNoAxeViolations(page: Page): Promise<void> {
 /** Row in the status list, e.g. statusRow(page, "Database"). */
 export function statusRow(page: Page, name: "API" | "Database") {
   return page.locator("dl > div").filter({ has: page.locator("dt", { hasText: name }) });
+}
+
+export interface FakeAccount {
+  signedIn: boolean;
+  emailVerified: boolean;
+}
+
+const FAKE_USER = {
+  id: "8d6c1c55-6a66-4bd7-9b1b-6b8e1d1d0001",
+  email: "aarav@northfield.example",
+  display_name: "Aarav Nair",
+  platform_role: null,
+};
+
+function apiError(route: Route, status: number, code: string, message: string, details: unknown = null, headers: Record<string, string> = {}) {
+  return route.fulfill({
+    status,
+    contentType: "application/json",
+    headers: { "X-Request-ID": `e2e-${status}`, ...headers },
+    body: JSON.stringify({ error: { code, message, details, request_id: `e2e-${status}` } }),
+  });
+}
+
+/**
+ * A synthetic auth API with just enough state for the screens: who is signed in and
+ * whether the email is verified. Responses follow the real FastAPI endpoints
+ * (backend app/api/v1/auth.py, me.py). The password "wrong-password" fails sign-in.
+ */
+export async function mockAuthApi(page: Page, initial: Partial<FakeAccount> = {}): Promise<FakeAccount> {
+  const account: FakeAccount = { signedIn: false, emailVerified: true, ...initial };
+  const user = () => ({ ...FAKE_USER, email_verified: account.emailVerified });
+  await mockBackend(page, "ready");
+
+  await page.route("**/api/v1/me", (route) =>
+    account.signedIn ? json(route, 200, { user: user() }, "e2e-me") : apiError(route, 401, "not_authenticated", "Sign in to continue."),
+  );
+  await page.route("**/api/v1/auth/login", (route) => {
+    const body = route.request().postDataJSON() as { password?: string };
+    if (body.password === "wrong-password") return apiError(route, 401, "invalid_credentials", "Email or password is incorrect.");
+    account.signedIn = true;
+    return json(route, 200, { user: user(), csrf_token: "e2e-csrf" }, "e2e-login");
+  });
+  await page.route("**/api/v1/auth/register", (route) => {
+    const body = route.request().postDataJSON() as { password?: string };
+    if (body.password === "password1234") {
+      return apiError(route, 422, "validation_error", "Some fields are invalid.", [
+        { field: "password", message: "This password is too common. Choose one that's harder to guess." },
+      ]);
+    }
+    return json(route, 201, { message: "Check your email to finish setting up your account." }, "e2e-register");
+  });
+  await page.route("**/api/v1/auth/verify-email", (route) => {
+    const { token } = route.request().postDataJSON() as { token: string };
+    if (token === "expired") return apiError(route, 400, "token_expired", "This link has expired.");
+    if (token === "used") return apiError(route, 400, "token_used", "This link was already used.");
+    account.emailVerified = true;
+    return json(route, 200, { message: "Your email is verified." }, "e2e-verify");
+  });
+  await page.route("**/api/v1/auth/resend-verification", (route) =>
+    json(route, 202, { message: "We've sent a new verification link." }, "e2e-resend"),
+  );
+  await page.route("**/api/v1/auth/password-reset/request", (route) =>
+    json(route, 202, { message: "If an account exists for that email, we've sent a reset link." }, "e2e-reset"),
+  );
+  await page.route("**/api/v1/auth/password-reset/confirm", (route) => {
+    account.signedIn = false;
+    return json(route, 200, { message: "Your password was changed. Sign in with your new password." }, "e2e-reset-ok");
+  });
+  await page.route("**/api/v1/me/password", (route) => json(route, 200, { csrf_token: "e2e-csrf-2" }, "e2e-pw"));
+  for (const path of ["logout", "logout-all"]) {
+    await page.route(`**/api/v1/auth/${path}`, (route) => {
+      account.signedIn = false;
+      return route.fulfill({ status: 204 });
+    });
+  }
+  return account;
+}
+
+export async function expectNoHorizontalScroll(page: Page): Promise<void> {
+  const { scrollWidth, innerWidth } = await page.evaluate(() => ({
+    scrollWidth: document.documentElement.scrollWidth,
+    innerWidth: window.innerWidth,
+  }));
+  expect(scrollWidth).toBeLessThanOrEqual(innerWidth);
 }

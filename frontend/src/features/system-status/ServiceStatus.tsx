@@ -1,9 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { CircleAlert, CircleCheck, CircleHelp, CircleX, RotateCw, type LucideIcon } from "lucide-react";
-import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { ApiError } from "@/lib/api";
+import { useDelayedFlag } from "@/lib/useDelayedFlag";
 import { cn } from "@/lib/utils";
 
 import { fetchServiceStatus, serviceStatusQueryKey, type ApiState, type DatabaseState } from "./api";
@@ -35,23 +35,6 @@ const TONE_CLASS: Record<Tone, string> = {
   neutral: "text-muted",
 };
 
-/** Skeletons appear only after 150 ms so fast responses don't flash (Design.md §6). */
-const SKELETON_DELAY_MS = 150;
-
-/** True once `active` has stayed true for `delayMs`; resets when it turns false. */
-function useDelayedFlag(active: boolean, delayMs: number): boolean {
-  const [elapsed, setElapsed] = useState(false);
-  useEffect(() => {
-    if (!active) return;
-    const timer = window.setTimeout(() => setElapsed(true), delayMs);
-    return () => {
-      window.clearTimeout(timer);
-      setElapsed(false);
-    };
-  }, [active, delayMs]);
-  return active && elapsed;
-}
-
 function StatusRow({ name, view }: { name: string; view: StateView }) {
   const { label, Icon, tone } = view;
   return (
@@ -71,13 +54,13 @@ export function ServiceStatus() {
     queryKey: serviceStatusQueryKey,
     queryFn: ({ signal }) => fetchServiceStatus(signal),
   });
-  const showSkeleton = useDelayedFlag(query.isPending, SKELETON_DELAY_MS);
+  const showSkeleton = useDelayedFlag(query.isPending);
 
   return (
     <section aria-labelledby="service-status-heading" aria-busy={query.isFetching}>
       <div className="flex items-center justify-between gap-4">
         <h2 id="service-status-heading" className="text-base font-semibold text-fg">
-          Service status
+          Current status
         </h2>
         {query.isSuccess && (
           <Button

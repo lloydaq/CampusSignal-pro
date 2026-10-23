@@ -1,6 +1,6 @@
-import { envelope, json, mockFetch } from "@/test/http";
+import { envelope, json, mockFetch, noContent, sentBody } from "@/test/http";
 
-import { ApiError, apiGet, NETWORK_ERROR } from "./api";
+import { ApiError, apiGet, apiPost, fieldErrors, NETWORK_ERROR } from "./api";
 
 async function caught(promise: Promise<unknown>): Promise<ApiError> {
   try {
@@ -68,5 +68,73 @@ describe("apiGet", () => {
   it("lets aborts propagate instead of reporting them as network errors", async () => {
     vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new DOMException("aborted", "AbortError"))));
     await expect(apiGet("/healthz")).rejects.toMatchObject({ name: "AbortError" });
+  });
+});
+
+describe("state-changing requests", () => {
+  afterEach(() => {
+    document.cookie = "cs_csrf=; max-age=0; path=/";
+  });
+
+  it("send the CSRF cookie as X-CSRF-Token on POST but never on GET", async () => {
+    document.cookie = "cs_csrf=tok%2Fen; path=/";
+    const fetchMock = mockFetch({ "POST /api/v1/x": () => json({ ok: true }), "/healthz": () => json({ status: "ok" }) });
+    await apiPost("/api/v1/x", { a: 1 });
+    await apiGet("/healthz");
+    const [post, get] = fetchMock.mock.calls.map(([, init]) => new Headers(init?.headers));
+    expect(post?.get("X-CSRF-Token")).toBe("tok/en");
+    expect(post?.get("Content-Type")).toBe("application/json");
+    expect(get?.has("X-CSRF-Token")).toBe(false);
+    expect(sentBody(fetchMock, "/api/v1/x")).toEqual({ a: 1 });
+  });
+
+  it("refresh a stale CSRF token once and retry", async () => {
+    let attempts = 0;
+    const fetchMock = mockFetch({
+      "POST /api/v1/x": () => (++attempts === 1 ? envelope(403, "csrf_failed", "Reload the page and try again.") : json({ ok: true })),
+      "GET /api/v1/auth/csrf": () => json({ csrf_token: "fresh" }),
+    });
+    await expect(apiPost("/api/v1/x")).resolves.toEqual({ ok: true });
+    expect(fetchMock.mock.calls.map(([url, init]) => `${init?.method} ${url as string}`)).toEqual([
+      "POST /api/v1/x",
+      "GET /api/v1/auth/csrf",
+      "POST /api/v1/x",
+    ]);
+  });
+
+  it("give up after one CSRF retry", async () => {
+    const fetchMock = mockFetch({
+      "POST /api/v1/x": () => envelope(403, "csrf_failed", "Reload the page and try again."),
+      "GET /api/v1/auth/csrf": () => json({ csrf_token: null }),
+    });
+    await expect(caught(apiPost("/api/v1/x"))).resolves.toMatchObject({ status: 403, code: "csrf_failed" });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("don't retry other 403s", async () => {
+    const fetchMock = mockFetch({ "POST /api/v1/x": () => envelope(403, "forbidden", "You don't have access to this.") });
+    await expect(caught(apiPost("/api/v1/x"))).resolves.toMatchObject({ code: "forbidden" });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("resolve 204 responses to undefined", async () => {
+    mockFetch({ "POST /api/v1/auth/logout": () => noContent() });
+    await expect(apiPost("/api/v1/auth/logout")).resolves.toBeUndefined();
+  });
+
+  it("expose Retry-After on 429s and field details", async () => {
+    mockFetch({
+      "POST /api/v1/x": () =>
+        envelope(429, "rate_limited", "Too many requests. Try again later.", null, "r", { "Retry-After": "120" }),
+      "POST /api/v1/y": () =>
+        envelope(422, "validation_error", "Some fields are invalid.", [
+          { field: "password", message: "Use at least 10 characters." },
+          { field: "password", message: "second message is ignored" },
+          { nonsense: true },
+        ]),
+    });
+    await expect(caught(apiPost("/api/v1/x"))).resolves.toMatchObject({ status: 429, retryAfterSeconds: 120 });
+    expect(fieldErrors(await caught(apiPost("/api/v1/y")))).toEqual({ password: "Use at least 10 characters." });
+    expect(fieldErrors(new Error("plain"))).toEqual({});
   });
 });

@@ -88,7 +88,7 @@ CampusSignal follows a phased development plan.
 
 Refer to [`Phases.md`](Phases.md) for the complete roadmap and acceptance criteria.
 
-**Current status:** Phase 1 (Foundation) is complete. Phase 2 (accounts and sign-in) is next. Accounts don't exist yet — the app's start page says so and shows live service status.
+**Current status:** Phase 1 (Foundation) is complete. Phase 2 (accounts and sign-in) is in progress: you can register, verify your email, sign in and out, and reset or change your password. Joining a college arrives in Phase 3.
 
 ---
 
@@ -199,7 +199,7 @@ uv run uvicorn app.main:app --reload
 npm run dev
 ```
 
-Open **http://localhost:5173**. The start page shows the live API and database status. The Vite dev server forwards `/api`, `/healthz` and `/readyz` to the backend on port 8000.
+Open **http://localhost:5173** to reach the sign-in page. **http://localhost:5173/status** shows the live API and database status. The Vite dev server forwards `/api`, `/healthz` and `/readyz` to the backend on port 8000.
 
 Quick checks with the backend running:
 
@@ -299,7 +299,7 @@ TEST_DATABASE_URL="postgresql+psycopg://postgres:postgres@localhost:5432/campuss
 | `/readyz` returns 503 with `"database": "unreachable"` | The database can't be reached. Free Supabase projects **pause after a week of inactivity** — restore it from the Supabase dashboard. Also check your network and the `DATABASE_URL` host. |
 | `/readyz` returns 503 with `"migrations": "pending"` | Run `uv run alembic upgrade head` in `backend/`. |
 | The page loads at `http://127.0.0.1:5173` but not, or vice versa | Vite listens on `localhost`, which can resolve to IPv6 only. Use **http://localhost:5173**. |
-| The start page says the API is unreachable | The backend isn't running on port 8000. Start it (terminal 1) and click **Check again**. |
+| The status page (`/status`) says the API is unreachable | The backend isn't running on port 8000. Start it (terminal 1) and click **Check again**. |
 | PowerShell: `npm.ps1 cannot be loaded because running scripts is disabled` | Use `npm.cmd` instead of `npm`, or allow scripts for your user: `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`. |
 | Windows: `npm ci` fails with `EPERM: operation not permitted, unlink ... .node` | A running Vite dev or preview server has the native module open. Stop `npm run dev` / `npm run e2e`, then rerun `npm ci`. If it was interrupted, `npm install` restores `node_modules`. |
 | `npm run e2e`: `Executable doesn't exist` | Install the browser once: `npx playwright install chromium`. |

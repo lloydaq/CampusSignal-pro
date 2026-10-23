@@ -12,7 +12,7 @@ function row(name: string): HTMLElement {
 describe("Service status", () => {
   it("shows API running and database ready", async () => {
     mockFetch({ "/healthz": () => json({ status: "ok" }), "/readyz": () => json({ status: "ready" }) });
-    renderRoute("/");
+    renderRoute("/status");
     await screen.findByText("Running");
     expect(row("API")).toHaveTextContent("Running");
     expect(row("Database")).toHaveTextContent("Ready");
@@ -23,7 +23,7 @@ describe("Service status", () => {
       "/healthz": () => json({ status: "ok" }),
       "/readyz": () => envelope(503, "not_ready", "The service is not ready.", { migrations: "pending" }),
     });
-    renderRoute("/");
+    renderRoute("/status");
     expect(await screen.findByText("Migrations pending")).toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
@@ -33,14 +33,14 @@ describe("Service status", () => {
       "/healthz": () => json({ status: "ok" }),
       "/readyz": () => envelope(503, "not_ready", "The service is not ready.", { database: "unreachable" }),
     });
-    renderRoute("/");
+    renderRoute("/status");
     await screen.findByText("Running");
     expect(row("Database")).toHaveTextContent("Unreachable");
   });
 
   it("reports the API as unreachable when the server can't be contacted", async () => {
     vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new TypeError("Failed to fetch"))));
-    renderRoute("/");
+    renderRoute("/status");
     expect(await screen.findByText("Unknown while the API is unreachable")).toBeInTheDocument();
     expect(row("API")).toHaveTextContent("Unreachable");
   });
@@ -54,7 +54,7 @@ describe("Service status", () => {
       },
       "/readyz": () => json({ status: "ready" }),
     });
-    renderRoute("/");
+    renderRoute("/status");
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Couldn't check service status");
     expect(alert).toHaveTextContent("Something went wrong on our side.");
@@ -67,7 +67,7 @@ describe("Service status", () => {
 
   it("checks again on request", async () => {
     const fetchMock = mockFetch({ "/healthz": () => json({ status: "ok" }), "/readyz": () => json({ status: "ready" }) });
-    renderRoute("/");
+    renderRoute("/status");
     await screen.findByText("Running");
     await userEvent.click(screen.getByRole("button", { name: "Check again" }));
     await screen.findByRole("button", { name: "Check again" });
@@ -76,7 +76,7 @@ describe("Service status", () => {
 
   it("announces that it is checking while the first request is in flight", () => {
     vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>(() => undefined)));
-    renderRoute("/");
+    renderRoute("/status");
     expect(screen.getByRole("status")).toHaveTextContent("Checking service status");
   });
 });
