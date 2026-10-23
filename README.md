@@ -217,6 +217,29 @@ curl http://127.0.0.1:8000/readyz    # {"status":"ready"}
 
 API docs (local only): http://127.0.0.1:8000/api/v1/docs
 
+### 4. Operator commands
+
+Run these from `backend/`, on the server or locally. They use the same `.env` settings as the API. Both commands are the same in PowerShell and bash.
+
+```bash
+# Create a platform-admin account. You're asked for the password twice.
+uv run python -m app.cli create-platform-admin --email ops@example.org --display-name "Platform Ops"
+
+# Run the retention purges. The deployment scheduler runs this every hour.
+uv run python -m app.jobs run-due
+```
+
+Platform admins can only be created this way, not through the app or the API. The command creates a new, already-verified account. It refuses an email that already has an account: an existing account is never promoted, so platform admins stay separate from college members. The password can't be passed as an argument, which keeps it out of shell history.
+
+`run-due` deletes:
+
+* expired sessions
+* sign-in tokens more than 7 days past their expiry
+* rate-limit counters older than 1 day
+* audit-log entries older than 2 years
+
+It writes one JSON log line per purge with the number of rows deleted. It exits with code 1 if any purge failed. Running it again is safe.
+
 ---
 
 ## 🧪 Testing
@@ -224,7 +247,7 @@ API docs (local only): http://127.0.0.1:8000/api/v1/docs
 Backend, from `backend/`:
 
 ```bash
-uv run pytest -q                                  # unit tests; 6 integration tests skip locally
+uv run pytest -q                                  # unit tests; integration tests skip without TEST_DATABASE_URL
 uv run ruff check . ; uv run ruff format --check . ; uv run mypy
 ```
 
@@ -248,7 +271,7 @@ The browser tests build the app, serve it on port 4173 and mock every backend ca
 
 ### Integration tests
 
-The six database integration tests **downgrade migrations and create roles**, so they only run against a throwaway PostgreSQL 17 and refuse anything else: the host must be `localhost`, the database name must end in `_test`, and Supabase hosts are always rejected. GitHub Actions runs them on every push and pull request. To run them yourself against a local disposable PostgreSQL 17:
+The database integration tests **downgrade migrations and create roles**, so they only run against a throwaway PostgreSQL 17 and refuse anything else: the host must be `localhost`, the database name must end in `_test`, and Supabase hosts are always rejected. GitHub Actions runs them on every push and pull request. To run them yourself against a local disposable PostgreSQL 17:
 
 ```powershell
 # PowerShell, backend/

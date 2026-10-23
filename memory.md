@@ -2,7 +2,7 @@
 
 Concise, verified state for new sessions. Details live in the linked documents; do not copy them here. Never store secrets here.
 
-**Last updated:** 2026-10-21 (Phase 2b implemented on `phase2/auth-api`, awaiting review)
+**Last updated:** 2026-10-23 (Phase 2c operator CLI implemented on `phase2/operator-cli`, awaiting review)
 
 ## 1. Project
 CampusSignal (official name, P-4) — multi-college campus platform: isolated college spaces with official notices, student community, department pages, private academic info (timetable, attendance, results), and campus issue reporting. Spec: `PRD.md`.
@@ -40,7 +40,7 @@ College derived from session's ACTIVE membership on `/api/v1/campus/*` (no clien
 |---|---|
 | 0 Setup & docs | DONE (verified 2026-10-20, commit `095ffef`) |
 | 1 Foundation | DONE (verified 2026-10-21, `master` `b8f5930`: both workflows green; clean-clone README run passed) |
-| 2 Identity | IN PROGRESS — 2a merged (`988e9d9`); 2b (auth API) implemented on `phase2/auth-api`, uncommitted, 356 tests pass locally (0 skipped); 2c operator CLI and 2d frontend not started |
+| 2 Identity | IN PROGRESS — 2a merged (PR #5, `988e9d9`); 2b auth API merged (PR #6, `eb9f242`); 2c operator CLI implemented on `phase2/operator-cli` (376 tests pass, 0 skipped, local PG 16), awaiting review/CI; 2d frontend not started |
 | 3–11 | NOT STARTED |
 
 Completed milestones (2026-10-20): documentation set; pre-development review; owner decisions P-4/P-7/P-8/P-9 applied; `CLAUDE.md` aligned; `.gitignore`; initial commit `095ffef`. Nothing implemented.
@@ -73,6 +73,7 @@ Verified 2026-10-21 (Windows, Git Bash; uv 0.13.1 provides managed CPython 3.12.
 - `uv run pytest -q` · `uv run ruff check .` · `uv run ruff format --check .` · `uv run mypy`
 - `uv run uvicorn app.main:app --reload` (lazy module attribute, verified 2026-10-21) or `uv run uvicorn app.main:app_factory --factory --reload` — both need `APP_ENV`, `APP_ORIGIN`, `DATABASE_URL` (copy `.env.example` to `.env`); refuse to start without them. Importing `app.main` never reads settings.
 - `uv run alembic upgrade head` / `current` / `check` — verified against the Supabase dev DB (applied `0001`, then `0002`; now `0002 (head)`)
+- `uv run python -m app.cli create-platform-admin --email … --display-name …` and `uv run python -m app.jobs run-due` — verified 2026-10-23 (Linux, against the local test DB only; not yet run on Supabase)
 - `/readyz` → 503 `migrations: pending` before upgrade, 200 after; `/healthz` 200 throughout
 - CI (passing on `0213f34`): `.github/workflows/backend.yml` — locked `uv sync`, whole-tree `git diff --check`, ruff, format, mypy, compileall, unit tests, integration tests (must all run, 0 skipped), `alembic upgrade head` + `check` on the test DB.
 From `frontend/` (verified 2026-10-21, Node 24.15, npm 11.12): `npm install` · `npm run dev` (Vite on http://localhost:5173 — it listens on the IPv6 loopback, so use `localhost`, not `127.0.0.1`; proxies `/api`, `/healthz`, `/readyz` to `127.0.0.1:8000`) · `npm test` · `npm run lint` · `npm run typecheck` · `npm run build`.
@@ -80,6 +81,7 @@ From `frontend/` (verified 2026-10-21, Node 24.15, npm 11.12): `npm install` · 
 CI: `.github/workflows/backend.yml` and `.github/workflows/frontend.yml` both green on `b8f5930`. Before pushing, run the CI whitespace check on the commit: `git diff --check "$(git hash-object -t tree /dev/null)" HEAD` (it also catches blank lines at end of file). Docker is no longer used.
 
 ## 10. Test / verification status
+**Phase 2c (2026-10-23, cloud session):** `app/cli` (`create-platform-admin`), `app/jobs` (`run-due`), `services/platform_admins.py`, `services/retention.py`. 376 backend tests passed, 0 skipped (`CAMPUSSIGNAL_REQUIRE_INTEGRATION=1`, `-W error::DeprecationWarning`), on a local **PostgreSQL 16** (`campussignal_test`; the container had no 17), so CI on 17 is still owed. New: 12 unit tests (argument handling, no `--password` option, prompts, mismatch/weak/cancel, failing purge isolated) and 8 integration tests (admin created verified + audited, existing email refused not promoted, re-run refused, admin signs in with 7-day cookie; purge cutoffs incl. boundary rows, second run deletes nothing, audit purge flag doesn't outlive its transaction, `run-due` logs counts). Mutation check: dropping the `audit_purge` flag made 3 retention tests fail. Real entry points run as subprocesses against the test DB: admin created, duplicate refused, `run-due` exit 0 with 4 JSON lines. No new dependencies (stdlib `argparse`/`getpass`). Note: with piped stdin `getpass` warns that input may echo; use a terminal.
 **Phase 2a (2026-10-21, local):** local PostgreSQL 17.11 test DB `campussignal_test` on localhost (user-level `TEST_DATABASE_URL`; new shells inherit it, already-open ones do not). 122 backend tests passed, 0 skipped — all 16 integration tests ran, also in CI mode (`CAMPUSSIGNAL_REQUIRE_INTEGRATION=1`). Guarded Alembic CLI on the test DB: `check` clean, `downgrade base` + `upgrade head` round trip, `0003` triggers present, trigger function not executable by PUBLIC. Test runs override `DATABASE_URL` with an unreachable URL so nothing can fall back to Supabase. `0003` NOT applied to Supabase yet.
 
 **Phase 1 exit (2026-10-21):** GitHub Actions on `master` `b8f5930` (merge of PR #3): `backend` (whitespace, ruff, mypy, unit, 6 integration tests on disposable `postgres:17.11`, alembic check) and `frontend` (`checks`: npm ci, ESLint, tsc, Vitest, build; `e2e`: Playwright + axe) all succeeded. Fresh clone of `master` following the README: `uv sync --locked`, `alembic upgrade head`/`current` (dev DB at head, no-op), uvicorn `/healthz` 200 + `/readyz` 200 `ready`, `npm ci` (263 packages), `npm run dev` 200. Settings were passed as environment variables; `.env` was not copied.
@@ -97,4 +99,4 @@ CI: `.github/workflows/backend.yml` and `.github/workflows/frontend.yml` both gr
 - Backend deps: fastapi 0.156.4, uvicorn 0.54.0, pydantic-settings 2.16.1; dev: pytest 9.1.1, httpx2 2.13.1 + httpcore2 2.13.1 (pinned `==2.13.1`: Starlette ≥1.2 test client prefers httpx2 and deprecates `httpx`; 2.13.1 chosen over the same-day 2.16.0 release), ruff 0.17.1, mypy 2.4.0.
 
 ## 11. Next task
-Phase 2 — identity and platform bootstrap (Phases.md Phase 2: AUTH-001…010, ADMIN-005, ADMIN-006 audit infrastructure; P-2 email provider and P-10 platform-admin session limits are open decisions). Propose a plan and get approval before implementing.
+Get `phase2/operator-cli` (2c) reviewed and merged once CI is green, then Phase 2d — frontend auth screens, CSRF/401 handling, E2E register → verify (Mailpit) → sign in (Phases.md Phase 2). Propose a plan and get approval before implementing. 2c decisions (2026-10-23, owner "go"): `create-platform-admin` refuses existing emails (no `--promote`); the 2-year audit purge ships now under the PRD §21 retention assumption.
