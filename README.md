@@ -88,7 +88,7 @@ CampusSignal follows a phased development plan.
 
 Refer to [`Phases.md`](Phases.md) for the complete roadmap and acceptance criteria.
 
-**Current status:** Phase 1 (Foundation) is complete. Phase 2 (accounts and sign-in) is in progress: you can register, verify your email, sign in and out, and reset or change your password. Joining a college arrives in Phase 3.
+**Current status:** Phases 1 (Foundation) and 2 (accounts and sign-in) are complete: you can register, verify your email, sign in and out, and reset or change your password. Phase 3 (colleges and membership) is next.
 
 ---
 
@@ -115,7 +115,7 @@ The project is being developed with documentation-driven planning.
 * [x] Database (PostgreSQL 17, SQLAlchemy, Alembic migrations, `/readyz`)
 * [x] Backend CI with integration tests on a disposable PostgreSQL 17
 * [x] Frontend shell, frontend CI (Playwright + axe) and this setup guide
-* [ ] Authentication (Phase 2)
+* [x] Authentication (Phase 2)
 * [ ] Core features (Phase 3 onward)
 * [ ] Deployment (Phase 10)
 
