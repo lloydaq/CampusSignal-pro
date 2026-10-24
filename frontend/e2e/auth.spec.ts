@@ -116,6 +116,8 @@ test.describe("journeys", () => {
     await mockAuthApi(page);
     await page.goto("/sign-in");
     await page.getByRole("link", { name: "Forgot your password?" }).click();
+    // Sign-in has an Email field too: wait for the new page before filling it.
+    await expect(page.getByRole("heading", { level: 1, name: "Reset your password" })).toBeVisible();
     await page.getByLabel("Email").fill("someone@riverside.example");
     await page.getByRole("button", { name: "Send reset link" }).click();
     await expect(page.getByText(/If an account exists for that email/)).toBeVisible();
