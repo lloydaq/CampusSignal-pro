@@ -42,7 +42,9 @@ test("register, verify by email, sign in and out", async ({ page, request }) => 
 
   await page.getByRole("link", { name: "Sign in" }).click();
   await signInAs(page, email, PASSWORD);
-  await expect(page.getByRole("heading", { level: 1, name: "Your account" })).toBeVisible();
+  // A verified account without a college lands on the join flow (no colleges exist here).
+  await expect(page.getByRole("heading", { level: 1, name: "Join your college" })).toBeVisible();
+  await page.goto("/account");
   await expect(page.getByText("Verified", { exact: true })).toBeVisible();
 
   // US-01: the same link a second time says it was already used.
@@ -85,7 +87,8 @@ test("reset a password by email; the old one stops working", async ({ page, requ
   await signInAs(page, email, PASSWORD);
   await expect(page.getByRole("alert")).toHaveText("Email or password is incorrect.");
   await signInAs(page, email, NEW_PASSWORD);
-  await expect(page.getByRole("heading", { level: 1, name: "Your account" })).toBeVisible();
-  // A reset doesn't verify the email (AUTH-006, decided 2026-10-21).
+  // A reset doesn't verify the email (AUTH-006, decided 2026-10-21), so joining asks for it.
+  await expect(page.getByRole("heading", { level: 1, name: "Verify your email first" })).toBeVisible();
+  await page.goto("/account");
   await expect(page.getByText("Not verified")).toBeVisible();
 });

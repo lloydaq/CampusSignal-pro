@@ -1,7 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 
 import { Callout } from "@/components/Callout";
 import { FormField } from "@/components/FormField";
@@ -11,6 +11,7 @@ import { zodResolver } from "@/lib/zodResolver";
 
 import { register } from "./api";
 import { AuthHeading } from "./AuthHeading";
+import { safeNextPath } from "./navigation";
 import { PASSWORD_MIN, registerSchema, type RegisterValues } from "./schemas";
 import { applyServerError } from "./serverErrors";
 
@@ -18,6 +19,8 @@ export const PASSWORD_RULES = `At least ${PASSWORD_MIN} characters. Avoid common
 
 export function RegisterPage() {
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const next = params.get("next");
   const [formError, setFormError] = useState<string | null>(null);
   const form = useForm<RegisterValues>({
     resolver: zodResolver(registerSchema),
@@ -29,7 +32,7 @@ export function RegisterPage() {
   const mutation = useMutation({
     mutationFn: register,
     // The same answer for new and already-registered emails (AUTH-002): no enumeration.
-    onSuccess: () => void navigate("/check-email"),
+    onSuccess: () => void navigate(next !== null ? `/check-email?next=${encodeURIComponent(safeNextPath(next))}` : "/check-email"),
     onError: (error) => setFormError(applyServerError(error, form.setError, ["display_name", "email", "password"], "Too many sign-ups from this network.")),
   });
 
@@ -41,7 +44,7 @@ export function RegisterPage() {
   return (
     <div className="space-y-8">
       <AuthHeading title="Create your account">
-        <p>You'll join your college after you verify your email.</p>
+        <p>After you verify your email, you can join your college.</p>
       </AuthHeading>
       <form noValidate onSubmit={(event) => void onSubmit(event)} className="space-y-5">
         {formError && <Callout tone="danger">{formError}</Callout>}
@@ -53,7 +56,8 @@ export function RegisterPage() {
         </SubmitButton>
       </form>
       <p className="text-sm text-muted">
-        Already have an account? <TextLink to="/sign-in">Sign in</TextLink>
+        Already have an account?{" "}
+        <TextLink to={next !== null ? `/sign-in?next=${encodeURIComponent(safeNextPath(next))}` : "/sign-in"}>Sign in</TextLink>
       </p>
     </div>
   );

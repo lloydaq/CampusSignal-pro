@@ -15,8 +15,8 @@ describe("safeNextPath", () => {
     "/\t/evil.example",
     "/\n//evil.example",
     "javascript:alert(1)",
-  ])("falls back to the account page for %j", (value) => {
-    expect(safeNextPath(value)).toBe("/account");
+  ])("falls back to the start page for %j", (value) => {
+    expect(safeNextPath(value)).toBe("/");
   });
 
   it("round-trips the current location through the sign-in URL", () => {

@@ -1,7 +1,7 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { USER, signedIn, signedOut } from "@/test/auth";
+import { MEMBER, USER, signedIn, signedOut } from "@/test/auth";
 import { envelope, json, mockFetch, noContent, requestsTo, sentBody } from "@/test/http";
 import { renderRoute } from "@/test/render";
 
@@ -23,11 +23,18 @@ describe("routing by session", () => {
     expect(document.title).toBe("Sign in · CampusSignal");
   });
 
-  it("sends signed-in visitors from / and /sign-in to their account", async () => {
+  it("sends signed-in visitors on from /sign-in to where they were going", async () => {
     mockFetch({ [ME]: signedIn() });
     const { router } = renderRoute("/sign-in?next=%2Faccount");
-    expect(await screen.findByRole("heading", { level: 1, name: "Your account" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: "Account" })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe("/account");
+  });
+
+  it("sends members from / to their college home", async () => {
+    mockFetch({ [ME]: signedIn({}, MEMBER) });
+    const { router } = renderRoute("/");
+    expect(await screen.findByRole("heading", { level: 1, name: "Northfield Institute" })).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/home");
   });
 
   it("asks for sign-in with a return path when /account is opened signed out", async () => {
@@ -44,7 +51,7 @@ describe("routing by session", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "Couldn't load your account" })).toBeInTheDocument();
     expect(screen.getByText("Request ID req-500")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Try again" }));
-    expect(await screen.findByRole("heading", { level: 1, name: "Your account" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: "Account" })).toBeInTheDocument();
   });
 });
 
@@ -62,7 +69,14 @@ describe("sign in", () => {
   });
 
   it("signs in, sends the normalised email and continues to the return path", async () => {
-    const fetchMock = mockFetch({ [ME]: signedOut, "POST /api/v1/auth/login": () => json({ user: USER, csrf_token: "t" }) });
+    let session = false;
+    const fetchMock = mockFetch({
+      [ME]: () => (session ? signedIn()() : signedOut()),
+      "POST /api/v1/auth/login": () => {
+        session = true;
+        return json({ user: USER, csrf_token: "t" });
+      },
+    });
     const { router } = renderRoute("/sign-in?next=%2Faccount%3Ftab%3Dsecurity");
     await userEvent.type(await screen.findByLabelText("Email"), " Aarav@Northfield.Example ");
     await userEvent.type(screen.getByLabelText("Password"), PASSWORD);
@@ -73,12 +87,19 @@ describe("sign in", () => {
   });
 
   it("ignores an off-site return path", async () => {
-    mockFetch({ [ME]: signedOut, "POST /api/v1/auth/login": () => json({ user: USER, csrf_token: "t" }) });
+    let session = false;
+    mockFetch({
+      [ME]: () => (session ? signedIn({}, MEMBER)() : signedOut()),
+      "POST /api/v1/auth/login": () => {
+        session = true;
+        return json({ user: USER, csrf_token: "t" });
+      },
+    });
     const { router } = renderRoute("/sign-in?next=https%3A%2F%2Fevil.example%2F");
     await userEvent.type(await screen.findByLabelText("Email"), USER.email);
     await userEvent.type(screen.getByLabelText("Password"), PASSWORD);
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
-    await waitFor(() => expect(router.state.location.pathname).toBe("/account"));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/home"));
   });
 
   it("shows the one generic failure message and clears the password", async () => {
@@ -157,7 +178,7 @@ describe("register", () => {
     await userEvent.click(screen.getByRole("button", { name: "Create account" }));
     expect(await screen.findByRole("heading", { level: 1, name: "Check your email" })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe("/check-email");
-    expect(screen.getByRole("link", { name: "sign in to send a new link" })).toHaveAttribute("href", "/sign-in?next=%2Faccount");
+    expect(screen.getByRole("link", { name: "sign in" })).toHaveAttribute("href", "/sign-in?next=%2Fjoin");
     expect(sentBody(fetchMock, "/api/v1/auth/register")).toEqual({ display_name: "Aarav Nair", email: USER.email, password: PASSWORD });
   });
 });
@@ -198,8 +219,9 @@ describe("verify email", () => {
         return json({ message: "Your email is verified." });
       },
     });
-    renderRoute("/verify-email");
-    await userEvent.click(await screen.findByRole("link", { name: "Go to your account" }));
+    const { router } = renderRoute("/verify-email");
+    await screen.findByRole("link", { name: "Continue" });
+    await act(() => router.navigate("/account"));
     const profile = await screen.findByRole("region", { name: "Profile" });
     expect(within(profile).getByText("Verified")).toBeInTheDocument();
   });
@@ -216,7 +238,7 @@ describe("verify email", () => {
     mockFetch({ [ME]: signedOut, "POST /api/v1/auth/verify-email": () => envelope(400, "token_expired", "This link has expired.") });
     renderRoute("/verify-email");
     expect(await screen.findByRole("heading", { level: 1, name: "This link has expired" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Sign in to get a new link" })).toHaveAttribute("href", "/sign-in?next=%2Faccount");
+    expect(screen.getByRole("link", { name: "Sign in to get a new link" })).toHaveAttribute("href", "/sign-in?next=%2Fjoin");
   });
 
   it("offers a resend button when an expired link is opened signed in (US-01)", async () => {
@@ -341,15 +363,86 @@ describe("account", () => {
     expect(within(section).getByLabelText("New password")).toHaveValue("");
   });
 
-  it("sends the user to sign in with a return path when the session ended meanwhile", async () => {
-    mockFetch({ [ME]: signedIn(), "POST /api/v1/me/password": signedOut });
+  it("keeps the page and its input when the session ends, and continues after signing in again", async () => {
+    let session = true;
+    let changes = 0;
+    mockFetch({
+      // After signing in again, /me answers slowly: the page must not redirect meanwhile.
+      [ME]: () =>
+        session ? new Promise<Response>((resolve) => setTimeout(() => resolve(signedIn()()), 30)) : signedOut(),
+      "POST /api/v1/me/password": () => {
+        changes += 1;
+        if (changes === 1) {
+          session = false; // the session expired just before this request
+          return signedOut();
+        }
+        return json({ csrf_token: "new" });
+      },
+      "POST /api/v1/auth/login": () => {
+        session = true;
+        return json({ user: USER, csrf_token: "t" });
+      },
+    });
+    const { router } = renderRoute("/account");
+    const visited: string[] = [];
+    router.subscribe((state) => visited.push(state.location.pathname));
+    const section = await screen.findByRole("region", { name: "Change password" });
+    await userEvent.type(within(section).getByLabelText("Current password"), PASSWORD);
+    await userEvent.type(within(section).getByLabelText("New password"), "copper-meadow-harbour");
+    await userEvent.type(within(section).getByLabelText("Repeat new password"), "copper-meadow-harbour");
+    await userEvent.click(within(section).getByRole("button", { name: "Change password" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "Your session ended" });
+    expect(router.state.location.pathname).toBe("/account"); // no redirect: the page stays
+    expect(within(section).queryByRole("alert")).not.toBeInTheDocument(); // the dialog explains it
+    expect(within(dialog).getByLabelText("Email")).toHaveValue(USER.email);
+    await userEvent.type(within(dialog).getByLabelText("Password"), PASSWORD);
+    await userEvent.click(within(dialog).getByRole("button", { name: "Sign in" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(visited.filter((path) => path !== "/account")).toEqual([]); // never left the page
+
+    // What was typed is still there; submitting again now works.
+    const again = screen.getByRole("region", { name: "Change password" });
+    expect(within(again).getByLabelText("New password")).toHaveValue("copper-meadow-harbour");
+    await userEvent.click(within(again).getByRole("button", { name: "Change password" }));
+    expect(await within(again).findByText(/Your password was changed/)).toBeInTheDocument();
+  });
+
+  it("starts over from its own home when someone else signs in after a session ended", async () => {
+    const other = { id: "someone-else", email: "other@northfield.example" };
+    let who: "user" | "nobody" | "other" = "user";
+    mockFetch({
+      [ME]: () => (who === "user" ? signedIn()() : who === "other" ? signedIn(other, MEMBER)() : signedOut()),
+      "POST /api/v1/me/password": () => {
+        who = "nobody";
+        return signedOut();
+      },
+      "POST /api/v1/auth/login": () => {
+        who = "other";
+        return json({ user: { ...USER, ...other }, csrf_token: "t" });
+      },
+    });
     const { router } = renderRoute("/account");
     const section = await screen.findByRole("region", { name: "Change password" });
     await userEvent.type(within(section).getByLabelText("Current password"), PASSWORD);
     await userEvent.type(within(section).getByLabelText("New password"), "copper-meadow-harbour");
     await userEvent.type(within(section).getByLabelText("Repeat new password"), "copper-meadow-harbour");
     await userEvent.click(within(section).getByRole("button", { name: "Change password" }));
+    const dialog = await screen.findByRole("dialog", { name: "Your session ended" });
+    await userEvent.clear(within(dialog).getByLabelText("Email"));
+    await userEvent.type(within(dialog).getByLabelText("Email"), other.email);
+    await userEvent.type(within(dialog).getByLabelText("Password"), PASSWORD);
+    await userEvent.click(within(dialog).getByRole("button", { name: "Sign in" }));
+    // Not the previous person's half-finished page: the new account's own home.
+    await waitFor(() => expect(router.state.location.pathname).toBe("/home"));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("a fresh visit while signed out still goes to the sign-in page", async () => {
+    mockFetch({ [ME]: signedOut });
+    const { router } = renderRoute("/account");
     await waitFor(() => expect(router.state.location.pathname + router.state.location.search).toBe("/sign-in?next=%2Faccount"));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("signs out and says so on the sign-in screen", async () => {

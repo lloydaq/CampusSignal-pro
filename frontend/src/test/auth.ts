@@ -1,4 +1,4 @@
-import type { User } from "@/features/auth/api";
+import type { Me, Membership, User } from "@/features/auth/api";
 
 import { envelope, json } from "./http";
 
@@ -10,5 +10,30 @@ export const USER: User = {
   platform_role: null,
 };
 
+export const NORTHFIELD_MEMBERSHIP: Membership = {
+  id: "5b1c0d5e-0000-4000-8000-000000000001",
+  kind: "STUDENT",
+  status: "ACTIVE",
+  college: {
+    id: "c0000000-0000-4000-8000-000000000001",
+    name: "Northfield Institute",
+    slug: "northfield",
+    timezone: "Asia/Kolkata",
+    status: "ACTIVE",
+    is_demo: true,
+  },
+  department: { id: "d0000000-0000-4000-8000-000000000001", code: "CSE", name: "Computer Science" },
+};
+
+/** /me for a signed-in account; by default a verified user with no college yet. */
+export function meFor(user: Partial<User> = {}, extra: Partial<Me> = {}): Me {
+  return { user: { ...USER, ...user }, membership: null, roles: [], capabilities: [], ...extra };
+}
+
+export const MEMBER: Partial<Me> = { membership: NORTHFIELD_MEMBERSHIP, capabilities: ["campus"] };
+
 export const signedOut = () => envelope(401, "not_authenticated", "Sign in to continue.");
-export const signedIn = (user: Partial<User> = {}) => () => json({ user: { ...USER, ...user } });
+export const signedIn =
+  (user: Partial<User> = {}, extra: Partial<Me> = {}) =>
+  () =>
+    json(meFor(user, extra));

@@ -9,13 +9,18 @@ import { RegisterPage } from "@/features/auth/RegisterPage";
 import { ResetPasswordPage } from "@/features/auth/ResetPasswordPage";
 import { SignInPage } from "@/features/auth/SignInPage";
 import { VerifyEmailPage } from "@/features/auth/VerifyEmailPage";
+import { HomePage } from "@/features/campus/HomePage";
+import { InviteAcceptPage } from "@/features/campus/InviteAcceptPage";
+import { JoinPage } from "@/features/campus/JoinPage";
 import { StatusPage } from "@/features/system-status/StatusPage";
 
+import { AppShell } from "./shells/AppShell";
 import { AuthShell } from "./shells/AuthShell";
 
 /**
- * Phase 2: account screens. Paths for emailed links (/verify-email, /reset-password,
- * /sign-in, /forgot-password) are fixed by the backend's email templates.
+ * Signed-out screens use the centred AuthShell; signed-in ones the AppShell with navigation.
+ * Paths for emailed links (/verify-email, /reset-password, /invites/accept, /sign-in,
+ * /forgot-password) are fixed by the backend's email templates.
  */
 export const routes: RouteObject[] = [
   {
@@ -33,9 +38,22 @@ export const routes: RouteObject[] = [
       { path: "check-email", element: <CheckEmailPage /> },
       { path: "verify-email", element: <VerifyEmailPage /> },
       { path: "reset-password", element: <ResetPasswordPage /> },
+      { path: "invites/accept", element: <InviteAcceptPage /> },
       { path: "status", element: <StatusPage /> },
-      { element: <RequireAuth />, children: [{ path: "account", element: <AccountPage /> }] },
       { path: "*", element: <NotFoundPage /> },
+    ],
+  },
+  {
+    element: <RequireAuth />,
+    children: [
+      {
+        element: <AppShell />,
+        children: [
+          { path: "home", element: <HomePage /> },
+          { path: "join", element: <JoinPage /> },
+          { path: "account", element: <AccountPage /> },
+        ],
+      },
     ],
   },
 ];

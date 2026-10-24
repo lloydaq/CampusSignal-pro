@@ -81,7 +81,18 @@ export function statusRow(page: Page, name: "API" | "Database") {
 export interface FakeAccount {
   signedIn: boolean;
   emailVerified: boolean;
+  /** NONE: no college yet; PENDING: request waiting; ACTIVE: member of Northfield (demo). */
+  membership: "NONE" | "PENDING" | "ACTIVE";
 }
+
+const NORTHFIELD = {
+  id: "c0000000-0000-4000-8000-000000000001",
+  name: "Northfield Institute",
+  slug: "northfield",
+  timezone: "Asia/Kolkata",
+  status: "ACTIVE",
+  is_demo: true,
+};
 
 const FAKE_USER = {
   id: "8d6c1c55-6a66-4bd7-9b1b-6b8e1d1d0001",
@@ -105,13 +116,47 @@ function apiError(route: Route, status: number, code: string, message: string, d
  * (backend app/api/v1/auth.py, me.py). The password "wrong-password" fails sign-in.
  */
 export async function mockAuthApi(page: Page, initial: Partial<FakeAccount> = {}): Promise<FakeAccount> {
-  const account: FakeAccount = { signedIn: false, emailVerified: true, ...initial };
+  const account: FakeAccount = { signedIn: false, emailVerified: true, membership: "NONE", ...initial };
   const user = () => ({ ...FAKE_USER, email_verified: account.emailVerified });
+  const me = () => ({
+    user: user(),
+    membership:
+      account.membership === "NONE"
+        ? null
+        : {
+            id: "5b1c0d5e-0000-4000-8000-000000000001",
+            kind: "STUDENT",
+            status: account.membership,
+            college: NORTHFIELD,
+            department: account.membership === "ACTIVE" ? { id: "d1", code: "CSE", name: "Computer Science" } : null,
+          },
+    roles: [],
+    capabilities: account.membership === "ACTIVE" ? ["campus"] : [],
+  });
   await mockBackend(page, "ready");
 
   await page.route("**/api/v1/me", (route) =>
-    account.signedIn ? json(route, 200, { user: user() }, "e2e-me") : apiError(route, 401, "not_authenticated", "Sign in to continue."),
+    account.signedIn ? json(route, 200, me(), "e2e-me") : apiError(route, 401, "not_authenticated", "Sign in to continue."),
   );
+  await page.route("**/api/v1/colleges", (route) =>
+    json(route, 200, { items: [{ name: "Northfield Institute", slug: "northfield" }, { name: "Riverside College", slug: "riverside" }] }, "e2e-colleges"),
+  );
+  await page.route("**/api/v1/me/membership-requests", (route) => {
+    if (route.request().method() === "GET") return json(route, 200, { items: [] }, "e2e-requests");
+    const { roll_number } = route.request().postDataJSON() as { roll_number: string };
+    if (roll_number.trim().toUpperCase() === "N-100") {
+      account.membership = "ACTIVE";
+      return json(route, 201, { status: "ACTIVE", message: "You've joined Northfield Institute.", membership: me().membership }, "e2e-join");
+    }
+    account.membership = "PENDING";
+    return json(route, 202, { status: "PENDING", message: "Request sent. Northfield Institute will review it." }, "e2e-join");
+  });
+  await page.route("**/api/v1/invites/accept", (route) => {
+    const { token } = route.request().postDataJSON() as { token: string };
+    if (token === "used") return apiError(route, 400, "token_used", "This invitation was already used.");
+    account.membership = "ACTIVE";
+    return json(route, 200, { membership: me().membership }, "e2e-invite");
+  });
   await page.route("**/api/v1/auth/login", (route) => {
     const body = route.request().postDataJSON() as { password?: string };
     if (body.password === "wrong-password") return apiError(route, 401, "invalid_credentials", "Email or password is incorrect.");
