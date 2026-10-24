@@ -1,100 +1,112 @@
-# CampusSignal 🏫
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/readme/hero-dark.svg">
+  <img alt="CampusSignal: one platform for many colleges. A preview of the notices list with an urgent pinned notice and an unread notification." src="docs/readme/hero-light.svg" width="100%">
+</picture>
 
-### One platform. Multiple colleges. One connected campus experience.
+<p align="center">
+  <a href="#what-it-does"><b>What it does</b></a> ·
+  <a href="#security"><b>Security</b></a> ·
+  <a href="#architecture"><b>Architecture</b></a> ·
+  <a href="#roadmap"><b>Roadmap</b></a> ·
+  <a href="#getting-started"><b>Getting started</b></a> ·
+  <a href="#docs"><b>Docs</b></a>
+</p>
 
-CampusSignal is a multi-college campus platform designed to bring academic information, student communities, department activities, official notices, and campus problem reporting into one unified digital space.
+CampusSignal is a multi-college campus platform. It brings official notices, department pages, a moderated student community, academic records and campus problem reporting into one place, so students and staff stop juggling disconnected websites, messaging groups and notice boards.
 
-Instead of relying on disconnected websites, messaging groups, and notice boards, CampusSignal aims to provide students and staff with a centralized platform for their college life.
-
----
-
-## 🎯 Vision
-
-Build a connected campus ecosystem where students, faculty, and college administrators can access the information and tools they need in one place.
-
-CampusSignal is designed to support multiple colleges while ensuring that each college's information and communities remain appropriately isolated.
-
-## ✨ Planned Features
-
-### 📚 Academic Management
-
-* Student attendance tracking
-* Examination marks and academic records
-* Timetable access
-* Role-based academic information access
-
-### 👥 Student Community
-
-* College-specific student communities
-* Student posts and discussions
-* Opportunities to connect with fellow students
-
-### 🏢 Department Communities
-
-* Department-specific announcements
-* Event updates and activities
-* Dedicated spaces for departmental communication
-
-### 📢 News & Notices
-
-* Official college announcements
-* Department notices
-* Centralized access to important updates
-
-### 🛠️ Campus Issue Reporting
-
-* Report campus problems
-* Track reported issues
-* Improve communication between students and college administrators
-
-### 🏫 Multi-College Architecture
-
-* Support for multiple colleges
-* College-specific access and communities
-* Role-based permissions
-* Tenant isolation to protect college data
-
-> **Note:** These are planned capabilities. Application implementation has not started yet.
+Every college gets its own private space. People only ever see their own college, and the server enforces that on every request.
 
 ---
 
-## 🔐 Security First
+<a id="what-it-does"></a>
 
-Security is a core architectural requirement, not an afterthought.
+## ✨ What it does
 
-CampusSignal's design emphasizes:
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/readme/features-dark.svg">
+  <img alt="Six areas and their status. Built: accounts and sessions; colleges, roles and joining. In progress: notices and notifications. Planned: campus issue reporting, moderated community, Academic Hub." src="docs/readme/features-light.svg" width="100%">
+</picture>
 
-* Server-side session management
-* Role-based authorization
-* College-scoped data access
-* Protection against cross-college data exposure
-* Request validation and security controls
-* Secure handling of sensitive information
+| Area | Status | What's there |
+| ---- | ------ | ------------ |
+| 🔑 Accounts and sessions | ✅ Built | Registration, email verification, sign-in and out, password reset and change, server-side sessions with CSRF protection |
+| 🏫 Colleges, roles, joining | ✅ Built | Colleges onboarded by platform admins; students join by roll number against the college roster, staff by invitation; approval queue; college and department admins; the **Manage** and **Platform** screens |
+| 📢 Notices and notifications | 🟠 In progress | College and department notices with drafts, urgent pins, expiry and withdrawal; in-app notifications for urgent notices and join decisions. The backend is done; the screens are next |
+| 🛠️ Campus issue reporting | Planned | Report a problem, follow its status, coordinators work the queue (Phase 5) |
+| 👥 Moderated community | Planned | College and department feeds with reactions, reports and moderation (Phase 6) |
+| 📚 Academic Hub | Planned | Timetable, attendance and results, shown only to the right people (Phase 7) |
 
-Real student or college data will not be introduced until the pilot college and applicable data agreement have been established.
-
----
-
-## 🗺️ Development Roadmap
-
-CampusSignal follows a phased development plan.
-
-| Phase          | Focus                                                                       |
-| -------------- | --------------------------------------------------------------------------- |
-| Phase 0        | Planning, requirements, architecture, and project setup                     |
-| Phase 1        | Foundation: backend, database, frontend shell, CI                           |
-| Phase 2        | Identity: registration, email verification, sessions, platform admin        |
-| Phase 3 onward | Colleges and tenant isolation, notices, issues, community, Academic Hub ... |
-
-Refer to [`Phases.md`](Phases.md) for the complete roadmap and acceptance criteria.
-
-**Current status:** Phases 1 (Foundation) and 2 (accounts and sign-in) are complete: you can register, verify your email, sign in and out, and reset or change your password. Phase 3 (colleges and membership) is next.
+Academic data in development and demos is synthetic and labelled "Demo data". CampusSignal never connects to college ERPs.
 
 ---
 
-## 📖 Project Documentation
+<a id="security"></a>
 
-The project is being developed with documentation-driven planning.
+## 🔐 Security first
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/readme/isolation-dark.svg">
+  <img alt="How a request is scoped: the session leads to the user's active membership, which fixes the college. Requests reach their own college; anything in another college answers 404, exactly like something that doesn't exist." src="docs/readme/isolation-light.svg" width="100%">
+</picture>
+
+Security is a core architectural requirement, not an afterthought:
+
+* **The college is never taken from the client.** Campus routes derive it from the signed-in user's active membership in the database.
+* **Another college's data doesn't exist for you.** Reading it answers `404`, the same as something that was never there, so nothing leaks by existence.
+* **Every permission decision lives in one place** (`backend/app/policies/`), and lists, counts and single reads use the same rules.
+* **The database backs it up:** college-scoped tables carry `college_id` with composite `(college_id, id)` foreign keys, so a row can't point into another college.
+* **Sessions stay on the server** in HttpOnly cookies with CSRF tokens; passwords are hashed with Argon2id; faculty and admin sessions expire sooner.
+* **Tests prove it:** every campus route is in a tenant-isolation suite, and a route inventory test fails if a new route skips it.
+
+Real student or college data will not be introduced until a pilot college and a data agreement are in place.
+
+---
+
+<a id="architecture"></a>
+
+## 🧭 How it fits together
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/readme/architecture-dark.svg">
+  <img alt="Browser to Caddy to the FastAPI backend (routers, policies, services, repositories) to PostgreSQL 17, with a mailer and an hourly jobs CLI." src="docs/readme/architecture-light.svg" width="100%">
+</picture>
+
+| Layer    | Choice |
+| -------- | ------ |
+| Frontend | React 19, TypeScript, Vite, Tailwind CSS 4, shadcn/ui, TanStack Query, React Router |
+| Backend  | Python 3.12, FastAPI, SQLAlchemy 2 (sync), Alembic, Pydantic v2, psycopg 3 |
+| Database | PostgreSQL 17: a hosted Supabase project for development; a disposable PostgreSQL 17 in CI |
+| Tests    | pytest, Vitest + Testing Library, Playwright + axe |
+| CI       | GitHub Actions (`.github/workflows/backend.yml`, `.github/workflows/frontend.yml`) |
+
+Details and the reasons behind each choice are in [`architecture.md`](architecture.md). Docker is not needed.
+
+---
+
+<a id="roadmap"></a>
+
+## 🗺️ Roadmap
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/readme/roadmap-dark.svg">
+  <img alt="Phases 0 to 3 are done, phase 4 (notices and notifications) is in progress, phases 5 to 11 are next. Release alpha after phase 4, beta after phase 6, MVP after phase 10." src="docs/readme/roadmap-light.svg" width="100%">
+</picture>
+
+* [x] **Phase 0–1:** requirements, architecture, design system; backend, database, frontend shell and CI
+* [x] **Phase 2:** accounts, email verification, sessions, password reset, platform admins
+* [x] **Phase 3:** colleges, departments, roster, joining and approval, roles, tenant isolation, Manage and Platform screens, `seed-demo`
+* [ ] **Phase 4:** notices ✅ and notifications ✅ (backend), screens next; staging deployment deferred
+* [ ] **Phase 5–11:** campus issues, community, Academic Hub, home screens, hardening, launch
+
+The checklist is updated only when work is completed and verified. [`Phases.md`](Phases.md) has every phase's tasks and definition of done.
+
+---
+
+<a id="docs"></a>
+
+## 📖 Project documentation
+
+The project follows documentation-driven development: these documents are authoritative, and the code follows them.
 
 | Document                             | Description                                                              |
 | ------------------------------------ | ------------------------------------------------------------------------ |
@@ -106,36 +118,11 @@ The project is being developed with documentation-driven planning.
 | [`CLAUDE.md`](CLAUDE.md)             | Project instructions for AI-assisted development                         |
 | [`memory.md`](memory.md)             | Current project state and next steps                                     |
 
----
-
-## 🚧 Project Status
-
-* [x] Product requirements, architecture, security and design documented
-* [x] Backend foundation (FastAPI, settings, error envelope, logging, `/healthz`)
-* [x] Database (PostgreSQL 17, SQLAlchemy, Alembic migrations, `/readyz`)
-* [x] Backend CI with integration tests on a disposable PostgreSQL 17
-* [x] Frontend shell, frontend CI (Playwright + axe) and this setup guide
-* [x] Authentication (Phase 2)
-* [ ] Core features (Phase 3 onward)
-* [ ] Deployment (Phase 10)
-
-The checklist is updated only when work is completed and verified.
+The README pictures are generated from the Design.md colour tokens by [`docs/readme/build_svgs.py`](docs/readme/build_svgs.py) (`python docs/readme/build_svgs.py`). Edit that script, not the SVGs.
 
 ---
 
-## 🧰 Technology Stack
-
-| Layer    | Choice |
-| -------- | ------ |
-| Frontend | React 19, TypeScript, Vite, Tailwind CSS 4, shadcn/ui, TanStack Query, React Router |
-| Backend  | Python 3.12, FastAPI, SQLAlchemy 2 (sync), Alembic, Pydantic v2, psycopg 3 |
-| Database | PostgreSQL 17 — a hosted Supabase project for development; a disposable PostgreSQL 17 in CI |
-| Tests    | pytest, Vitest + Testing Library, Playwright + axe |
-| CI       | GitHub Actions (`.github/workflows/backend.yml`, `.github/workflows/frontend.yml`) |
-
-Details and the reasons behind each choice are in [`architecture.md`](architecture.md). Docker is not needed.
-
----
+<a id="getting-started"></a>
 
 ## 🚀 Getting Started
 
@@ -244,6 +231,7 @@ Platform admins can only be created this way, not through the app or the API. Th
 * sign-in tokens more than 7 days past their expiry
 * rate-limit counters older than 1 day
 * audit-log entries older than 2 years
+* notifications older than 90 days
 
 It writes one JSON log line per purge with the number of rows deleted. It exits with code 1 if any purge failed. Running it again is safe.
 
