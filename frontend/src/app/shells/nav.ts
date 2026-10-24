@@ -1,4 +1,4 @@
-import { House, School, UserRound, type LucideIcon } from "lucide-react";
+import { House, School, Settings2, UserRound, type LucideIcon } from "lucide-react";
 
 import type { Me } from "@/features/auth/api";
 
@@ -13,6 +13,7 @@ export function navItems(me: Me): NavItem[] {
   const items: NavItem[] = [];
   if (me.capabilities.includes("campus")) items.push({ to: "/home", label: "Home", Icon: House });
   else if (!me.capabilities.includes("platform")) items.push({ to: "/join", label: "Join your college", Icon: School });
+  if (me.capabilities.includes("review_memberships")) items.push({ to: "/manage", label: "Manage", Icon: Settings2 });
   items.push({ to: "/account", label: "Account", Icon: UserRound });
   return items;
 }

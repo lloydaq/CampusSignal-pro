@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from "react-router";
+import { NavLink, Outlet, useMatches } from "react-router";
 
 import { Wordmark } from "@/components/Wordmark";
 import type { Me } from "@/features/auth/api";
@@ -21,6 +21,8 @@ function CollegeName({ me, className }: { me: Me; className?: string }) {
 export function AppShell() {
   const me = useMe();
   const items = navItems(me);
+  // Tables (Manage) use the content width; reading screens keep the reading measure.
+  const wide = useMatches().some((match) => (match.handle as { wide?: boolean } | undefined)?.wide);
   return (
     <div className="min-h-dvh lg:flex">
       <aside className="hidden shrink-0 border-r border-border bg-surface lg:flex lg:w-rail lg:flex-col">
@@ -58,7 +60,7 @@ export function AppShell() {
       </header>
 
       <main className="flex-1 px-4 pt-8 pb-28 sm:px-6 lg:px-10 lg:pt-10 lg:pb-12">
-        <div className="mx-auto max-w-reading">
+        <div className={cn("mx-auto", wide ? "max-w-content" : "max-w-reading")}>
           <Outlet />
         </div>
       </main>

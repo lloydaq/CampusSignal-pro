@@ -100,4 +100,4 @@ Add folders only when a feature needs them.
 - Update `memory.md` after completing work; never claim tests passed unless they ran.
 
 ## Current phase
-Phase 3 — colleges, membership, departments, roles, tenant isolation: in progress (3a–3d merged; 3e on review; see `Phases.md`). Update this line as phases complete.
+Phase 3 — colleges, membership, departments, roles, tenant isolation: in progress (3a–3e merged; 3f-1 on review; see `Phases.md`). Update this line as phases complete.
