@@ -1,5 +1,12 @@
-import type { RouteObject } from "react-router";
+import { Navigate, type RouteObject } from "react-router";
 
+import { AuditTab } from "@/features/admin/AuditTab";
+import { DepartmentsTab } from "@/features/admin/DepartmentsTab";
+import { InvitesTab } from "@/features/admin/InvitesTab";
+import { ManageLayout, RequireCapability } from "@/features/admin/ManageLayout";
+import { MembersTab } from "@/features/admin/MembersTab";
+import { RequestsTab } from "@/features/admin/RequestsTab";
+import { RosterTab } from "@/features/admin/RosterTab";
 import { AccountPage } from "@/features/auth/AccountPage";
 import { CheckEmailPage } from "@/features/auth/CheckEmailPage";
 import { ForgotPasswordPage } from "@/features/auth/ForgotPasswordPage";
@@ -52,6 +59,20 @@ export const routes: RouteObject[] = [
           { path: "home", element: <HomePage /> },
           { path: "join", element: <JoinPage /> },
           { path: "account", element: <AccountPage /> },
+          {
+            path: "manage",
+            element: <ManageLayout />,
+            handle: { wide: true },
+            children: [
+              { index: true, element: <Navigate to="requests" replace /> },
+              { path: "requests", element: <RequestsTab /> },
+              { path: "members", element: <MembersTab /> },
+              { path: "invites", element: <RequireCapability needs="manage_college"><InvitesTab /></RequireCapability> },
+              { path: "departments", element: <RequireCapability needs="manage_college"><DepartmentsTab /></RequireCapability> },
+              { path: "roster", element: <RequireCapability needs="manage_college"><RosterTab /></RequireCapability> },
+              { path: "audit", element: <RequireCapability needs="manage_college"><AuditTab /></RequireCapability> },
+            ],
+          },
         ],
       },
     ],

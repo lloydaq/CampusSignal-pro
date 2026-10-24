@@ -83,6 +83,8 @@ export interface FakeAccount {
   emailVerified: boolean;
   /** NONE: no college yet; PENDING: request waiting; ACTIVE: member of Northfield (demo). */
   membership: "NONE" | "PENDING" | "ACTIVE";
+  /** A college admin of Northfield (staff member); needs membership ACTIVE. */
+  admin: boolean;
 }
 
 const NORTHFIELD = {
@@ -116,7 +118,7 @@ function apiError(route: Route, status: number, code: string, message: string, d
  * (backend app/api/v1/auth.py, me.py). The password "wrong-password" fails sign-in.
  */
 export async function mockAuthApi(page: Page, initial: Partial<FakeAccount> = {}): Promise<FakeAccount> {
-  const account: FakeAccount = { signedIn: false, emailVerified: true, membership: "NONE", ...initial };
+  const account: FakeAccount = { signedIn: false, emailVerified: true, membership: "NONE", admin: false, ...initial };
   const user = () => ({ ...FAKE_USER, email_verified: account.emailVerified });
   const me = () => ({
     user: user(),
@@ -125,13 +127,13 @@ export async function mockAuthApi(page: Page, initial: Partial<FakeAccount> = {}
         ? null
         : {
             id: "5b1c0d5e-0000-4000-8000-000000000001",
-            kind: "STUDENT",
+            kind: account.admin ? "STAFF" : "STUDENT",
             status: account.membership,
             college: NORTHFIELD,
-            department: account.membership === "ACTIVE" ? { id: "d1", code: "CSE", name: "Computer Science" } : null,
+            department: account.membership === "ACTIVE" && !account.admin ? { id: "d1", code: "CSE", name: "Computer Science" } : null,
           },
-    roles: [],
-    capabilities: account.membership === "ACTIVE" ? ["campus"] : [],
+    roles: account.admin ? [{ role: "COLLEGE_ADMIN", department: null }] : [],
+    capabilities: account.membership !== "ACTIVE" ? [] : account.admin ? ["campus", "manage_college", "review_memberships"] : ["campus"],
   });
   await mockBackend(page, "ready");
 

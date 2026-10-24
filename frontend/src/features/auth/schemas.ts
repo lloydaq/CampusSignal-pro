@@ -12,7 +12,7 @@ export const DISPLAY_NAME_MAX = 60;
 const EMAIL_MAX = 254;
 const EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/;
 
-const email = z
+export const email = z
   .string()
   .trim()
   .toLowerCase()
