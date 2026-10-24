@@ -7,16 +7,19 @@ import { useNavigate } from "react-router";
 import { Callout } from "@/components/Callout";
 import { FormField } from "@/components/FormField";
 import { SubmitButton } from "@/components/SubmitButton";
+import { TextLink } from "@/components/TextLink";
+import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { Button } from "@/components/ui/button";
+import { KIND_LABEL, roleLabel } from "@/features/campus/labels";
 import { zodResolver } from "@/lib/zodResolver";
 
-import { changePassword, signOut, signOutEverywhere, type User } from "./api";
+import { changePassword, signOut, signOutEverywhere, type Me, type User } from "./api";
 import { AuthHeading } from "./AuthHeading";
 import { PASSWORD_RULES } from "./RegisterPage";
 import { ResendVerification } from "./ResendVerification";
 import { changePasswordSchema, type ChangePasswordValues } from "./schemas";
 import { applyServerError } from "./serverErrors";
-import { sessionQueryKey, useSession } from "./session";
+import { sessionQueryKey, useMe } from "./session";
 import type { SignInNotice } from "./SignInPage";
 
 function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {
@@ -149,17 +152,60 @@ function SignOut() {
   );
 }
 
-/** Signed-in account page for Phase 2 (AUTH-005, AUTH-010). The full Profile screen is Phase 8. */
+function MembershipSection({ me }: { me: Me }) {
+  const membership = me.membership;
+  return (
+    <Section id="membership-heading" title="College">
+      {membership ? (
+        <dl className="space-y-3 text-sm">
+          <div>
+            <dt className="text-muted">College</dt>
+            <dd className="font-medium text-fg">{membership.college.name}</dd>
+          </div>
+          <div>
+            <dt className="text-muted">{membership.status === "ACTIVE" ? "Role" : "Status"}</dt>
+            <dd className="font-medium text-fg">
+              {membership.status === "ACTIVE" ? KIND_LABEL[membership.kind] : membership.status === "PENDING" ? "Waiting for approval" : "Suspended"}
+            </dd>
+          </div>
+          {membership.department && (
+            <div>
+              <dt className="text-muted">Department</dt>
+              <dd className="font-medium text-fg">
+                {membership.department.name} ({membership.department.code})
+              </dd>
+            </div>
+          )}
+          {me.roles.length > 0 && (
+            <div>
+              <dt className="text-muted">Responsibilities</dt>
+              <dd className="font-medium text-fg">{me.roles.map(roleLabel).join(", ")}</dd>
+            </div>
+          )}
+        </dl>
+      ) : me.capabilities.includes("platform") ? (
+        <p className="text-sm text-muted">Platform admin accounts aren't members of a college.</p>
+      ) : (
+        <p className="text-sm text-muted">
+          You haven't joined a college yet. <TextLink to="/join">Join your college</TextLink>
+        </p>
+      )}
+    </Section>
+  );
+}
+
+/** Account settings (AUTH-005, AUTH-010; Design.md §5 screen 15). */
 export function AccountPage() {
-  const user = useSession().data;
-  if (!user) return null; // RequireAuth renders this page only with a user
+  const me = useMe();
   return (
     <div className="space-y-8">
-      <AuthHeading title="Your account">
-        <p>Joining a college isn't available yet. Your account is ready for when it is.</p>
-      </AuthHeading>
-      <Profile user={user} />
+      <AuthHeading title="Account" />
+      <Profile user={me.user} />
+      <MembershipSection me={me} />
       <ChangePassword />
+      <Section id="appearance-heading" title="Appearance">
+        <ThemeSwitcher />
+      </Section>
       <SignOut />
     </div>
   );

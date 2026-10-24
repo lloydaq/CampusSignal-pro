@@ -6,19 +6,19 @@ import { TextLink } from "@/components/TextLink";
 import { Button } from "@/components/ui/button";
 import { ApiError } from "@/lib/api";
 
-import { verifyEmail, type User } from "./api";
+import { verifyEmail, type Me } from "./api";
 import { AuthHeading } from "./AuthHeading";
 import { DEFAULT_SIGNED_IN_PATH, retryAfterText } from "./navigation";
 import { ResendVerification } from "./ResendVerification";
 import { sessionQueryKey, useSession } from "./session";
 import { useFragmentToken } from "./useFragmentToken";
 
-const SIGN_IN_FOR_NEW_LINK = "/sign-in?next=%2Faccount";
+const SIGN_IN_FOR_NEW_LINK = "/sign-in?next=%2Fjoin";
 
 function NextStep({ signedIn }: { signedIn: boolean }) {
   return (
     <p>
-      {signedIn ? <TextLink to={DEFAULT_SIGNED_IN_PATH}>Go to your account</TextLink> : <TextLink to="/sign-in">Sign in</TextLink>}
+      {signedIn ? <TextLink to={DEFAULT_SIGNED_IN_PATH}>Continue</TextLink> : <TextLink to="/sign-in">Sign in</TextLink>}
     </p>
   );
 }
@@ -46,7 +46,9 @@ export function VerifyEmailPage() {
       // A /me request sent alongside this one may predate the verification. Invalidating
       // alone would join that request instead of replacing it, so cancel it first.
       await queryClient.cancelQueries({ queryKey: sessionQueryKey });
-      queryClient.setQueryData<User | null>(sessionQueryKey, (user) => (user ? { ...user, email_verified: true } : user));
+      queryClient.setQueryData<Me | null>(sessionQueryKey, (me) =>
+        me ? { ...me, user: { ...me.user, email_verified: true } } : me,
+      );
       await queryClient.invalidateQueries({ queryKey: sessionQueryKey });
     },
   });

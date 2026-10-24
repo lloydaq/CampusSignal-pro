@@ -1,0 +1,18 @@
+import { House, School, UserRound, type LucideIcon } from "lucide-react";
+
+import type { Me } from "@/features/auth/api";
+
+export interface NavItem {
+  to: string;
+  label: string;
+  Icon: LucideIcon;
+}
+
+/** Only sections the account can use (Design.md §4); more arrive with their phases. */
+export function navItems(me: Me): NavItem[] {
+  const items: NavItem[] = [];
+  if (me.capabilities.includes("campus")) items.push({ to: "/home", label: "Home", Icon: House });
+  else if (!me.capabilities.includes("platform")) items.push({ to: "/join", label: "Join your college", Icon: School });
+  items.push({ to: "/account", label: "Account", Icon: UserRound });
+  return items;
+}

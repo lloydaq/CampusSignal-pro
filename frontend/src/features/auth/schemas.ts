@@ -53,3 +53,16 @@ export const changePasswordSchema = z
   .object({ current_password: existingPassword, new_password: newPassword, confirm_password: z.string() })
   .refine((v) => v.new_password === v.confirm_password, { message: MISMATCH, path: ["confirm_password"] });
 export type ChangePasswordValues = z.infer<typeof changePasswordSchema>;
+
+// Mirrors backend services/roster.ROLL_NUMBER (checked upper-cased, after trimming).
+const ROLL_NUMBER = /^[A-Z0-9][A-Z0-9/._-]{0,39}$/;
+
+export const joinSchema = z.object({
+  college_slug: z.string().min(1, "Choose your college."),
+  roll_number: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(ROLL_NUMBER, "Enter your roll number as it appears on your ID card."),
+});
+export type JoinValues = z.infer<typeof joinSchema>;

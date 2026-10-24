@@ -27,6 +27,11 @@
 }
 
 @theme inline {
+  /* Layout tokens (Design.md §3.8): max-w-content, max-w-reading, w-rail. */
+  --container-content: var(--content-max);
+  --container-reading: var(--reading-max);
+  --spacing-rail: var(--rail-width);
+
   --color-bg: var(--bg);
   --color-surface: var(--surface);
   --color-surface-sunken: var(--surface-sunken);

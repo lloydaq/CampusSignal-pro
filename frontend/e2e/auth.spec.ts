@@ -17,7 +17,7 @@ async function fillSignIn(page: Page, password = PASSWORD) {
 }
 
 test.describe("journeys", () => {
-  test("register, then sign in and reach the account page", async ({ page }) => {
+  test("register, then sign in and get asked to verify before joining", async ({ page }) => {
     await mockAuthApi(page, { emailVerified: false });
     await page.goto("/");
     await expect(page).toHaveURL(/\/sign-in$/);
@@ -29,21 +29,73 @@ test.describe("journeys", () => {
     await page.getByRole("button", { name: "Create account" }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Check your email" })).toBeVisible();
 
-    await page.getByRole("link", { name: "sign in to send a new link" }).click();
+    await page.getByRole("link", { name: "sign in", exact: true }).click();
     await fillSignIn(page);
-    await expect(page).toHaveURL(/\/account$/);
-    await expect(page.getByText("Not verified")).toBeVisible();
+    await expect(page).toHaveURL(/\/join$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Verify your email first" })).toBeVisible();
     await page.getByRole("button", { name: "Send a new link" }).click();
     await expect(page.getByRole("button", { name: /Send again in/ })).toBeDisabled();
   });
 
-  test("a verification link verifies and leaves no token in the address bar", async ({ page }) => {
+  test("verify the email, join with a matching roll number and land on the college home", async ({ page }) => {
     await mockAuthApi(page, { signedIn: true, emailVerified: false });
     await page.goto("/verify-email#token=fresh-token");
     await expect(page.getByRole("heading", { level: 1, name: "Your email is verified" })).toBeVisible();
     expect(new URL(page.url()).hash).toBe("");
-    await page.getByRole("link", { name: "Go to your account" }).click();
-    await expect(page.getByText("Verified", { exact: true })).toBeVisible();
+    await page.getByRole("link", { name: "Continue" }).click();
+    await expect(page).toHaveURL(/\/join$/);
+    await page.getByRole("radio", { name: "Northfield Institute" }).check();
+    await page.getByLabel("Roll number").fill("n-100");
+    await page.getByRole("button", { name: "Send request" }).click();
+    await expect(page).toHaveURL(/\/home$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Northfield Institute" })).toBeVisible();
+  });
+
+  test("an unmatched roll number waits for approval", async ({ page }) => {
+    await mockAuthApi(page, { signedIn: true });
+    await page.goto("/join");
+    await page.getByRole("radio", { name: "Northfield Institute" }).check();
+    await page.getByLabel("Roll number").fill("N-999");
+    await page.getByRole("button", { name: "Send request" }).click();
+    await expect(page.getByRole("heading", { level: 1, name: "Waiting for approval by Northfield Institute" })).toBeVisible();
+  });
+
+  test("an invitation opened while signed out is accepted after signing in", async ({ page }) => {
+    await mockAuthApi(page);
+    await page.goto("/invites/accept#token=fresh-invite");
+    await expect(page.getByRole("heading", { level: 1, name: "You're invited to join your college" })).toBeVisible();
+    expect(new URL(page.url()).hash).toBe("");
+    await page.getByRole("button", { name: "Sign in" }).click();
+    await fillSignIn(page);
+    await page.getByRole("button", { name: "Accept invitation" }).click();
+    await expect(page).toHaveURL(/\/home$/);
+  });
+
+  test("an expired session asks to sign in again without leaving the page", async ({ page }) => {
+    const account = await mockAuthApi(page, { signedIn: true, membership: "ACTIVE" });
+    await page.goto("/account");
+    await page.getByLabel("Current password").fill(PASSWORD);
+    await page.getByLabel("New password", { exact: true }).fill("copper-meadow-harbour");
+    account.signedIn = false;
+    await page.route("**/api/v1/me/password", (route) =>
+      account.signedIn
+        ? route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ csrf_token: "x" }) })
+        : route.fulfill({
+            status: 401,
+            contentType: "application/json",
+            body: JSON.stringify({ error: { code: "not_authenticated", message: "Sign in to continue.", details: null, request_id: "e2e" } }),
+          }),
+    );
+    await page.getByLabel("Repeat new password").fill("copper-meadow-harbour");
+    await page.getByRole("button", { name: "Change password" }).click();
+    const dialog = page.getByRole("dialog", { name: "Your session ended" });
+    await expect(dialog).toBeVisible();
+    await expectNoAxeViolations(page);
+    await dialog.getByLabel("Password").fill(PASSWORD);
+    await dialog.getByRole("button", { name: "Sign in" }).click();
+    await expect(dialog).toBeHidden();
+    await expect(page).toHaveURL(/\/account$/);
+    await expect(page.getByLabel("New password", { exact: true })).toHaveValue("copper-meadow-harbour");
   });
 
   test("a wrong password shows the generic error; sign-out returns to sign-in", async ({ page }) => {
@@ -79,6 +131,47 @@ test.describe("journeys", () => {
 
 /** Screens in the states worth checking, each reached the way a user would. */
 const SCREENS: { name: string; open: (page: Page) => Promise<void> }[] = [
+  {
+    name: "college home",
+    open: async (page) => {
+      await mockAuthApi(page, { signedIn: true, membership: "ACTIVE" });
+      await page.goto("/home");
+      await expect(page.getByRole("heading", { level: 1, name: "Northfield Institute" })).toBeVisible();
+    },
+  },
+  {
+    name: "join form with errors",
+    open: async (page) => {
+      await mockAuthApi(page, { signedIn: true });
+      await page.goto("/join");
+      await page.getByRole("button", { name: "Send request" }).click();
+      await expect(page.getByText("Choose your college.")).toBeVisible();
+    },
+  },
+  {
+    name: "join pending",
+    open: async (page) => {
+      await mockAuthApi(page, { signedIn: true, membership: "PENDING" });
+      await page.goto("/join");
+      await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    },
+  },
+  {
+    name: "invitation, signed out",
+    open: async (page) => {
+      await mockAuthApi(page);
+      await page.goto("/invites/accept#token=x");
+      await expect(page.getByRole("heading", { level: 1, name: "You're invited to join your college" })).toBeVisible();
+    },
+  },
+  {
+    name: "invitation, signed in",
+    open: async (page) => {
+      await mockAuthApi(page, { signedIn: true });
+      await page.goto("/invites/accept#token=x");
+      await expect(page.getByRole("button", { name: "Accept invitation" })).toBeVisible();
+    },
+  },
   {
     name: "sign-in with an error",
     open: async (page) => {
@@ -133,7 +226,7 @@ const SCREENS: { name: string; open: (page: Page) => Promise<void> }[] = [
     },
   },
   {
-    name: "account, unverified, confirming sign-out everywhere",
+    name: "account of an unverified user, confirming sign-out everywhere",
     open: async (page) => {
       await mockAuthApi(page, { signedIn: true, emailVerified: false });
       await page.goto("/account");

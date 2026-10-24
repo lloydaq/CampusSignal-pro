@@ -1,5 +1,6 @@
-/** Where to go after signing in. Only same-site paths are accepted (no open redirects). */
-export const DEFAULT_SIGNED_IN_PATH = "/account";
+/** Where to go after signing in: "/" picks the right home for the account (HomeRedirect).
+ * Only same-site paths are accepted (no open redirects). */
+export const DEFAULT_SIGNED_IN_PATH = "/";
 
 export function safeNextPath(next: string | null | undefined): string {
   if (!next || !next.startsWith("/") || next.startsWith("//") || next.includes("\\")) {

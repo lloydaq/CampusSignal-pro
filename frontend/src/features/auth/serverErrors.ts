@@ -3,6 +3,7 @@ import type { FieldValues, Path, UseFormSetError } from "react-hook-form";
 import { ApiError, fieldErrors } from "@/lib/api";
 
 import { retryAfterText } from "./navigation";
+import { isSignedOutError } from "./session";
 
 /**
  * Put a failed request's field messages on the form's fields and return the message for
@@ -14,6 +15,8 @@ export function applyServerError<T extends FieldValues>(
   fields: readonly Path<T>[],
   rateLimitedLead = "Too many attempts.",
 ): string | null {
+  // A 401 means the session ended: the "Your session ended" dialog handles it, not the form.
+  if (isSignedOutError(error)) return null;
   if (error instanceof ApiError && error.status === 429) {
     return `${rateLimitedLead} ${retryAfterText(error.retryAfterSeconds)}`;
   }

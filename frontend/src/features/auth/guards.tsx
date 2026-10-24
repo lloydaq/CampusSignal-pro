@@ -6,8 +6,10 @@ import { ApiError } from "@/lib/api";
 import { useDelayedFlag } from "@/lib/useDelayedFlag";
 
 import { AuthHeading } from "./AuthHeading";
-import { DEFAULT_SIGNED_IN_PATH, safeNextPath, signInPathFor } from "./navigation";
-import { useSession } from "./session";
+import { landingPath } from "./landing";
+import { safeNextPath, signInPathFor } from "./navigation";
+import { MeContext, useSession, useSessionEnded } from "./session";
+import { SessionEndedDialog } from "./SessionEndedDialog";
 
 function SessionLoading() {
   const visible = useDelayedFlag(true);
@@ -34,16 +36,36 @@ function SessionError({ error, onRetry, retrying }: { error: Error; onRetry: () 
   );
 }
 
-/** Signed-in routes. Signed out → sign-in with a return path (Phases.md 2d, decided 2026-10-23). */
+/**
+ * Signed-in routes. A fresh visit while signed out goes to sign-in with a return path. A session
+ * that ends while the page is open (any 401) keeps the page mounted with the last known /me and
+ * shows the "Your session ended" dialog over it (Design.md §7).
+ */
 export function RequireAuth() {
   const session = useSession();
+  const ended = useSessionEnded();
   const location = useLocation();
+
   if (session.isPending) return <SessionLoading />;
   if (session.isError) {
     return <SessionError error={session.error} onRetry={() => void session.refetch()} retrying={session.isFetching} />;
   }
-  if (session.data === null) return <Navigate to={signInPathFor(location)} replace />;
-  return <Outlet />;
+  if (session.data === null) {
+    if (ended) {
+      return (
+        <MeContext.Provider value={ended.me}>
+          <Outlet />
+          <SessionEndedDialog previousUserId={ended.me.user.id} />
+        </MeContext.Provider>
+      );
+    }
+    return <Navigate to={signInPathFor(location)} replace />;
+  }
+  return (
+    <MeContext.Provider value={session.data}>
+      <Outlet />
+    </MeContext.Provider>
+  );
 }
 
 /** Sign-in and registration: a signed-in visitor goes where they were headed instead. */
@@ -56,9 +78,9 @@ export function GuestOnly() {
   return <Outlet />;
 }
 
-/** "/" has no page of its own until the campus home exists (Phase 3). */
+/** "/" sends each account to its home: campus, the join flow, or (platform admins) the account. */
 export function HomeRedirect() {
   const session = useSession();
   if (session.isPending) return <SessionLoading />;
-  return <Navigate to={session.data ? DEFAULT_SIGNED_IN_PATH : "/sign-in"} replace />;
+  return <Navigate to={session.data ? landingPath(session.data) : "/sign-in"} replace />;
 }
