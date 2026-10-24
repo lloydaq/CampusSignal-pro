@@ -65,3 +65,33 @@ def split_page[T](rows: list[T], limit: int, key: Any) -> tuple[list[T], str | N
     items = rows[:limit]
     created_at, row_id = key(items[-1])
     return items, encode_cursor(created_at, row_id)
+
+
+@dataclass(frozen=True)
+class RankedCursor:
+    """Position in a list that puts a flagged group first (e.g. pinned notices), then newest
+    first within each group: (rank, sort_time, id)."""
+
+    rank: int
+    sort_time: datetime
+    id: uuid.UUID
+
+
+def encode_ranked_cursor(rank: int, sort_time: datetime, row_id: uuid.UUID) -> str:
+    raw = f"{rank}|{sort_time.isoformat()}|{row_id}".encode()
+    return base64.urlsafe_b64encode(raw).rstrip(b"=").decode("ascii")
+
+
+def decode_ranked_cursor(value: str | None) -> RankedCursor | None:
+    if value is None:
+        return None
+    try:
+        raw = base64.urlsafe_b64decode(value + "=" * (-len(value) % 4)).decode()
+        rank, _, rest = raw.partition("|")
+        stamp, _, row_id = rest.partition("|")
+        cursor = RankedCursor(int(rank), datetime.fromisoformat(stamp), uuid.UUID(row_id))
+    except (binascii.Error, UnicodeDecodeError, ValueError):
+        raise ValidationFailed.field("cursor", "This cursor isn't valid.") from None
+    if cursor.sort_time.tzinfo is None or cursor.rank not in (0, 1):
+        raise ValidationFailed.field("cursor", "This cursor isn't valid.")
+    return cursor

@@ -20,6 +20,7 @@ from app.schemas.college_admin import (
     DepartmentCreate,
     DepartmentList,
     DepartmentOut,
+    DepartmentPage,
     DepartmentUpdate,
     GrantCreate,
     GrantOut,
@@ -44,6 +45,7 @@ from app.schemas.membership import (
 )
 from app.services import college_audit, departments, members, membership_requests, roster
 from app.services import invites as invite_service
+from app.services import notices as notice_service
 from app.services.members import MemberRow
 from app.services.platform import invite_state
 
@@ -76,8 +78,12 @@ def create_department(body: DepartmentCreate, campus: Campus, db: Db, now: Now) 
 
 
 @router.get("/departments/{department_id}")
-def get_department(department_id: uuid.UUID, campus: Campus, db: Db) -> DepartmentOut:
-    return DepartmentOut.from_department(departments.get_department(db, campus, department_id))
+def get_department(department_id: uuid.UUID, campus: Campus, db: Db) -> DepartmentPage:
+    department = departments.get_department(db, campus, department_id)
+    return DepartmentPage(
+        **DepartmentOut.from_department(department).model_dump(),
+        admins=notice_service.department_admin_names(db, campus, department.id),
+    )
 
 
 @router.patch("/departments/{department_id}")

@@ -16,6 +16,13 @@ from app.models.college import (
     RosterEntry,
     VerificationFlag,
 )
+from app.models.notice import (
+    Notice,
+    NoticeCategory,
+    NoticePriority,
+    NoticeScope,
+    NoticeStatus,
+)
 from app.models.rate_limit import RateLimitCounter
 from app.models.user import PlatformRole, User, UserStatus
 from app.models.user_token import TokenPurpose, UserToken
@@ -30,6 +37,11 @@ __all__ = [
     "Invite",
     "MembershipKind",
     "MembershipStatus",
+    "Notice",
+    "NoticeCategory",
+    "NoticePriority",
+    "NoticeScope",
+    "NoticeStatus",
     "PlatformRole",
     "RateLimitCounter",
     "Role",

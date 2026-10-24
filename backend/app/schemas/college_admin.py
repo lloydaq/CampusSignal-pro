@@ -79,6 +79,12 @@ class DepartmentOut(BaseModel):
         )
 
 
+class DepartmentPage(DepartmentOut):
+    """DEPT-003: the department's page data. Admins are names only."""
+
+    admins: list[str]
+
+
 class DepartmentList(BaseModel):
     items: list[DepartmentOut]
 
