@@ -12,13 +12,14 @@ from sqlalchemy.orm import Session
 
 from app.core.config import Settings
 from app.core.db import get_session
-from app.core.errors import Forbidden, NotAuthenticated
+from app.core.errors import Forbidden, NotAuthenticated, NotFound
 from app.core.mailer import Mailer
 from app.core.ratelimit import hashed_key
 from app.core.request_guards import client_address
 from app.models.auth_session import AuthSession
 from app.models.user import User
 from app.policies.campus import CampusContext, campus_access_problem
+from app.policies.platform import is_platform_admin
 from app.repositories import memberships
 from app.services.sessions import (
     CSRF_HEADER,
@@ -153,3 +154,15 @@ _CAMPUS_MESSAGES = {
 }
 
 Campus = Annotated[CampusContext, Depends(campus_context)]
+
+
+def platform_admin(auth: Auth) -> User:
+    """Every /api/v1/platform route depends on this (ADMIN-001…004; the route inventory
+    checks it). Anyone else gets the same 404 as an unknown path, so the platform's routes
+    aren't revealed (architecture.md §7)."""
+    if not is_platform_admin(auth.user):
+        raise NotFound()
+    return auth.user
+
+
+PlatformAdmin = Annotated[User, Depends(platform_admin)]

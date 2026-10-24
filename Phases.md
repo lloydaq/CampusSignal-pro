@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Last updated | 2026-10-20 |
-| Current phase | **Phase 3 — Colleges, membership, departments, roles, tenant isolation, IN PROGRESS** (3a implemented 2026-10-23 on `phase3/tenancy-foundation`, awaiting review) |
+| Current phase | **Phase 3 — Colleges, membership, departments, roles, tenant isolation, IN PROGRESS** (3a merged in PR #12; 3b implemented 2026-10-24 on `phase3/platform-admin`, awaiting review) |
 
 Status values: `NOT STARTED` · `IN PROGRESS` · `DONE (verified <date>)`. A phase is DONE only per §4 and `Rules.md` §8 — never because files exist.
 
@@ -145,8 +145,8 @@ Approved plan (2026-10-21), one reviewed PR per step:
 **Status:** IN PROGRESS
 
 Approved plan (2026-10-23), one reviewed PR per step, in order:
-- [ ] 3a — Schema and isolation foundation: migration `0004` (colleges, departments, roster_entries, college_memberships, role_grants, invites; composite `(college_id, id)` FKs; partial uniques; `audit_log.college_id` FK), `campus_context` (403 `membership_required` / `membership_inactive` / `college_inactive`), `get_in_college` repository helper, `/me` membership + roles + capabilities, AUTH-013 privileged sessions from roles, verify-email ends other sessions, two-college fixtures, route-inventory checks (campus routes need `campus_context`; every campus route registered in the tenant-isolation suite). Implemented 2026-10-23 on `phase3/tenancy-foundation`: 441 backend tests passed, 0 skipped (local PostgreSQL 16; CI runs 17), `alembic check` clean, `0004` downgrade/upgrade round trip. Not applied to Supabase.
-- [ ] 3b — Platform admin: college create/activate/suspend, first-admin invite (email), invite acceptance, user suspend/unsuspend, platform audit log; P-7/ADMIN-008 deny tests.
+- [x] 3a — Schema and isolation foundation: migration `0004` (colleges, departments, roster_entries, college_memberships, role_grants, invites; composite `(college_id, id)` FKs; partial uniques; `audit_log.college_id` FK), `campus_context` (403 `membership_required` / `membership_inactive` / `college_inactive`), `get_in_college` repository helper, `/me` membership + roles + capabilities, AUTH-013 privileged sessions from roles, verify-email ends other sessions, two-college fixtures, route-inventory checks (campus routes need `campus_context`; every campus route registered in the tenant-isolation suite). Implemented 2026-10-23 on `phase3/tenancy-foundation`: 441 backend tests passed, 0 skipped (local PostgreSQL 16; CI runs 17), `alembic check` clean, `0004` downgrade/upgrade round trip. Merged in PR #12 (`d968f00`), CI green on Postgres 17. Supabase: owner to run `alembic upgrade head` (not yet applied).
+- [ ] 3b — Platform admin: college create/activate/suspend, first-admin invite (email), invite acceptance, user suspend/unsuspend, platform audit log; P-7/ADMIN-008 deny tests. Implemented 2026-10-24 on `phase3/platform-admin`: 536 backend tests passed, 0 skipped (local PostgreSQL 16). Includes cursor pagination helper, exact-email user lookup, invite token in the request body, row-locked acceptance (concurrency test), and a fix to the route-inventory walker (it missed router prefixes, so the 3a campus check could not see campus routes inside routers).
 - [ ] 3c — College admin: departments, roster CSV import (all-or-nothing), faculty/staff invites, member directory, member department/suspend/end (last-admin 409), role grants (student 422), college audit log.
 - [ ] 3d — Joining: `/colleges` directory, roll-number membership requests (verified email only, uniform response, flags, 5/24 h), approval queue scoped by department, approve/reject with audit.
 - [ ] 3e — Frontend for members: signed-in app shell + navigation from `/me` capabilities, college picker + roll number, pending/rejected states, invite acceptance, session-ended modal (Design.md §7).

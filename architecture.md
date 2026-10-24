@@ -367,7 +367,7 @@ Auth column: **—** public, **U** signed-in user, **M** ACTIVE member (campus c
 |---|---|---|---|---|
 | GET | `/colleges` | ACTIVE colleges (name, slug) | U | — |
 | POST | `/me/membership-requests` | Request student membership `{college_slug, roll_number}`; uniform 202 for every non-auto-activated outcome (MEMBER-004) | U, email verified, not platform admin (P-7) | 403 unverified or platform admin; 409 already active/pending; 429 |
-| POST | `/invites/{token}/accept` | Accept faculty/staff/admin invite; marks email verified | U, email matches, not platform admin (P-7) | 400 invalid/expired; 403 platform admin |
+| POST | `/invites/accept` `{token}` | Accept faculty/staff/admin invite; marks email verified and ends the account's other sessions. Token in the body, not the path, so it never reaches access logs (changed 2026-10-24) | U signed in **as the invited email**, not platform admin (P-7), college not SUSPENDED | 400 `token_invalid`/`token_expired`/`token_used`; 403 `invite_email_mismatch`/`platform_admin_cannot_join`/`college_inactive`; 409 `already_member`/`membership_open` |
 | GET | `/campus/membership-requests?status=PENDING` | Approval queue | M, `can_review_membership` (college admin, dept admin for dept) | 403 |
 | POST | `/campus/membership-requests/{id}/approve` · `/reject` | Decide | M, same policy; reason on reject | 404 cross-tenant; 409 already decided |
 | POST | `/campus/roster/import` | CSV roster (MEMBER-001) | M, college admin | 422 row errors (all-or-nothing) |
@@ -447,7 +447,8 @@ Auth column: **—** public, **U** signed-in user, **M** ACTIVE member (campus c
 | GET/POST | `/platform/colleges` | List/create colleges | PA | 409 slug |
 | PATCH | `/platform/colleges/{id}` | Activate/suspend/edit | PA | 409 invalid transition |
 | POST | `/platform/colleges/{id}/admin-invites` | Invite first college admin | PA | — |
-| POST | `/platform/users/{id}/suspend` · `/unsuspend` | Platform suspension | PA, reason | 409 self |
+| GET | `/platform/users?email=` | Exact-email account lookup (no browsing or partial search; added 2026-10-24 so suspension has a way to find the account) | PA | 422 invalid email |
+| POST | `/platform/users/{id}/suspend` · `/unsuspend` | Platform suspension (revokes all sessions) | PA, reason required to suspend | 409 self / invalid transition |
 | GET | `/platform/audit-log` | Platform-level audit | PA | — |
 
 ## 12. Error-handling conventions

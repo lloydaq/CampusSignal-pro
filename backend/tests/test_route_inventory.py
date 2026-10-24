@@ -11,11 +11,17 @@ from collections.abc import Iterator
 from typing import Any
 
 import pytest
-from fastapi import FastAPI, Security
+from fastapi import APIRouter, FastAPI, Security
 from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 
-from app.api.deps import SESSION_SCHEME_NAME, Campus, campus_context, current_session
+from app.api.deps import (
+    SESSION_SCHEME_NAME,
+    Campus,
+    campus_context,
+    current_session,
+    platform_admin,
+)
 from app.main import create_app
 from tests.conftest import make_settings
 from tests.tenant_isolation_cases import CASES
@@ -60,17 +66,20 @@ def unprotected(app: FastAPI, public: frozenset[tuple[str, str]]) -> list[str]:
     )
 
 
-def api_routes(app: FastAPI) -> Iterator[APIRoute]:
-    """Every APIRoute, including those inside included routers."""
-    pending = list(app.routes)
+def api_routes(app: FastAPI) -> Iterator[tuple[str, APIRoute]]:
+    """Every APIRoute with its full path, including routes inside included routers (whose own
+    `path` lacks the prefix they were included under)."""
+    pending: list[tuple[str, Any]] = [("", route) for route in app.routes]
     while pending:
-        route = pending.pop()
+        prefix, route = pending.pop()
         if isinstance(route, APIRoute):
-            yield route
-        else:
-            router = getattr(route, "original_router", None)
-            if router is not None:
-                pending.extend(router.routes)
+            yield prefix + route.path, route
+            continue
+        router = getattr(route, "original_router", None)
+        if router is not None:
+            context = getattr(route, "include_context", None)
+            inner = prefix + (getattr(context, "prefix", "") or "")
+            pending.extend((inner, child) for child in router.routes)
 
 
 @pytest.fixture(scope="module")
@@ -84,9 +93,11 @@ def test_every_operation_is_public_by_allowlist_or_requires_a_session(real_app: 
 
 def test_the_inventory_sees_every_route(real_app: FastAPI) -> None:
     # A route hidden from the schema would escape the check above.
-    routes = list(api_routes(real_app))
+    routes = [route for _, route in api_routes(real_app)]
     assert routes, "route discovery found nothing"
     assert all(route.include_in_schema for route in routes)
+    # The full paths found here must be exactly the documented ones.
+    assert {path for path, _ in api_routes(real_app)} == {p for _, p in operations(real_app)}
     methods = sum(len((route.methods or set()) - {"HEAD", "OPTIONS"}) for route in routes)
     assert methods == len(operations(real_app))
 
@@ -121,9 +132,9 @@ def _calls(dependant: Any) -> Iterator[Any]:
 def campus_routes_without_context(app: FastAPI) -> list[str]:
     """Campus routes must take their college from `campus_context` (TENANT-001)."""
     return sorted(
-        f"{sorted(route.methods or [])} {route.path}"
-        for route in api_routes(app)
-        if route.path.startswith(CAMPUS_PREFIX) and campus_context not in _calls(route.dependant)
+        f"{sorted(route.methods or [])} {path}"
+        for path, route in api_routes(app)
+        if path.startswith(CAMPUS_PREFIX) and campus_context not in _calls(route.dependant)
     )
 
 
@@ -142,7 +153,44 @@ def test_the_campus_check_detects_a_route_without_the_context() -> None:
     def fine(_: Campus) -> dict[str, str]:
         return {}
 
-    assert campus_routes_without_context(app) == [f"['GET'] {CAMPUS_PREFIX}/oops"]
+    nested = APIRouter(prefix="/campus")
+
+    @nested.get("/nested-oops")
+    def nested_oops(_: Any = Security(current_session)) -> dict[str, str]:  # noqa: B008
+        return {}
+
+    app.include_router(nested, prefix="/api/v1")
+    assert campus_routes_without_context(app) == [
+        f"['GET'] {CAMPUS_PREFIX}/nested-oops",
+        f"['GET'] {CAMPUS_PREFIX}/oops",
+    ]
+
+
+PLATFORM_PREFIX = "/api/v1/platform"
+
+
+def platform_routes_without_admin_check(app: FastAPI) -> list[str]:
+    """Platform routes must go through `platform_admin` (404 for everyone else)."""
+    return sorted(
+        f"{sorted(route.methods or [])} {path}"
+        for path, route in api_routes(app)
+        if path.startswith(PLATFORM_PREFIX) and platform_admin not in _calls(route.dependant)
+    )
+
+
+def test_every_platform_route_requires_a_platform_admin(real_app: FastAPI) -> None:
+    assert platform_routes_without_admin_check(real_app) == []
+    assert any(path.startswith(PLATFORM_PREFIX) for path, _ in api_routes(real_app))
+
+
+def test_the_platform_check_detects_a_route_without_it() -> None:
+    app = create_app(make_settings())
+
+    @app.get(f"{PLATFORM_PREFIX}/oops")
+    def oops(_: Any = Security(current_session)) -> dict[str, str]:  # noqa: B008
+        return {}  # any signed-in user could call it
+
+    assert platform_routes_without_admin_check(app) == [f"['GET'] {PLATFORM_PREFIX}/oops"]
 
 
 def test_every_campus_operation_is_in_the_tenant_isolation_suite(real_app: FastAPI) -> None:
@@ -158,6 +206,16 @@ def test_the_protected_operations_are_the_ones_we_expect(real_app: FastAPI) -> N
         "POST /api/v1/auth/logout",
         "POST /api/v1/auth/logout-all",
         "POST /api/v1/auth/resend-verification",
+        "POST /api/v1/invites/accept",
+        "GET /api/v1/platform/colleges",
+        "POST /api/v1/platform/colleges",
+        "GET /api/v1/platform/colleges/{college_id}",
+        "PATCH /api/v1/platform/colleges/{college_id}",
+        "POST /api/v1/platform/colleges/{college_id}/admin-invites",
+        "GET /api/v1/platform/users",
+        "POST /api/v1/platform/users/{user_id}/suspend",
+        "POST /api/v1/platform/users/{user_id}/unsuspend",
+        "GET /api/v1/platform/audit-log",
     }
 
 
