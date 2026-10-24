@@ -370,13 +370,15 @@ Auth column: **—** public, **U** signed-in user, **M** ACTIVE member (campus c
 | POST | `/invites/accept` `{token}` | Accept faculty/staff/admin invite; marks email verified and ends the account's other sessions. Token in the body, not the path, so it never reaches access logs (changed 2026-10-24) | U signed in **as the invited email**, not platform admin (P-7), college not SUSPENDED | 400 `token_invalid`/`token_expired`/`token_used`; 403 `invite_email_mismatch`/`platform_admin_cannot_join`/`college_inactive`; 409 `already_member`/`membership_open` |
 | GET | `/campus/membership-requests?status=PENDING` | Approval queue | M, `can_review_membership` (college admin, dept admin for dept) | 403 |
 | POST | `/campus/membership-requests/{id}/approve` · `/reject` | Decide | M, same policy; reason on reject | 404 cross-tenant; 409 already decided |
-| POST | `/campus/roster/import` | CSV roster (MEMBER-001) | M, college admin | 422 row errors (all-or-nothing) |
-| POST | `/campus/invites` | Invite faculty/staff | M, college admin | 409 already member |
-| GET | `/campus/members?query=&kind=` | Member directory (fields per PRD §17.6) | M, college admin (all) or dept admin (own-dept students + college faculty/staff) | 403 |
-| GET | `/campus/assignees?query=` | ACTIVE faculty/staff names for issue assignment | M, coordinator or college admin | 403 |
-| PATCH | `/campus/members/{id}` | Change department, suspend, end | M, college admin | 404; 409 last admin |
+| POST | `/campus/roster/import` `{csv}` | CSV roster (MEMBER-001). Header exactly `roll_number,full_name,department_code,program,admission_year,email` (email may be empty); ≤ 5000 rows; roll numbers stored upper-cased; new roll numbers only (existing ones are row errors) | M, college admin | 422 `roster_invalid` with `details: [{row, column, message}]` (all-or-nothing); 409 `roster_conflict` |
+| GET | `/campus/roster?query=&department_id=&cursor=` | Roster entries with `claimed` (an ACTIVE membership holds it) | M, college admin | 403 |
+| POST · GET | `/campus/invites` | Invite faculty/staff `{email, kind: FACULTY\|STAFF}` · list pending invites | M, college admin | 409 `already_member`; 422 platform-admin address |
+| GET | `/campus/members?query=&kind=&status=&cursor=` | Member directory (PRD §17.6: email and roll number only for college admins, and for dept admins on their departments' students; others get `null`). `query` matches names; for college admins also email and roll number | M, college admin (all) or dept admin (own-dept students + college faculty/staff) | 403 |
+| GET | `/campus/assignees?query=` | ACTIVE faculty/staff names for issue assignment — **Phase 5** (with issues) | M, coordinator or college admin | 403 |
+| PATCH | `/campus/members/{id}` | `{department_id?, status?: ACTIVE\|SUSPENDED\|ENDED, reason?}`; reason required to suspend or end; ENDED is final; the college row is locked so concurrent changes can't remove the last admin | M, college admin | 404; 409 `last_college_admin` / `invalid_transition`; 422 reason |
 | PATCH | `/me/profile` | Change display name (PROFILE-001) | U | 422 |
-| POST/DELETE | `/campus/members/{id}/grants` | Grant/revoke roles | M, college admin | 409 last college admin; 422 student grant |
+| POST · DELETE | `/campus/members/{id}/grants` · `/campus/members/{id}/grants/{grant_id}` | Grant `{role, department_id?}` / revoke a role | M, college admin | 404; 409 `last_college_admin` / `grant_exists` / `membership_inactive`; 422 `student_cannot_hold_roles` |
+| GET | `/campus/audit-log?action=&actor_user_id=&since=&until=&cursor=` | College audit log (ADMIN-007): this college's entries only, with actor names | M, college admin | 403 |
 
 **Departments & notices**
 
