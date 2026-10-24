@@ -143,3 +143,15 @@ def test_rate_limit_counts_per_key_and_window(session: Session) -> None:
     later = NOW + timedelta(minutes=15)
     assert current(session, limit, "k1", later).count == 0
     assert hit(session, limit, "k1", later).count == 1
+
+
+def test_audit_entries_in_one_transaction_keep_their_order(session: Session) -> None:
+    """Migration 0005: created_at is clock_timestamp(), so entries written in the same
+    transaction still sort in the order they were written (now() would tie them)."""
+    first = record_audit(session, action="test.first")
+    session.flush()
+    second = record_audit(session, action="test.second")
+    session.flush()
+    session.refresh(first)
+    session.refresh(second)
+    assert first.created_at < second.created_at
