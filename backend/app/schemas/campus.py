@@ -59,7 +59,11 @@ def membership_out(view: MembershipView) -> MembershipOut:
         kind=view.membership.kind,
         status=view.membership.status,
         college=CollegeOut.from_college(view.college),
-        department=DepartmentRef.from_department(view.department) if view.department else None,
+        # A pending request's department comes from a roster match; showing it would tell the
+        # requester whether their roll number exists (MEMBER-004).
+        department=DepartmentRef.from_department(view.department)
+        if view.department and view.membership.status != "PENDING"
+        else None,
     )
 
 
