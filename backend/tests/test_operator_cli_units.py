@@ -134,3 +134,29 @@ def test_a_failing_purge_is_reported_and_the_others_still_run(
     assert records["retention_purge_failed"]["error_type"] == "RuntimeError"
     assert records["retention_purge"]["purge"] == "second"
     assert records["retention_purge"]["deleted"] == 3
+
+
+@pytest.mark.parametrize("app_env", ["staging", "production"])
+def test_seed_demo_refuses_to_run_outside_local_and_ci(app_env: str) -> None:
+    def never(prompt: str) -> str:
+        raise AssertionError("must not prompt")
+
+    out = io.StringIO()
+    code = cli.main(
+        ["seed-demo"],
+        app_env=app_env,
+        session_factory=_unusable_factory,
+        read_password=never,
+        now=NOW,
+        out=out,
+    )
+    assert code == cli.EXIT_FAILED
+    assert app_env in out.getvalue()
+
+
+def test_seed_demo_needs_the_same_password_twice_and_a_good_one() -> None:
+    code, output = _run(["seed-demo"], _passwords(GOOD_PASSWORD, GOOD_PASSWORD + "x"))
+    assert (code, "do not match" in output) == (cli.EXIT_FAILED, True)
+    code, output = _run(["seed-demo"], _passwords("password", "password"), MagicMock())
+    assert code == cli.EXIT_FAILED
+    assert "Nothing was created" in output and "'password'" not in output

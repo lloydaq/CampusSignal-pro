@@ -19,6 +19,11 @@ import { VerifyEmailPage } from "@/features/auth/VerifyEmailPage";
 import { HomePage } from "@/features/campus/HomePage";
 import { InviteAcceptPage } from "@/features/campus/InviteAcceptPage";
 import { JoinPage } from "@/features/campus/JoinPage";
+import { CollegeDetailPage } from "@/features/platform/CollegeDetailPage";
+import { CollegesTab } from "@/features/platform/CollegesTab";
+import { PlatformAuditTab } from "@/features/platform/AuditTab";
+import { PlatformLayout } from "@/features/platform/PlatformLayout";
+import { UsersTab } from "@/features/platform/UsersTab";
 import { StatusPage } from "@/features/system-status/StatusPage";
 
 import { AppShell } from "./shells/AppShell";
@@ -59,6 +64,18 @@ export const routes: RouteObject[] = [
           { path: "home", element: <HomePage /> },
           { path: "join", element: <JoinPage /> },
           { path: "account", element: <AccountPage /> },
+          {
+            path: "platform",
+            element: <PlatformLayout />,
+            handle: { wide: true },
+            children: [
+              { index: true, element: <Navigate to="colleges" replace /> },
+              { path: "colleges", element: <CollegesTab /> },
+              { path: "colleges/:collegeId", element: <CollegeDetailPage /> },
+              { path: "users", element: <UsersTab /> },
+              { path: "audit", element: <PlatformAuditTab /> },
+            ],
+          },
           {
             path: "manage",
             element: <ManageLayout />,
