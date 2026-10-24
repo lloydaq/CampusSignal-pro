@@ -2,7 +2,7 @@
 
 Concise, verified state for new sessions. Details live in the linked documents; do not copy them here. Never store secrets here.
 
-**Last updated:** 2026-10-24 (3a–3f-1 merged; 3f-2 platform UI + `seed-demo` + exit demo on `phase3/platform-frontend`, awaiting review)
+**Last updated:** 2026-10-24 (Phase 3 done: 3a–3f merged)
 
 ## 1. Project
 CampusSignal (official name, P-4) — multi-college campus platform: isolated college spaces with official notices, student community, department pages, private academic info (timetable, attendance, results), and campus issue reporting. Spec: `PRD.md`.
@@ -41,7 +41,7 @@ College derived from session's ACTIVE membership on `/api/v1/campus/*` (no clien
 | 0 Setup & docs | DONE (verified 2026-10-20, commit `095ffef`) |
 | 1 Foundation | DONE (verified 2026-10-21, `master` `b8f5930`: both workflows green; clean-clone README run passed) |
 | 2 Identity | DONE (verified 2026-10-23, `master` `8c3aa4b`; owner's manual Mailpit check passed) — 2a merged (PR #5, `988e9d9`); 2b auth API merged (PR #6, `eb9f242`); 2c operator CLI merged (PR #7, `5ee1ada`; CI green on PG 17); 2d auth screens (PR #8) + full-stack E2E (PR #9, `88f2bc5`; CI `e2e-fullstack` green on PG 17.11) merged |
-| 3 Colleges & tenancy | IN PROGRESS — plan approved 2026-10-23 (3a–3f); 3a merged (PR #12, `d968f00`); 3b platform admin merged (PR #13, `1c0072a`); 3c college admin merged (PR #14, `ac76b27`, CI green after the `0005` fix); 3d joining merged (PR #15, `fd11458`); 3e member frontend merged (PR #16, `16a93e3`); 3f-1 Manage frontend merged (PR #17, `06ab7be`); 3f-2 (Platform UI, `seed-demo`, exit demo) on `phase3/platform-frontend`, awaiting review — Phase 3 is done once it is merged and CI is green |
+| 3 Colleges & tenancy | DONE (2026-10-24, `master` `3a7b71a`) — 3a PR #12, 3b PR #13, 3c PR #14 (CI green after the `0005` fix), 3d PR #15, 3e PR #16, 3f-1 PR #17, 3f-2 PR #18 (platform UI, `seed-demo`, exit demo as full-stack E2E) |
 | 4–11 | NOT STARTED |
 
 Completed milestones (2026-10-20): documentation set; pre-development review; owner decisions P-4/P-7/P-8/P-9 applied; `CLAUDE.md` aligned; `.gitignore`; initial commit `095ffef`. Nothing implemented.
@@ -109,4 +109,4 @@ CI: `.github/workflows/backend.yml` and `.github/workflows/frontend.yml` both gr
 - Backend deps: fastapi 0.156.4, uvicorn 0.54.0, pydantic-settings 2.16.1; dev: pytest 9.1.1, httpx2 2.13.1 + httpcore2 2.13.1 (pinned `==2.13.1`: Starlette ≥1.2 test client prefers httpx2 and deprecates `httpx`; 2.13.1 chosen over the same-day 2.16.0 release), ruff 0.17.1, mypy 2.4.0.
 
 ## 11. Next task
-Get 3f-2 (`phase3/platform-frontend`) green in CI and merged; that completes Phase 3 (update the phase table and `CLAUDE.md`), then plan Phase 4 (notices) with the owner. Supabase dev DB is at `0003` (head is `0005`; 3d adds no migration): the owner runs `uv run alembic upgrade head` when back at their computer (not needed for CI). Note: the CI `e2e` job's Chromium install once took 11 min (2026-10-23, PR #9 run); watch for repeats. 2d decisions (2026-10-23, owner "go"): expired session → redirect to sign-in with `next` in Phase 2, Design.md's modal in Phase 3; resending verification needs sign-in (no auto sign-in after register). 2c decisions (2026-10-23, owner "go"): `create-platform-admin` refuses existing emails (no `--promote`); the 2-year audit purge ships now under the PRD §21 retention assumption.
+Phase 4 (notices, department pages, in-app notifications; Release α, needs P-1 decided for staging): propose a plan and wait for the owner's approval before starting. Supabase dev DB is at `0003` (head is `0005`; 3d adds no migration): the owner runs `uv run alembic upgrade head` when back at their computer (not needed for CI). Note: the CI `e2e` job's Chromium install once took 11 min (2026-10-23, PR #9 run); watch for repeats. 2d decisions (2026-10-23, owner "go"): expired session → redirect to sign-in with `next` in Phase 2, Design.md's modal in Phase 3; resending verification needs sign-in (no auto sign-in after register). 2c decisions (2026-10-23, owner "go"): `create-platform-admin` refuses existing emails (no `--promote`); the 2-year audit purge ships now under the PRD §21 retention assumption.
