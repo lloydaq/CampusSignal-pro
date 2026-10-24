@@ -105,6 +105,18 @@ CASES: dict[tuple[str, str], IsolationCase] = {
             None,
         ),
     ),
+    # membership requests (approval queue)
+    ("GET", f"{CAMPUS}/membership-requests"): IsolationCase(
+        Kind.LIST, _static(f"{CAMPUS}/membership-requests")
+    ),
+    ("POST", f"{CAMPUS}/membership-requests/{{request_id}}/approve"): IsolationCase(
+        Kind.OBJECT,
+        lambda w: (f"{CAMPUS}/membership-requests/{w.river_request.id}/approve", None),
+    ),
+    ("POST", f"{CAMPUS}/membership-requests/{{request_id}}/reject"): IsolationCase(
+        Kind.OBJECT,
+        lambda w: (f"{CAMPUS}/membership-requests/{w.river_request.id}/reject", {"reason": "x"}),
+    ),
     # audit
     ("GET", f"{CAMPUS}/audit-log"): IsolationCase(Kind.LIST, _static(f"{CAMPUS}/audit-log")),
 }

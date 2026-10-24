@@ -30,7 +30,7 @@ MAX_ROWS = 5000
 MAX_REPORTED_PROBLEMS = 200
 ACTION_ROSTER_IMPORTED = "college.roster_imported"
 
-_ROLL = re.compile(r"^[A-Z0-9][A-Z0-9/._-]{0,39}$")
+ROLL_NUMBER = re.compile(r"^[A-Z0-9][A-Z0-9/._-]{0,39}$")
 _EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]{2,}$")
 
 
@@ -97,7 +97,7 @@ def import_roster(db: Session, campus: CampusContext, *, text: str, now: datetim
 
         row_problems: list[Problem] = []
         roll = get("roll_number").upper()
-        if not _ROLL.match(roll):
+        if not ROLL_NUMBER.match(roll):
             row_problems.append(
                 Problem(row, "roll_number", "Use 1 to 40 letters, digits or / . _ -.")
             )

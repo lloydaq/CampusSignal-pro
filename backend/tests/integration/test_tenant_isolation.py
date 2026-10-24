@@ -9,15 +9,23 @@ from fastapi import FastAPI
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import RoleGrant
+from app.models import CollegeMembership, MembershipKind, MembershipStatus, RoleGrant
 from tests.integration.auth_helpers import error_of
 from tests.integration.campus_world import World, build_world
+from tests.integration.tenancy import make_user
 from tests.tenant_isolation_cases import CASES, Kind
 
 pytestmark = pytest.mark.integration
 
 # Anything that would only be in a response if Riverside data leaked.
-RIVERSIDE_MARKERS = ("riverside", "River Admin", "River Student", "R-001")
+RIVERSIDE_MARKERS = (
+    "riverside",
+    "River Admin",
+    "River Student",
+    "River Applicant",
+    "R-001",
+    "R-404",
+)
 
 
 @pytest.fixture
@@ -26,6 +34,18 @@ def world(session: Session, app_factory: Callable[..., FastAPI]) -> World:
     world.river_admin_grant = session.execute(  # type: ignore[attr-defined]
         select(RoleGrant).where(RoleGrant.membership_id == world.members["river_admin"].id)
     ).scalar_one()
+    # A pending request at Riverside, from a Riverside applicant.
+    applicant = make_user(session, "river_applicant@riverside.example", name="River Applicant")
+    world.river_request = CollegeMembership(  # type: ignore[attr-defined]
+        user_id=applicant.id,
+        college_id=world.river.id,
+        kind=MembershipKind.STUDENT,
+        status=MembershipStatus.PENDING,
+        verification_flag="NO_ROSTER_MATCH",
+        submitted_roll_number="R-404",
+    )
+    session.add(world.river_request)  # type: ignore[attr-defined]
+    session.commit()
     # Riverside activity, so its audit log and invites aren't empty.
     river = world.browser("river_admin")
     assert (

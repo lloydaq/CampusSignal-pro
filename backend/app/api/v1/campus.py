@@ -4,7 +4,7 @@ then apply the policies in app/policies/campus.py."""
 
 import uuid
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Query, Response
 
@@ -34,7 +34,15 @@ from app.schemas.college_admin import (
     RosterImported,
     RosterPage,
 )
-from app.services import college_audit, departments, members, roster
+from app.schemas.membership import (
+    Decision,
+    QueueItem,
+    QueuePage,
+    RejectRequest,
+    Requester,
+    RosterEvidence,
+)
+from app.services import college_audit, departments, members, membership_requests, roster
 from app.services import invites as invite_service
 from app.services.members import MemberRow
 from app.services.platform import invite_state
@@ -227,6 +235,61 @@ def grant_role(membership_id: uuid.UUID, body: GrantCreate, campus: Campus, db: 
 def revoke_role(membership_id: uuid.UUID, grant_id: uuid.UUID, campus: Campus, db: Db) -> Response:
     members.revoke_role(db, campus, membership_id, grant_id)
     return Response(status_code=204)
+
+
+# --- membership requests (approval queue) -------------------------------------------------
+
+
+@router.get("/membership-requests")
+def review_queue(
+    campus: Campus,
+    db: Db,
+    status: Annotated[
+        Literal["PENDING", "REJECTED"], Query(description="PENDING (default) or REJECTED")
+    ] = "PENDING",
+    cursor: CursorParam = None,
+    limit: Limit = DEFAULT_LIMIT,
+) -> QueuePage:
+    rows, next_cursor = membership_requests.review_queue(
+        db, campus, status=MembershipStatus(status), cursor=decode_cursor(cursor), limit=limit
+    )
+    return QueuePage(
+        items=[
+            QueueItem(
+                id=r.request.id,
+                requester=Requester(display_name=r.user.display_name, email=r.user.email),
+                flag=r.request.verification_flag,
+                roll_number=r.entry.roll_number if r.entry else r.request.submitted_roll_number,
+                roster=RosterEvidence(
+                    full_name=r.entry.full_name,
+                    program=r.entry.program,
+                    admission_year=r.entry.admission_year,
+                    department=_ref(r.department),
+                )
+                if r.entry
+                else None,
+                status=r.request.status,
+                decision_reason=r.request.decision_reason,
+                created_at=r.request.created_at,
+            )
+            for r in rows
+        ],
+        next_cursor=next_cursor,
+    )
+
+
+@router.post("/membership-requests/{request_id}/approve")
+def approve_request(request_id: uuid.UUID, campus: Campus, db: Db, now: Now) -> Decision:
+    request = membership_requests.approve(db, campus, request_id, now)
+    return Decision(id=request.id, status=request.status)
+
+
+@router.post("/membership-requests/{request_id}/reject")
+def reject_request(
+    request_id: uuid.UUID, body: RejectRequest, campus: Campus, db: Db, now: Now
+) -> Decision:
+    request = membership_requests.reject(db, campus, request_id, body.reason, now)
+    return Decision(id=request.id, status=request.status)
 
 
 # --- audit ---------------------------------------------------------------------------------

@@ -1,6 +1,7 @@
 """Campus policies as pure functions (Rules R-2.1): no database, objects built in memory."""
 
 import uuid
+from datetime import UTC, datetime
 
 import pytest
 
@@ -12,6 +13,7 @@ from app.models import (
     MembershipStatus,
     Role,
     RoleGrant,
+    RosterEntry,
 )
 from app.models.user import PlatformRole, User
 from app.policies.campus import (
@@ -29,6 +31,7 @@ from app.policies.campus import (
     membership_change_needs_reason,
     uses_privileged_session_limits,
 )
+from app.policies.membership import can_review_request, classify_request, request_problem
 
 CSE = uuid.uuid4()
 MECH = uuid.uuid4()
@@ -182,3 +185,49 @@ def test_a_college_keeps_one_admin() -> None:
     assert leaves_no_college_admin(other_active_admins=0, member_is_active_admin=True)
     assert not leaves_no_college_admin(other_active_admins=1, member_is_active_admin=True)
     assert not leaves_no_college_admin(other_active_admins=0, member_is_active_admin=False)
+
+
+# --- membership requests (MEMBER-003/004/006) ----------------------------------------------
+
+
+def test_request_eligibility() -> None:
+    assert request_problem(user(platform_admin=True)) == "platform_admin_cannot_join"
+    unverified = user()
+    assert request_problem(unverified) == "email_unverified"
+    unverified.email_verified_at = datetime(2026, 10, 1, tzinfo=UTC)
+    assert request_problem(unverified) is None
+
+
+def _entry(email: str | None) -> RosterEntry:
+    return RosterEntry(roll_number="N-1", email=email)
+
+
+@pytest.mark.parametrize(
+    ("entry", "claimed", "activate", "flag"),
+    [
+        (_entry("A@Northfield.example"), False, True, None),
+        (_entry("a@northfield.example"), True, False, "ROSTER_CLAIMED"),
+        (_entry(None), False, False, "NO_ROSTER_EMAIL"),
+        (_entry("b@northfield.example"), False, False, "EMAIL_MISMATCH"),
+        (None, False, False, "NO_ROSTER_MATCH"),
+    ],
+)
+def test_classifying_a_request(
+    entry: RosterEntry | None, claimed: bool, activate: bool, flag: str | None
+) -> None:
+    outcome = classify_request(user(), entry, claimed)
+    assert (outcome.activate, outcome.flag) == (activate, flag)
+
+
+def test_who_reviews_which_request() -> None:
+    cse_request = CollegeMembership(
+        kind=MembershipKind.STUDENT, department_id=CSE, verification_flag="NO_ROSTER_EMAIL"
+    )
+    no_match = CollegeMembership(
+        kind=MembershipKind.STUDENT, department_id=None, verification_flag="NO_ROSTER_MATCH"
+    )
+    assert can_review_request(ctx(grant(Role.COLLEGE_ADMIN)), no_match)
+    assert can_review_request(ctx(grant(Role.DEPARTMENT_ADMIN, CSE)), cse_request)
+    assert not can_review_request(ctx(grant(Role.DEPARTMENT_ADMIN, MECH)), cse_request)
+    assert not can_review_request(ctx(grant(Role.DEPARTMENT_ADMIN, CSE)), no_match)
+    assert not can_review_request(ctx(), cse_request)
