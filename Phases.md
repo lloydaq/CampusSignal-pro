@@ -187,11 +187,11 @@ Decisions (2026-10-23, owner "go"): accepting an invite requires being signed in
 | Database | `notices`, `notifications` |
 | Backend | Notice policies (scope × role); visibility predicate shared by list/detail; draft/publish/edit/withdraw; notification service (same-transaction inserts, fan-out for HIGH/URGENT at publish); Jobs CLI: notification purge |
 | Frontend | Notices list (urgent pinned, filters, past notices), notice detail, notice editor with preview, department page, notifications panel + unread badge with polling |
-| Deploy | Staging environment per `architecture.md` §18 (Caddy + API + jobs + managed Postgres) with synthetic seed |
+| Deploy | **Deferred (owner decision 2026-10-24; optional for a personal project):** staging environment per `architecture.md` §18 (Caddy + API + jobs + managed Postgres) with synthetic seed. Needs P-1 (hosting) and P-2 (email provider). Phase 4 can be completed without it |
 | Security | Markdown sanitization; scope leakage tests (department notices and drafts, list and direct GET) |
 | Testing | US-04, US-12, US-15; notification count correctness; E2E J2 |
 
-**Definition of done:** US-04, US-12, US-15 green; Release α deployed to staging and smoke-tested.
+**Definition of done:** US-04, US-12, US-15 green; Release α deployed to staging and smoke-tested (the deployment half is deferred; see Deploy above).
 **Risks:** fan-out size for large colleges — measure insert time with 20k synthetic members.
 
 ---
