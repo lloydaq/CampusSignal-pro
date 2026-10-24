@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Last updated | 2026-10-20 |
-| Current phase | **Phase 3 — Colleges, membership, departments, roles, tenant isolation, DONE** (3a–3f merged 2026-10-24; exit demo passes as a full-stack E2E). Next: Phase 4, plan awaiting owner approval |
+| Current phase | **Phase 4 — Notices, department pages, in-app notifications, IN PROGRESS** (Phase 3 done 2026-10-24; 4a implemented on `phase4/notices-backend`, awaiting review; 4d deployment deferred by the owner) |
 
 Status values: `NOT STARTED` · `IN PROGRESS` · `DONE (verified <date>)`. A phase is DONE only per §4 and `Rules.md` §8 — never because files exist.
 
@@ -176,7 +176,7 @@ Decisions (2026-10-23, owner "go"): accepting an invite requires being signed in
 ---
 
 ## Phase 4 — Notices, department pages, in-app notifications → **Release α**
-**Status:** NOT STARTED
+**Status:** IN PROGRESS. Split (plan approved 2026-10-24, owner "go"; deployment deferred): [x] 4a notices backend + department pages (implemented 2026-10-24 on `phase4/notices-backend`); [ ] 4b notifications backend; [ ] 4c frontend; [ ] 4d staging deployment (deferred)
 **Objective:** Official communication works end to end; first staging release.
 **Dependencies:** Phase 3; P-1 decided for staging.
 **Included:** NOTICE-001…007, DEPT-003/004, NOTIF-001…005, membership-decision notifications.
