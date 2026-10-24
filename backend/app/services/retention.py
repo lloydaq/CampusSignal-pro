@@ -1,8 +1,7 @@
 """Retention purges run by the Jobs CLI (architecture.md §8.3, ADR-07).
 
 Each purge deletes only rows that are already dead or past retention, so running it again
-deletes nothing new. Each runs and commits in its own transaction. Notifications (90 days)
-join here when that table arrives in Phase 4.
+deletes nothing new. Each runs and commits in its own transaction.
 """
 
 from collections.abc import Callable
@@ -16,6 +15,7 @@ from sqlalchemy.orm import Session
 from app.core.config import Settings
 from app.models.audit import AuditLog
 from app.models.auth_session import AuthSession
+from app.models.notification import Notification
 from app.models.rate_limit import RateLimitCounter
 from app.models.user_token import UserToken
 
@@ -23,6 +23,8 @@ TOKEN_GRACE = timedelta(days=7)
 RATE_COUNTER_MAX_AGE = timedelta(days=1)  # every rate window is at most an hour
 # [Assumption, PRD §21 item 10] Audit entries are kept 2 years.
 AUDIT_RETENTION = timedelta(days=730)
+# NOTIF-003: notifications are deleted after 90 days, read or not.
+NOTIFICATION_RETENTION = timedelta(days=90)
 
 
 def _deleted(db: Session, statement: Delete) -> int:
@@ -67,6 +69,12 @@ def purge_audit_log(db: Session, settings: Settings, now: datetime) -> int:
     return _deleted(db, delete(AuditLog).where(AuditLog.created_at < now - AUDIT_RETENTION))
 
 
+def purge_notifications(db: Session, settings: Settings, now: datetime) -> int:
+    return _deleted(
+        db, delete(Notification).where(Notification.created_at < now - NOTIFICATION_RETENTION)
+    )
+
+
 Purge = Callable[[Session, Settings, datetime], int]
 
 PURGES: dict[str, Purge] = {
@@ -74,6 +82,7 @@ PURGES: dict[str, Purge] = {
     "user_tokens": purge_tokens,
     "rate_limit_counters": purge_rate_limit_counters,
     "audit_log": purge_audit_log,
+    "notifications": purge_notifications,
 }
 
 

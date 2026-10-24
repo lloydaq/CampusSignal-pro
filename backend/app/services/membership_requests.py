@@ -41,6 +41,7 @@ from app.policies.membership import (
     classify_request,
     request_problem,
 )
+from app.services import notifications
 from app.services.audit import record_audit
 from app.services.roster import ROLL_NUMBER
 
@@ -297,6 +298,15 @@ def approve(
         target_id=str(request.id),
         metadata={"flag": request.verification_flag},
     )
+    notifications.notify_membership_decided(
+        db,
+        user_id=request.user_id,
+        request_id=request.id,
+        college_id=campus.college_id,
+        college_name=campus.college.name,
+        approved=True,
+        now=now,
+    )
     try:
         db.commit()
     except IntegrityError:
@@ -323,6 +333,15 @@ def reject(
         target_id=str(request.id),
         reason=reason,
         metadata={"flag": request.verification_flag},
+    )
+    notifications.notify_membership_decided(
+        db,
+        user_id=request.user_id,
+        request_id=request.id,
+        college_id=campus.college_id,
+        college_name=campus.college.name,
+        approved=False,
+        now=now,
     )
     db.commit()
     return request
