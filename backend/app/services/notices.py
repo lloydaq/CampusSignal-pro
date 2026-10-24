@@ -39,13 +39,16 @@ from app.policies.notices import (
     managed_audience,
     published_audience,
 )
+from app.policies.notifications import notice_notifies_members as notify_members
 from app.repositories.scoped import get_in_college
+from app.services import notifications
 from app.services.audit import record_audit
 
 ACTION_CREATED = "notice.created"
 ACTION_PUBLISHED = "notice.published"
 ACTION_UPDATED = "notice.updated"
 ACTION_WITHDRAWN = "notice.withdrawn"
+ACTION_NOTIFIED = "notice.notified"
 
 
 @dataclass(frozen=True)
@@ -320,7 +323,9 @@ def _publish(db: Session, campus: CampusContext, notice: Notice, now: datetime) 
     notice.updated_at = now
     db.flush()
     _audit(db, campus, ACTION_PUBLISHED, notice)
-    # Phase 4b: HIGH and URGENT notices notify each targeted member here, in this transaction.
+    if notify_members(notice):
+        notified = notifications.notify_notice_published(db, notice, now)
+        _audit(db, campus, ACTION_NOTIFIED, notice, notified=notified)
 
 
 def publish_notice(
@@ -381,6 +386,7 @@ def withdraw_notice(
     notice.version += 1
     notice.updated_at = now
     db.flush()
+    notifications.forget_notice(db, notice.id)
     _audit(db, campus, ACTION_WITHDRAWN, notice, reason=reason)
     db.commit()
     return _view(db, campus, notice)

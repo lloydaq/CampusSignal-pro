@@ -445,9 +445,9 @@ Notice detail and list responses carry `can_manage`; the author's name is includ
 
 | Method | Route | Purpose | Auth / policy | Notable failures |
 |---|---|---|---|---|
-| GET | `/me/notifications?cursor=` · `/me/notifications/unread-count` | List / count (own rows; college-less or current college only — NOTIF-001) | U | — |
+| GET | `/me/notifications?unread=&cursor=&limit=` · `/me/notifications/unread-count` | List (newest first) / count (own rows; college-less or current college only — NOTIF-001) | U, `policies/notifications.py` | 422 bad cursor |
 | GET | `/campus/home` | Role-aware home blocks (HOME-001..004), composed from module services | M | partial block errors returned per block |
-| POST | `/me/notifications/{id}/read` · `/me/notifications/read-all` | Mark read | U, owner | 404 |
+| POST | `/me/notifications/{id}/read` · `/me/notifications/read-all` | Mark one (idempotent) / all visible ones read | U, owner | 404 someone else's or another college's |
 | GET | `/campus/audit-log?actor=&action=&from=&to=&cursor=` | College audit | M, college admin | 403 |
 | GET/POST | `/platform/colleges` | List/create colleges | PA | 409 slug |
 | PATCH | `/platform/colleges/{id}` | Activate/suspend/edit | PA | 409 invalid transition |
@@ -493,7 +493,9 @@ Not in the MVP (PRD §14). Planned for Phase 11:
 ## 15. Notification architecture
 
 - **In-app only** (NOTIF-001..005). Rows in `notifications`, created in the **same transaction** as the triggering change (e.g., issue transition), so they cannot be lost or duplicated.
-- **Fan-out** for HIGH/URGENT notices: one `INSERT ... SELECT` over ACTIVE memberships in the notice's scope, in the publish transaction. (Scheduled notices, P1, will add a `notified_at` guard and fan-out from the Jobs CLI.) Expected size per college ≤ 20k rows per notice — acceptable for PostgreSQL.
+- **Fan-out** for HIGH/URGENT notices: one `INSERT ... SELECT ... ON CONFLICT DO NOTHING` over ACTIVE memberships in the notice's scope (the whole college, or members whose home department is the notice's), in the publish transaction; a partial unique index on (user, notice) makes "told once" a database rule. Measured 2026-10-24: 20,000 members in about 0.5 s (`tests/integration/test_notification_scale.py`). The audit entry `notice.notified` records how many were told. Later edits and priority changes don't notify again; withdrawing a notice deletes its notifications.
+- **Visibility** (NOTIF-001): rows are listed, counted and openable only by their owner, and only when `college_id` is NULL or equals the college of the user's ACTIVE membership (`policies/notifications.py`). A join approval belongs to the college joined; a rejection has no college, because the applicant isn't a member.
+- **Types so far:** `NOTICE_PUBLISHED`, `MEMBERSHIP_DECIDED`. Notifications older than 90 days are deleted by the hourly job (migration `0007` adds the table). (Scheduled notices, P1, will add a `notified_at` guard and fan-out from the Jobs CLI.) Expected size per college ≤ 20k rows per notice — acceptable for PostgreSQL.
 - **Delivery to browser:** polling `unread-count` every 60 s while the tab is visible and on focus. No WebSockets/SSE in MVP.
 - **Account emails** (verification, reset, invites) are sent only after the database transaction commits, through a `Mailer` (`app/core/mailer.py`): `SmtpMailer` (Mailpit on `localhost:1025` locally; the P-2 provider's SMTP in deployments, which must use STARTTLS or TLS) or `InMemoryMailer` (tests). There is no console backend: emails carry tokens, which must never reach logs (Rules R-2.11). Links put the token in the URL fragment (`/verify-email#token=…`), which browsers never send to servers, so tokens stay out of access logs and `Referer` headers. Failure is logged without recipient or content; the user can resend.
 

@@ -23,6 +23,7 @@ from app.models.notice import (
     NoticeScope,
     NoticeStatus,
 )
+from app.models.notification import Notification, NotificationType
 from app.models.rate_limit import RateLimitCounter
 from app.models.user import PlatformRole, User, UserStatus
 from app.models.user_token import TokenPurpose, UserToken
@@ -42,6 +43,8 @@ __all__ = [
     "NoticePriority",
     "NoticeScope",
     "NoticeStatus",
+    "Notification",
+    "NotificationType",
     "PlatformRole",
     "RateLimitCounter",
     "Role",

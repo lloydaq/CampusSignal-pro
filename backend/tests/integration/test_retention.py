@@ -3,6 +3,7 @@
 one second short of it; a second run deletes nothing."""
 
 import json
+import uuid
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -12,7 +13,15 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.security import hash_password, new_token
 from app.jobs import main as jobs
-from app.models import AuditLog, AuthSession, RateLimitCounter, User, UserToken
+from app.models import (
+    AuditLog,
+    AuthSession,
+    Notification,
+    NotificationType,
+    RateLimitCounter,
+    User,
+    UserToken,
+)
 from app.models.user_token import TokenPurpose
 from app.services import retention
 from tests.conftest import make_settings
@@ -113,6 +122,23 @@ def _seed(session: Session, user: User) -> None:
         ("test.recent", NOW - timedelta(days=1)),
     ):
         session.add(AuditLog(action=action, data={}, created_at=created))
+    for title, created, read in (
+        ("old-unread", NOW - retention.NOTIFICATION_RETENTION - SECOND, False),
+        ("old-read", NOW - retention.NOTIFICATION_RETENTION - SECOND, True),
+        ("at-cutoff", NOW - retention.NOTIFICATION_RETENTION, False),
+        ("recent", NOW - timedelta(days=1), False),
+    ):
+        session.add(
+            Notification(
+                user_id=user.id,
+                type=NotificationType.NOTICE_PUBLISHED,
+                subject_type="NOTICE",
+                subject_id=uuid.uuid4(),
+                title=title,
+                created_at=created,
+                read_at=NOW if read else None,
+            )
+        )
     session.commit()
 
 
@@ -128,6 +154,7 @@ def test_each_purge_deletes_only_rows_past_its_cutoff(
         "user_tokens": 1,
         "rate_limit_counters": 1,
         "audit_log": 1,
+        "notifications": 2,
     }
     assert all(o.error_type is None for o in outcomes)
     session.expire_all()
@@ -137,6 +164,8 @@ def test_each_purge_deletes_only_rows_past_its_cutoff(
     assert session.execute(select(RateLimitCounter.bucket_key)).scalars().all() == ["recent"]
     actions = session.execute(select(AuditLog.action)).scalars().all()
     assert sorted(actions) == ["test.at_cutoff", "test.recent"]
+    titles = session.execute(select(Notification.title)).scalars().all()
+    assert sorted(titles) == ["at-cutoff", "recent"]  # read or not, only age counts
 
 
 def test_a_second_run_deletes_nothing(
@@ -147,7 +176,7 @@ def test_a_second_run_deletes_nothing(
 
     again = retention.run_purges(factory, SETTINGS, NOW)
 
-    assert [o.deleted for o in again] == [0, 0, 0, 0]
+    assert [o.deleted for o in again] == [0, 0, 0, 0, 0]
 
 
 def test_the_audit_purge_flag_does_not_outlive_its_transaction(
@@ -189,5 +218,11 @@ def test_run_due_logs_counts_only(
     purges = {
         line["purge"]: line["deleted"] for line in lines if line["message"] == "retention_purge"
     }
-    assert purges == {"sessions": 3, "user_tokens": 1, "rate_limit_counters": 1, "audit_log": 1}
+    assert purges == {
+        "sessions": 3,
+        "user_tokens": 1,
+        "rate_limit_counters": 1,
+        "audit_log": 1,
+        "notifications": 2,
+    }
     assert session.execute(select(func.count()).select_from(AuthSession)).scalar() == 3
