@@ -21,12 +21,12 @@ afterEach(() => {
 });
 
 describe("navigation", () => {
-  it("offers members Home and Account, marking the current page", async () => {
+  it("offers members Home, Notices and Account, marking the current page", async () => {
     mockFetch({ [ME]: signedIn({}, MEMBER) });
     renderRoute("/home");
     const navs = await screen.findAllByRole("navigation", { name: "Main" });
     for (const nav of navs) {
-      expect(within(nav).getAllByRole("link").map((l) => l.textContent)).toEqual(["Home", "Account"]);
+      expect(within(nav).getAllByRole("link").map((l) => l.textContent)).toEqual(["Home", "Notices", "Account"]);
       expect(within(nav).getByRole("link", { name: "Home" })).toHaveAttribute("aria-current", "page");
     }
     expect(screen.getAllByText("Northfield Institute").length).toBeGreaterThan(0);
