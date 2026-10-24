@@ -219,17 +219,24 @@ API docs (local only): http://127.0.0.1:8000/api/v1/docs
 
 ### 4. Operator commands
 
-Run these from `backend/`, on the server or locally. They use the same `.env` settings as the API. Both commands are the same in PowerShell and bash.
+Run these from `backend/`, on the server or locally. They use the same `.env` settings as the API. The commands are the same in PowerShell and bash.
 
 ```bash
 # Create a platform-admin account. You're asked for the password twice.
 uv run python -m app.cli create-platform-admin --email ops@example.org --display-name "Platform Ops"
+
+# Add two fictional demo colleges (Northfield Institute, Riverside College) with departments,
+# a college admin, a department-admin faculty member and a student roster each. You're asked
+# for one password, used for all the demo accounts. Only with APP_ENV=local or ci.
+uv run python -m app.cli seed-demo
 
 # Run the retention purges. The deployment scheduler runs this every hour.
 uv run python -m app.jobs run-due
 ```
 
 Platform admins can only be created this way, not through the app or the API. The command creates a new, already-verified account. It refuses an email that already has an account: an existing account is never promoted, so platform admins stay separate from college members. The password can't be passed as an argument, which keeps it out of shell history.
+
+`seed-demo` adds only what is missing, so running it again is safe. The demo accounts and roll numbers are listed at the top of `backend/app/services/demo_seed.py`. The students on the rosters have no accounts: to try joining, register with a roster email (for example `nf-cse-002@northfield.example`), verify it, then join Northfield with the roll number `NF-CSE-002`. `NF-CSE-001` has no roster email, so that request waits in the approval queue.
 
 `run-due` deletes:
 
@@ -289,11 +296,11 @@ TEST_DATABASE_URL="postgresql+psycopg://postgres:postgres@localhost:5432/campuss
 
 ### Full-stack E2E (real API, database and email)
 
-This test runs the account journeys against the real backend. It registers, opens the verification link from the email, signs in and out, and resets a password.
+These tests run against the real backend: the account journeys (register, open the verification link from the email, sign in and out, reset a password) and the Phase 3 exit demo (a platform admin creates a college and invites its admin, the admin accepts, adds a department and imports the roster, and a student registers with a roster email and joins by roll number).
 
 * Emails are caught by [Mailpit](https://mailpit.axllent.org/), and the test reads them through Mailpit's API.
 * The run writes accounts to the database. Use a **separate** disposable database whose name ends in `_test`, on `localhost`; the config refuses anything else.
-* Each run creates three accounts from one address. The API allows 10 registrations per address per hour, so locally you can run it three times an hour.
+* Each run registers six accounts from one address. The API allows 10 registrations per address per hour, so run it once an hour locally, or empty the `rate_limit_counters` table of the test database between runs.
 * GitHub Actions runs it on every push and pull request, using Postgres and Mailpit service containers.
 
 To run it yourself, start Mailpit (the standalone binary, no Docker needed) and create an empty database such as `campussignal_e2e_test`. Then, from `frontend/`:

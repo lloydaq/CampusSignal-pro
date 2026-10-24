@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Last updated | 2026-10-20 |
-| Current phase | **Phase 3 — Colleges, membership, departments, roles, tenant isolation, IN PROGRESS** (3a–3e merged; 3f-1 implemented 2026-10-24 on `phase3/manage-frontend`, awaiting review) |
+| Current phase | **Phase 3 — Colleges, membership, departments, roles, tenant isolation, IN PROGRESS** (3a–3f-1 merged; 3f-2 implemented 2026-10-24 on `phase3/platform-frontend`, awaiting review) |
 
 Status values: `NOT STARTED` · `IN PROGRESS` · `DONE (verified <date>)`. A phase is DONE only per §4 and `Rules.md` §8 — never because files exist.
 
@@ -151,8 +151,8 @@ Approved plan (2026-10-23), one reviewed PR per step, in order:
 - [x] 3d — Joining: `/colleges` directory, roll-number membership requests (verified email only, uniform response, flags, 5/24 h), approval queue scoped by department, approve/reject with audit. Implemented 2026-10-24 on `phase3/joining`: 686 backend tests passed, 0 skipped (local PostgreSQL 16). US-02 and US-03 automated; `/me` no longer shows a pending request's department (it would reveal a roster match); isolation suite covers the 3 queue routes; mutation check on the department-admin queue filter. Merged in PR #15 (`fd11458`), CI green.
 - [x] 3e — Frontend for members (merged, PR #16): signed-in app shell + navigation from `/me` capabilities, college picker + roll number, pending/rejected states, invite acceptance, session-ended modal (Design.md §7). Implemented 2026-10-24 on `phase3/member-frontend`: 169 Vitest, 90 Playwright + axe (2 skipped by design), full-stack E2E 3/3 locally; screenshots checked at 390/1280 px, light and dark. `/` routes by capabilities (campus → /home, platform → /account, else /join). Bugs found and fixed with regression tests: the invite token was re-saved on every render (so "forget it once used" didn't stick), and the session-ended dialog redirected away when /me was slow after re-signing in.
 - [ ] 3f — Frontend for admins: Manage (members queue/directory/invites/roles, departments, roster import), Platform → Colleges, `seed-demo` CLI for the exit demo. Split in two PRs:
-  - [ ] 3f-1 — Manage: Requests (account vs roster, approve, reject with reason), Members (filters, suspend/end with reason, reactivate, department, roles), Invites, Departments (add, edit, archive/restore), Roster (template, CSV upload or paste, row-error table, list), Audit log. Department admins: Requests + Members, read-only. Implemented 2026-10-24 on `phase3/manage-frontend`: 188 Vitest, 126 Playwright + axe (2 skipped by design); screenshots checked at 390/1280, light and dark.
-  - [ ] 3f-2 — Platform → Colleges UI, `seed-demo` CLI, Phase 3 exit demo.
+  - [x] 3f-1 — Manage (merged, PR #17): Requests (account vs roster, approve, reject with reason), Members (filters, suspend/end with reason, reactivate, department, roles), Invites, Departments (add, edit, archive/restore), Roster (template, CSV upload or paste, row-error table, list), Audit log. Department admins: Requests + Members, read-only. Implemented 2026-10-24 on `phase3/manage-frontend`: 188 Vitest, 126 Playwright + axe (2 skipped by design); screenshots checked at 390/1280, light and dark.
+  - [ ] 3f-2 — Platform → Colleges UI (colleges, college detail with status and first-admin invitations, users, audit log), `seed-demo` CLI, Phase 3 exit demo as a full-stack E2E. Implemented 2026-10-24 on `phase3/platform-frontend`: 695 backend tests, 202 Vitest, 154 Playwright + axe (2 skipped by design), full-stack E2E 4/4 locally; screenshots checked at 390/1280, light and dark.
 
 Decisions (2026-10-23, owner "go"): accepting an invite requires being signed in as the invited email, marks it verified and ends that account's other sessions; verifying an email ends the account's other sessions (implemented in 3a).
 **Objective:** A college can be onboarded and populated with verified members holding correct roles, with isolation proven by tests.

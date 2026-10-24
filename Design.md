@@ -180,7 +180,7 @@ Navigation is built from `/me` capabilities. Users see only sections they can us
 | Community (college feed, department feed) | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Issues (mine; + Assigned to me if any) | ✓ | ✓ | ✓ | ✓ (+ Queue) | ✓ (+ Queue) |
 | Manage (members, departments, roster, academic setup, moderation, audit) | — | — | Dept-scoped items | All | — |
-| Platform (colleges, users, audit) | Separate `PlatformShell`, platform admins only | | | | |
+| Platform (colleges, users, audit) | Platform admins only: their own navigation (Platform, Account), no college items | | | | |
 
 **Desktop (≥ lg):** left navigation rail (one level, no nested trees). Top of rail: wordmark + college name (not a switcher in MVP — one active membership). Bottom: notifications bell with unread count, profile menu (Profile & settings, Theme, Sign out). Section sub-pages use **tabs** at the top of the main column (e.g., Academics: Timetable · Attendance · Results).
 
@@ -213,7 +213,7 @@ States legend: **L** loading, **E** empty, **X** error, **U** unauthorized/forbi
 | 15 | **Profile & settings** | Manage account | Sections: Profile (display name), Membership (college, department, kind — read-only), Security (change password, sign out all devices), Appearance (theme). | Password errors inline |
 | 16 | **Faculty home / Teaching** | "Which classes need me?" | Today's classes with "Take attendance" action; sections list; section page tabs: Attendance (sessions list + Take attendance), Assessments (list, create, score entry grid, publish), Students (roster: name, roll no.) | Attendance grid: all Present by default, toggle per row, keyboard (↑/↓ move, P/A/E set), sticky Save bar showing counts; leave-page guard on unsaved changes; edit window closed → read-only with explanation |
 | 17 | **College administration (Manage)** | Run the college space | Sub-pages: Members (pending queue first with verification flag and roster-vs-account comparison, then directory with filters — admin only), Invites, Roles, Departments, Roster import (template download, upload, row-error table), Academic setup (terms, subjects, sections, timetable, enrollment — dept-scoped for dept admins), Section records (read-only attendance sessions and results per section), Moderation queue, Audit log (table, filters). Tables, not cards. | Destructive actions (end membership, revoke role, withdraw notice) use confirmation dialog stating consequence and requiring reason where PRD requires |
-| 18 | **Platform administration** | Operate platform | Separate shell with a neutral header labelled "Platform". Colleges table (name, slug, status, members count), college detail (status actions, admin invites), Users (search by email, suspend), Platform audit log. No access to college content. | Status transitions confirmed with reason |
+| 18 | **Platform administration** | Operate platform | Platform admins get the same app shell with only Platform and Account in the navigation (decided 2026-10-24: a second shell added nothing), and the page opens with a neutral "Platform" label above its heading. Colleges table (name, slug, status, members count), college detail (status actions, admin invites), Users (search by email, suspend), Platform audit log. No access to college content. | Status transitions confirmed with reason |
 
 ## 6. Components
 
