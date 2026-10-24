@@ -246,7 +246,7 @@ erDiagram
 | `attendance_records` | college_id, attendance_session_id, enrollment_id, status | UNIQUE(attendance_session_id, enrollment_id) |
 | `assessments` | college_id, section_id, name, kind, max_score numeric(6,2), held_on, published_at | idx(section_id) |
 | `assessment_results` | college_id, assessment_id, enrollment_id, score numeric(6,2) NULL, is_absent, revised_at, version | UNIQUE(assessment_id, enrollment_id); CHECK(score ≥ 0) |
-| `notices` | college_id, department_id NULL, author_membership_id, title, body, category, priority, scope, status, published_at, expires_at, edited_at | idx(college_id, status, published_at DESC); CHECK(scope='DEPARTMENT' ⇔ department_id IS NOT NULL) |
+| `notices` | college_id, department_id NULL, author_membership_id, title, body, category, priority, scope, status, published_at, expires_at, edited_at, version (optimistic concurrency), created_at, updated_at | idx(college_id, status, published_at DESC, id DESC), idx(college_id, department_id); composite FKs for department and author; CHECK(scope='DEPARTMENT' ⇔ department_id IS NOT NULL), CHECK(status='DRAFT' ⇔ published_at IS NULL), CHECK(expires_at > published_at). Migration `0006` |
 | `posts` | college_id, author_membership_id, visibility, department_id NULL, body, status (VISIBLE, HIDDEN), edited_at, deleted_at | idx(college_id, visibility, department_id, created_at DESC, id DESC) |
 | `comments` | college_id, post_id, author_membership_id, body, status, deleted_at | idx(post_id, created_at) |
 | `reactions` | college_id, post_id, membership_id | UNIQUE(post_id, membership_id) |
@@ -386,11 +386,14 @@ Auth column: **—** public, **U** signed-in user, **M** ACTIVE member (campus c
 |---|---|---|---|---|
 | GET | `/campus/departments` · `/{id}` | List / detail page data | M | 404 |
 | POST/PATCH | `/campus/departments` · `/{id}` | Create/edit/archive | M, college admin (dept admin: description only) | 409 code taken |
-| GET | `/campus/notices?category=&department_id=&cursor=` | Visible notices (NOTICE-004/005) | M, `can_read_notice` applied in query | — |
+| GET | `/campus/notices?status=&past=&category=&department_id=&cursor=&limit=` | Visible notices (NOTICE-004/005). `status` is PUBLISHED by default; DRAFT and WITHDRAWN show only what the caller may manage. `past=true` lists expired notices. 20 per page, urgent unexpired first, then newest; cursor = (pinned, time, id) | M, audiences from `policies/notices.py` applied in the query | 422 bad cursor/enum |
 | GET | `/campus/notices/{id}` | Detail | M, `can_read_notice` | 404 |
-| POST | `/campus/notices` | Create draft or publish immediately (no `publish_at`/`audience` in MVP — unknown fields → 422) | M, `can_publish_notice(scope, department)` | 403 scope; 404 department |
-| PATCH | `/campus/notices/{id}` | Edit | M, author or same-scope admin | 404; 409 version |
-| POST | `/campus/notices/{id}/withdraw` | Withdraw with reason | M, same | 422 no reason |
+| POST | `/campus/notices` | Create a draft, or publish at once with `publish: true` (no `publish_at`/`audience`/`college_id`/`status` in MVP — unknown fields → 422) | M, `can_publish_in(scope, department)` | 403 not an admin / college scope for a department admin; 404 department (other college or not theirs); 422 archived department, past `expires_at` |
+| PATCH | `/campus/notices/{id}` | Edit title, body, category, priority, `expires_at` (send `version`; scope and department are fixed). Editing a published notice sets `edited_at` and audits the changed field names | M, `can_manage_notice` | 404 not readable; 403 readable but not manageable; 409 `version_conflict` / `invalid_transition` (withdrawn) |
+| POST | `/campus/notices/{id}/publish` | Publish a draft (`version` required) | M, same | 409 `version_conflict` / `invalid_transition`; 422 expired |
+| POST | `/campus/notices/{id}/withdraw` | Withdraw a published notice with a reason | M, same | 422 no reason; 409 `invalid_transition` |
+
+Notice detail and list responses carry `can_manage`; the author's name is included only when it is true. `GET /campus/departments/{id}` adds `admins` (names only, DEPT-003). `PATCH /campus/departments/{id}`: a department admin may change only the description of a department they administer (404 for another, 403 for name or archive).
 
 **Community**
 

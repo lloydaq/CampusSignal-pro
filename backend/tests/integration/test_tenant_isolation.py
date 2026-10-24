@@ -54,6 +54,23 @@ def world(session: Session, app_factory: Callable[..., FastAPI]) -> World:
         ).status_code
         == 201
     )
+    # Riverside notices: one published (with a Riverside-only title), one draft.
+    for title, publish in (("Riverside hostel curfew", True), ("Riverside draft plan", False)):
+        created = river.post(
+            "/api/v1/campus/notices",
+            {
+                "title": title,
+                "body": "Only for Riverside.",
+                "category": "GENERAL",
+                "scope": "COLLEGE",
+                "publish": publish,
+            },
+        )
+        assert created.status_code == 201, created.text
+        if publish:
+            world.river_notice = created.json()  # type: ignore[attr-defined]
+        else:
+            world.river_draft = created.json()  # type: ignore[attr-defined]
     return world
 
 

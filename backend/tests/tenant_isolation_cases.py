@@ -117,6 +117,42 @@ CASES: dict[tuple[str, str], IsolationCase] = {
         Kind.OBJECT,
         lambda w: (f"{CAMPUS}/membership-requests/{w.river_request.id}/reject", {"reason": "x"}),
     ),
+    # notices
+    ("GET", f"{CAMPUS}/notices"): IsolationCase(Kind.LIST, _static(f"{CAMPUS}/notices")),
+    ("POST", f"{CAMPUS}/notices"): IsolationCase(
+        Kind.CREATE,
+        lambda w: (
+            f"{CAMPUS}/notices",
+            {
+                "title": "X",
+                "body": "X",
+                "category": "GENERAL",
+                "scope": "COLLEGE",
+                "college_id": str(w.river.id),
+            },
+        ),
+    ),
+    ("GET", f"{CAMPUS}/notices/{{notice_id}}"): IsolationCase(
+        Kind.OBJECT, lambda w: (f"{CAMPUS}/notices/{w.river_notice['id']}", None)
+    ),
+    ("PATCH", f"{CAMPUS}/notices/{{notice_id}}"): IsolationCase(
+        Kind.OBJECT,
+        lambda w: (
+            f"{CAMPUS}/notices/{w.river_notice['id']}",
+            {"version": w.river_notice["version"], "title": "Hacked"},
+        ),
+    ),
+    ("POST", f"{CAMPUS}/notices/{{notice_id}}/publish"): IsolationCase(
+        Kind.OBJECT,
+        lambda w: (
+            f"{CAMPUS}/notices/{w.river_draft['id']}/publish",
+            {"version": w.river_draft["version"]},
+        ),
+    ),
+    ("POST", f"{CAMPUS}/notices/{{notice_id}}/withdraw"): IsolationCase(
+        Kind.OBJECT,
+        lambda w: (f"{CAMPUS}/notices/{w.river_notice['id']}/withdraw", {"reason": "x"}),
+    ),
     # audit
     ("GET", f"{CAMPUS}/audit-log"): IsolationCase(Kind.LIST, _static(f"{CAMPUS}/audit-log")),
 }

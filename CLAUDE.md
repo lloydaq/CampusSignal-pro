@@ -100,4 +100,4 @@ Add folders only when a feature needs them.
 - Update `memory.md` after completing work; never claim tests passed unless they ran.
 
 ## Current phase
-Phase 3 (colleges, membership, departments, roles, tenant isolation) is done. Phase 4 (notices, department pages, notifications) is next and needs an approved plan first; see `Phases.md`. Update this line as phases complete.
+Phase 4 — notices, department pages, in-app notifications: in progress (4a notices backend on review; 4b notifications, 4c frontend next; 4d staging deployment deferred by the owner; see `Phases.md`). Update this line as phases complete.

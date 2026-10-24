@@ -7,9 +7,10 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.core.errors import Conflict, Forbidden
+from app.core.errors import Conflict, Forbidden, NotFound
 from app.models import Department
-from app.policies.campus import CampusContext, can_manage_college
+from app.policies.campus import CampusContext, administered_departments, can_manage_college
+from app.policies.notices import can_edit_department_description
 from app.repositories.scoped import get_in_college
 from app.services.audit import record_audit
 
@@ -78,7 +79,14 @@ def update_department(
     now: datetime,
 ) -> Department:
     department = get_in_college(db, Department, campus.college_id, department_id)
-    require_college_admin(campus)
+    if not can_manage_college(campus):
+        # DEPT-004: a department admin edits only their own department's description.
+        if not administered_departments(campus.grants):
+            raise Forbidden()
+        if not can_edit_department_description(campus, department.id):
+            raise NotFound()
+        if name is not None or archived is not None:
+            raise Forbidden()
     changed: list[str] = []
     if name is not None and name != department.name:
         department.name = name
