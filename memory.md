@@ -60,7 +60,7 @@ Completed milestones (2026-10-20): documentation set; pre-development review; ow
 ## 8. Open decisions
 | ID | Decision | Needed by |
 |---|---|---|
-| P-1 | Hosting provider (staging + prod) | Phase 4 |
+| P-1 | Hosting provider (staging + prod). Notes 2026-10-24: leading idea is one small VPS + Docker Compose (Caddy, API, jobs), Postgres in a container for staging; Vercel suits the frontend only; prices unverified | Deferred until deployment (was Phase 4) |
 | P-2 | Transactional email provider (any SMTP with STARTTLS/TLS; local dev uses Mailpit, so not blocking) | Phase 10 (staging needs it earlier) |
 | P-3 | Pilot college + data-processing agreement | Before real data (Phase 10) |
 | P-5 | Attendance edit window default (48 h assumed) | Phase 7 |
@@ -109,4 +109,4 @@ CI: `.github/workflows/backend.yml` and `.github/workflows/frontend.yml` both gr
 - Backend deps: fastapi 0.156.4, uvicorn 0.54.0, pydantic-settings 2.16.1; dev: pytest 9.1.1, httpx2 2.13.1 + httpcore2 2.13.1 (pinned `==2.13.1`: Starlette ≥1.2 test client prefers httpx2 and deprecates `httpx`; 2.13.1 chosen over the same-day 2.16.0 release), ruff 0.17.1, mypy 2.4.0.
 
 ## 11. Next task
-Phase 4 (notices, department pages, in-app notifications; Release α, needs P-1 decided for staging): propose a plan and wait for the owner's approval before starting. Supabase dev DB is at `0003` (head is `0005`; 3d adds no migration): the owner runs `uv run alembic upgrade head` when back at their computer (not needed for CI). Note: the CI `e2e` job's Chromium install once took 11 min (2026-10-23, PR #9 run); watch for repeats. 2d decisions (2026-10-23, owner "go"): expired session → redirect to sign-in with `next` in Phase 2, Design.md's modal in Phase 3; resending verification needs sign-in (no auto sign-in after register). 2c decisions (2026-10-23, owner "go"): `create-platform-admin` refuses existing emails (no `--promote`); the 2-year audit purge ships now under the PRD §21 retention assumption.
+Phase 4 (notices, department pages, in-app notifications): plan proposed 2026-10-24 as 4a notices backend, 4b notifications backend, 4c frontend, 4d staging deployment; the owner deferred 4d (deployment) to later, so P-1/P-2 aren't needed yet. Wait for the owner's "Go" on 4a–4c before starting. Supabase dev DB is at `0003` (head is `0005`; 3d adds no migration): the owner runs `uv run alembic upgrade head` when back at their computer (not needed for CI). Note: the CI `e2e` job's Chromium install once took 11 min (2026-10-23, PR #9 run); watch for repeats. 2d decisions (2026-10-23, owner "go"): expired session → redirect to sign-in with `next` in Phase 2, Design.md's modal in Phase 3; resending verification needs sign-in (no auto sign-in after register). 2c decisions (2026-10-23, owner "go"): `create-platform-admin` refuses existing emails (no `--promote`); the 2-year audit purge ships now under the PRD §21 retention assumption.
