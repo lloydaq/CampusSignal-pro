@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 
 from app.core import ratelimit
 from app.core.config import Settings
-from app.core.errors import BadRequest, Conflict, Forbidden
+from app.core.errors import BadRequest, Conflict, Forbidden, ValidationFailed
 from app.core.mailer import OutgoingEmail
 from app.core.ratelimit import Limit
 from app.core.security import new_token, token_digest
@@ -27,7 +27,8 @@ from app.models import (
     RoleGrant,
 )
 from app.models.user import User
-from app.policies.platform import invite_acceptance_problem
+from app.policies.campus import CampusContext, can_manage_college
+from app.policies.platform import invite_acceptance_problem, is_platform_admin
 from app.services import sessions
 from app.services.audit import record_audit
 
@@ -209,3 +210,74 @@ def _membership_for(db: Session, user: User, college: College, kind: str) -> Col
     db.add(membership)
     db.flush()
     return membership
+
+
+# --- faculty and staff invites from college admins (MEMBER-007) ----------------------------
+
+ACTION_INVITE_SENT = "college.invite_sent"
+
+
+def invite_member(
+    db: Session,
+    settings: Settings,
+    campus: CampusContext,
+    *,
+    email: str,
+    kind: str,
+    now: datetime,
+) -> tuple[Invite, OutgoingEmail]:
+    if not can_manage_college(campus):
+        raise Forbidden()
+    invitee = db.execute(select(User).where(User.email == email)).scalar_one_or_none()
+    if invitee is not None:
+        if is_platform_admin(invitee):
+            raise ValidationFailed.field("email", "Platform admin accounts can't join a college.")
+        already = db.execute(
+            select(CollegeMembership.id).where(
+                CollegeMembership.college_id == campus.college_id,
+                CollegeMembership.user_id == invitee.id,
+                CollegeMembership.status == MembershipStatus.ACTIVE,
+            )
+        ).first()
+        if already is not None:
+            raise Conflict(
+                "This person is already a member of your college.", code="already_member"
+            )
+    invite, token = create_invite(
+        db,
+        college=campus.college,
+        email=email,
+        kind=kind,
+        grants=[],
+        invited_by=campus.user,
+        now=now,
+    )
+    record_audit(
+        db,
+        action=ACTION_INVITE_SENT,
+        actor_user_id=campus.user.id,
+        college_id=campus.college_id,
+        target_type="invite",
+        target_id=str(invite.id),
+        metadata={"kind": kind},
+    )
+    db.commit()
+    return invite, invite_email(settings, campus.college, email, token, admin=False)
+
+
+def pending_invites(db: Session, campus: CampusContext, now: datetime) -> list[Invite]:
+    if not can_manage_college(campus):
+        raise Forbidden()
+    return list(
+        db.execute(
+            select(Invite)
+            .where(
+                Invite.college_id == campus.college_id,
+                Invite.accepted_at.is_(None),
+                Invite.revoked_at.is_(None),
+                Invite.expires_at > now,
+            )
+            .order_by(Invite.created_at.desc(), Invite.id.desc())
+            .limit(200)
+        ).scalars()
+    )

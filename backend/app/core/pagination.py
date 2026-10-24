@@ -44,7 +44,7 @@ def decode_cursor(value: str | None) -> Cursor | None:
     return cursor
 
 
-def newest_first[S: Select[Any]](
+def newest_first[S: Select[*tuple[Any, ...]]](
     query: S,
     created_at: InstrumentedAttribute[datetime],
     row_id: InstrumentedAttribute[uuid.UUID],

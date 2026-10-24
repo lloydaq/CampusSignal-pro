@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import DateTime, ForeignKey, Index, Text, Uuid, func, text
+from sqlalchemy import DateTime, ForeignKey, Index, Text, Uuid, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -32,6 +32,8 @@ class AuditLog(Base):
     data: Mapped[dict[str, Any]] = mapped_column(
         "metadata", JSONB, server_default=text("'{}'::jsonb")
     )
+    # clock_timestamp(), not now(): now() is the transaction's start time, so several entries
+    # written in one transaction would share a timestamp and lose their order (migration 0005).
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), index=True
+        DateTime(timezone=True), server_default=text("clock_timestamp()"), index=True
     )

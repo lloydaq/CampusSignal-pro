@@ -4,7 +4,15 @@ import uuid
 from collections.abc import Iterable
 from dataclasses import dataclass
 
-from app.models import College, CollegeMembership, CollegeStatus, MembershipStatus, Role, RoleGrant
+from app.models import (
+    College,
+    CollegeMembership,
+    CollegeStatus,
+    MembershipKind,
+    MembershipStatus,
+    Role,
+    RoleGrant,
+)
 from app.models.user import PlatformRole, User
 
 MEMBERSHIP_REQUIRED = "membership_required"
@@ -86,3 +94,69 @@ def capabilities(
     if is_college_admin(grants) or administered_departments(grants):
         found.append(REVIEW_MEMBERSHIPS)
     return found
+
+
+# --- college administration (ADMIN-003, DEPT-001/002, MEMBER-011, PRD §11 and §17) ---------
+
+
+def can_manage_college(campus: CampusContext) -> bool:
+    """Departments, roster, invites, member changes, roles, audit log: college admins only."""
+    return is_college_admin(campus.grants)
+
+
+def can_view_directory(campus: CampusContext) -> bool:
+    """§17.12: the member directory is for admins only (college admins, department admins)."""
+    return is_college_admin(campus.grants) or bool(administered_departments(campus.grants))
+
+
+def directory_includes(campus: CampusContext, member: CollegeMembership) -> bool:
+    """PRD §11: department admins see their departments' students plus the college's
+    faculty and staff; college admins see everyone."""
+    if is_college_admin(campus.grants):
+        return True
+    if member.kind != MembershipKind.STUDENT:
+        return True
+    return member.department_id in administered_departments(campus.grants)
+
+
+def can_see_contact_details(campus: CampusContext, member: CollegeMembership) -> bool:
+    """§17.6: email and roll number go to college admins, and to department admins for
+    students of their departments."""
+    if is_college_admin(campus.grants):
+        return True
+    return (
+        member.kind == MembershipKind.STUDENT
+        and member.department_id in administered_departments(campus.grants)
+    )
+
+
+# Changes a college admin may make to a membership (MEMBER-009/011). ENDED is final;
+# PENDING and REJECTED are requests, decided through the approval queue (3d).
+MEMBERSHIP_TRANSITIONS: dict[str, frozenset[str]] = {
+    MembershipStatus.ACTIVE: frozenset({MembershipStatus.SUSPENDED, MembershipStatus.ENDED}),
+    MembershipStatus.SUSPENDED: frozenset({MembershipStatus.ACTIVE, MembershipStatus.ENDED}),
+}
+
+STUDENT_CANNOT_HOLD_ROLES = "student_cannot_hold_roles"
+
+
+def can_change_membership_status(current: str, target: str) -> bool:
+    return target in MEMBERSHIP_TRANSITIONS.get(current, frozenset())
+
+
+def membership_change_needs_reason(target: str) -> bool:
+    return target in (MembershipStatus.SUSPENDED, MembershipStatus.ENDED)
+
+
+def grant_problem(member: CollegeMembership) -> str | None:
+    """Why `member` can't receive a role (ADMIN-003, DEPT-002), or None."""
+    if member.kind == MembershipKind.STUDENT:
+        return STUDENT_CANNOT_HOLD_ROLES
+    if member.status != MembershipStatus.ACTIVE:
+        return MEMBERSHIP_INACTIVE
+    return None
+
+
+def leaves_no_college_admin(other_active_admins: int, member_is_active_admin: bool) -> bool:
+    """MEMBER-011, ADMIN-003: a college always keeps at least one ACTIVE college admin."""
+    return member_is_active_admin and other_active_admins == 0
