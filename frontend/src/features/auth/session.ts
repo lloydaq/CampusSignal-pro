@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { createContext, useContext } from "react";
 
 import { ApiError } from "@/lib/api";
@@ -90,4 +90,29 @@ export async function refreshSession(client: QueryClient): Promise<Me | null> {
   });
   clearSessionEnded(client);
   return me;
+}
+
+export const SIGN_OUT_FAILED = "Couldn't sign out. You're still signed in on this browser. Try again.";
+
+/**
+ * Sign out of this browser (or everywhere). It counts only when the server ended the session
+ * (2xx) or says there was none (401): after any other failure the session cookie is still valid,
+ * so the screen keeps the person signed in and `failed` is set for an inline error instead of
+ * claiming a sign-out that didn't happen.
+ */
+export function useSignOut(request: () => Promise<void>, onSignedOut: () => void) {
+  const queryClient = useQueryClient();
+  const done = () => {
+    queryClient.removeQueries();
+    queryClient.setQueryData(sessionQueryKey, null);
+    onSignedOut();
+  };
+  const mutation = useMutation({
+    mutationFn: request,
+    onSuccess: done,
+    onError: (error) => {
+      if (isSignedOutError(error)) done();
+    },
+  });
+  return { ...mutation, failed: mutation.isError && !isSignedOutError(mutation.error) };
 }

@@ -8,7 +8,7 @@ import { TextLink } from "@/components/TextLink";
 import { Button } from "@/components/ui/button";
 import { acceptInvite, signOut } from "@/features/auth/api";
 import { AuthHeading } from "@/features/auth/AuthHeading";
-import { refreshSession, sessionQueryKey, useSession } from "@/features/auth/session";
+import { SIGN_OUT_FAILED, refreshSession, useSession, useSignOut } from "@/features/auth/session";
 import { useFragmentToken } from "@/features/auth/useFragmentToken";
 import { ApiError } from "@/lib/api";
 
@@ -74,13 +74,8 @@ export function InviteAcceptPage() {
       if (error instanceof ApiError && error.code in LINK_PROBLEMS) forgetToken();
     },
   });
-  const leave = useMutation({
-    mutationFn: signOut,
-    onSettled: () => {
-      queryClient.removeQueries();
-      queryClient.setQueryData(sessionQueryKey, null);
-    },
-  });
+  // Signed out, this page shows the "sign in with the right address" choices.
+  const leave = useSignOut(signOut, () => undefined);
 
   const code = accept.error instanceof ApiError ? accept.error.code : null;
   const problem = (code && LINK_PROBLEMS[code]) || (!effective ? LINK_PROBLEMS.token_invalid : undefined);
@@ -140,6 +135,7 @@ export function InviteAcceptPage() {
       )}
       {refusal && <Callout tone="danger">{refusal}</Callout>}
       {otherError && <Callout tone="danger">{otherError}</Callout>}
+      {leave.failed && <Callout tone="danger">{SIGN_OUT_FAILED}</Callout>}
       <div className="flex flex-wrap gap-3">
         {!mismatch && !refusal && (
           <SubmitButton type="button" pending={accept.isPending} pendingLabel="Accepting…" onClick={() => effective && accept.mutate(effective)}>

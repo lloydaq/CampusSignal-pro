@@ -467,6 +467,46 @@ describe("account", () => {
     expect(requestsTo(fetchMock, "/api/v1/auth/logout-all")).toHaveLength(1);
   });
 
+  it("stays signed in and says so when the server couldn't sign out, then signs out on retry", async () => {
+    let fail = true;
+    const fetchMock = mockFetch({
+      [ME]: signedIn(),
+      "POST /api/v1/auth/logout": () => (fail ? envelope(500, "internal_error", "Something went wrong on our side.") : noContent()),
+    });
+    const { router } = renderRoute("/account");
+    await userEvent.click(await screen.findByRole("button", { name: "Sign out" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Couldn't sign out. You're still signed in on this browser.");
+    expect(router.state.location.pathname).toBe("/account");
+    expect(screen.getByRole("heading", { level: 1, name: "Account" })).toBeInTheDocument();
+
+    fail = false;
+    await userEvent.click(screen.getByRole("button", { name: "Sign out" }));
+    expect(await screen.findByText("You've signed out.")).toBeInTheDocument();
+    expect(requestsTo(fetchMock, "/api/v1/auth/logout")).toHaveLength(2);
+  });
+
+  it("stays signed in when the sign-out request never reaches the server", async () => {
+    mockFetch({
+      [ME]: signedIn(),
+      "POST /api/v1/auth/logout": () => {
+        throw new TypeError("Failed to fetch");
+      },
+    });
+    const { router } = renderRoute("/account");
+    await userEvent.click(await screen.findByRole("button", { name: "Sign out" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Couldn't sign out.");
+    expect(router.state.location.pathname).toBe("/account");
+  });
+
+  it("stays signed in when signing out everywhere fails", async () => {
+    mockFetch({ [ME]: signedIn(), "POST /api/v1/auth/logout-all": () => envelope(503, "service_unavailable", "The service is not available.") });
+    const { router } = renderRoute("/account");
+    await userEvent.click(await screen.findByRole("button", { name: "Sign out of all devices" }));
+    await userEvent.click(screen.getByRole("button", { name: "Sign out everywhere" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Couldn't sign out.");
+    expect(router.state.location.pathname).toBe("/account");
+  });
+
   it("treats a failed sign-out as signed out on this browser", async () => {
     mockFetch({ [ME]: signedIn(), "POST /api/v1/auth/logout": signedOut });
     renderRoute("/account");
