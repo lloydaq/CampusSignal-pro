@@ -54,7 +54,7 @@ def test_healthz_does_not_need_database(client: TestClient) -> None:
 
 
 def test_expected_migration_heads_read_from_scripts() -> None:
-    assert db.expected_migration_heads() == frozenset({"0007"})
+    assert db.expected_migration_heads() == frozenset({"0008"})
 
 
 def test_get_session_yields_session_bound_to_app_engine_and_closes_it(app: FastAPI) -> None:

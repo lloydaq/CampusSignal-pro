@@ -8,7 +8,17 @@ from fastapi import FastAPI
 from sqlalchemy.orm import sessionmaker
 
 from app.api import health
-from app.api.v1 import auth, campus, colleges, invites, me, notices, notifications, platform
+from app.api.v1 import (
+    auth,
+    campus,
+    colleges,
+    invites,
+    issues,
+    me,
+    notices,
+    notifications,
+    platform,
+)
 from app.core.config import Settings, get_settings
 from app.core.db import create_db_engine
 from app.core.errors import register_error_handlers
@@ -62,6 +72,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(platform.router, prefix=API_PREFIX)
     app.include_router(campus.router, prefix=API_PREFIX)
     app.include_router(notices.router, prefix=API_PREFIX)
+    app.include_router(issues.router, prefix=API_PREFIX)
     app.include_router(notifications.router, prefix=API_PREFIX)
     app.include_router(colleges.router, prefix=API_PREFIX)
     return app
