@@ -146,6 +146,8 @@ export async function mockAuthApi(page: Page, initial: Partial<FakeAccount> = {}
   await page.route("**/api/v1/me", (route) =>
     account.signedIn ? json(route, 200, me(), "e2e-me") : apiError(route, 401, "not_authenticated", "Sign in to continue."),
   );
+  // The shell's bell polls this on every signed-in screen; notifications.spec.ts overrides it.
+  await page.route("**/api/v1/me/notifications/unread-count", (route) => json(route, 200, { unread: 0 }, "e2e-unread"));
   await page.route("**/api/v1/colleges", (route) =>
     json(route, 200, { items: [{ name: "Northfield Institute", slug: "northfield" }, { name: "Riverside College", slug: "riverside" }] }, "e2e-colleges"),
   );
