@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Last updated | 2026-10-25 |
-| Current phase | **Phase 5 — Campus issues, NOT STARTED** (Phase 4 done 2026-10-25 without its staging deployment, 4d, which the owner deferred; plan Phase 5 and get approval before building) |
+| Current phase | **Phase 5 — Campus issues, IN PROGRESS** (Phase 4 done 2026-10-25 without its deferred staging deployment; 5a issues backend on `phase5/issues-backend`, awaiting review) |
 
 Status values: `NOT STARTED` · `IN PROGRESS` · `DONE (verified <date>)`. A phase is DONE only per §4 and `Rules.md` §8 — never because files exist.
 
@@ -197,7 +197,7 @@ Decisions (2026-10-23, owner "go"): accepting an invite requires being signed in
 ---
 
 ## Phase 5 — Campus issues
-**Status:** NOT STARTED
+**Status:** IN PROGRESS. Split (plan approved 2026-10-25, owner "go"): [x] 5a issues backend: schema, state machine, policies, submit/list/detail (implemented 2026-10-25 on `phase5/issues-backend`); [ ] 5b workflow backend: transitions, reopen, duplicates, assignment + assignee picker, comments, notifications, audit; [ ] 5c reporter screens; [ ] 5d coordinator and assignee screens + E2E J5/J9. Owner decisions (2026-10-25): college admins may also reopen a RESOLVED issue; reopening a duplicate clears its link to the original; the 5-per-24-hours limit applies to everyone; Issues joins the mobile bottom bar for everyone until Phases 6/8 rearrange it.
 **Objective:** Issue reporting and handling workflow with full audit trail.
 **Dependencies:** Phase 4 (notifications).
 **Included:** ISSUE-001…009.

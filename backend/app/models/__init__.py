@@ -16,6 +16,13 @@ from app.models.college import (
     RosterEntry,
     VerificationFlag,
 )
+from app.models.issue import (
+    CampusIssue,
+    IssueCategory,
+    IssueStatus,
+    IssueUpdate,
+    IssueUpdateKind,
+)
 from app.models.notice import (
     Notice,
     NoticeCategory,
@@ -31,11 +38,16 @@ from app.models.user_token import TokenPurpose, UserToken
 __all__ = [
     "AuditLog",
     "AuthSession",
+    "CampusIssue",
     "College",
     "CollegeMembership",
     "CollegeStatus",
     "Department",
     "Invite",
+    "IssueCategory",
+    "IssueStatus",
+    "IssueUpdate",
+    "IssueUpdateKind",
     "MembershipKind",
     "MembershipStatus",
     "Notice",

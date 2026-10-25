@@ -71,6 +71,18 @@ def world(session: Session, app_factory: Callable[..., FastAPI]) -> World:
             world.river_notice = created.json()  # type: ignore[attr-defined]
         else:
             world.river_draft = created.json()  # type: ignore[attr-defined]
+    # A Riverside issue, reported by its student (a Riverside-only title).
+    reported = world.browser("river_student").post(
+        "/api/v1/campus/issues",
+        {
+            "category": "WATER_SANITATION",
+            "title": "Riverside hostel taps dry",
+            "description": "No water since morning.",
+            "location": "Riverside hostel block B",
+        },
+    )
+    assert reported.status_code == 201, reported.text
+    world.river_issue = reported.json()  # type: ignore[attr-defined]
     return world
 
 

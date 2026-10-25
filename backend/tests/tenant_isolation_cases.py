@@ -153,6 +153,24 @@ CASES: dict[tuple[str, str], IsolationCase] = {
         Kind.OBJECT,
         lambda w: (f"{CAMPUS}/notices/{w.river_notice['id']}/withdraw", {"reason": "x"}),
     ),
+    # issues (the queue lists the whole college: the widest issue list there is)
+    ("GET", f"{CAMPUS}/issues"): IsolationCase(Kind.LIST, _static(f"{CAMPUS}/issues?scope=queue")),
+    ("POST", f"{CAMPUS}/issues"): IsolationCase(
+        Kind.CREATE,
+        lambda w: (
+            f"{CAMPUS}/issues",
+            {
+                "category": "OTHER",
+                "title": "X",
+                "description": "X",
+                "location": "X",
+                "college_id": str(w.river.id),
+            },
+        ),
+    ),
+    ("GET", f"{CAMPUS}/issues/{{issue_id}}"): IsolationCase(
+        Kind.OBJECT, lambda w: (f"{CAMPUS}/issues/{w.river_issue['id']}", None)
+    ),
     # audit
     ("GET", f"{CAMPUS}/audit-log"): IsolationCase(Kind.LIST, _static(f"{CAMPUS}/audit-log")),
 }
