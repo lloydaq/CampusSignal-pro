@@ -24,6 +24,29 @@ interface StoredNotice {
   version: number;
 }
 
+const LIST_ITEM = /^\s*(?:[-+*]|\d+\.)\s+/;
+
+/** The backend's preview rule (app/schemas/notices.py `excerpt`): markup out, list items apart. */
+function previewOf(body: string): string {
+  let text = "";
+  let previousItem = false;
+  for (const line of body.split("\n")) {
+    const item = LIST_ITEM.test(line);
+    const words = line
+      .replace(LIST_ITEM, "")
+      .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+      .replace(/[*_`#>]/g, "")
+      .split(/\s+/)
+      .filter(Boolean)
+      .join(" ");
+    if (!words) continue;
+    if (text) text += (item || previousItem) && !/[.!?:;…]$/.test(text) ? " · " : " ";
+    text += words;
+    previousItem = item;
+  }
+  return text.length <= 160 ? text : `${text.slice(0, 159).trimEnd()}…`;
+}
+
 function reply(route: Route, status: number, body: unknown) {
   return route.fulfill({ status, contentType: "application/json", headers: { "X-Request-ID": `e2e-notices-${status}` }, body: JSON.stringify(body) });
 }
@@ -63,7 +86,7 @@ export async function mockNoticesApi(page: Page, { manager }: { manager: boolean
   ];
   const view = (n: StoredNotice) => {
     const pinned = n.status === "PUBLISHED" && n.priority === "URGENT";
-    const excerpt = n.body.replace(/[*_#>[\]]|\(.*?\)/g, "").split("\n").join(" ").slice(0, 160);
+    const excerpt = previewOf(n.body);
     return { ...n, excerpt, pinned, expired: false, can_manage: manager, author_name: manager ? "Aarav Nair" : null };
   };
 

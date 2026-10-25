@@ -90,7 +90,11 @@
     @apply font-heading;
   }
 
-  h1,
+  /* Display headings set tight, body headings a touch looser (Design.md §3.4). */
+  h1 {
+    letter-spacing: -0.02em;
+  }
+
   h2 {
     letter-spacing: -0.01em;
   }

@@ -256,7 +256,7 @@ Decisions (2026-10-23, owner "go"): accepting an invite requires being signed in
 **Status:** NOT STARTED
 **Objective:** Each role lands on a useful home; flows connect.
 **Dependencies:** Phases 4–7.
-**Included:** HOME-001…004, PROFILE-001.
+**Included:** HOME-001…004, PROFILE-001. (HOME-001's urgent and latest-notices blocks shipped early in Phase 4's member-screens pass, owner 2026-10-25; Phase 8 adds classes, attendance, issues and the faculty/admin homes.)
 **Excluded:** new data types; analytics charts.
 
 | Area | Tasks |

@@ -362,7 +362,7 @@ describe("department page", () => {
       [`${N}?department_id=${CSE.id}`]: page([summary({ title: "Lab schedule", scope: "DEPARTMENT", department: CSE })]),
     });
     renderRoute(`/departments/${CSE.id}`);
-    expect(await screen.findByRole("heading", { level: 1, name: "Computer Science" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: "Computer Science · CSE" })).toBeInTheDocument();
     expect(screen.getByText("Labs in block C.")).toBeInTheDocument();
     expect(screen.getByText("Ravi Sharma")).toBeInTheDocument();
     const notices = screen.getByRole("region", { name: "Department notices" });

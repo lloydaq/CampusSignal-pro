@@ -108,12 +108,12 @@ export function NoticesPage() {
         </ul>
       </nav>
 
-      <div className="flex flex-wrap gap-3">
-        <div className="space-y-1.5">
+      <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap">
+        <div className="min-w-0 space-y-1.5">
           <label htmlFor={categoryId} className="block text-sm font-medium">
             Category
           </label>
-          <Select id={categoryId} value={category} onChange={(e) => setFilter("category", e.target.value)} className="w-auto min-w-44">
+          <Select id={categoryId} value={category} onChange={(e) => setFilter("category", e.target.value)} className="w-full sm:w-auto sm:min-w-44">
             <option value="">All categories</option>
             {(Object.keys(CATEGORY_LABEL) as Category[]).map((c) => (
               <option key={c} value={c}>
@@ -122,11 +122,11 @@ export function NoticesPage() {
             ))}
           </Select>
         </div>
-        <div className="space-y-1.5">
+        <div className="min-w-0 space-y-1.5">
           <label htmlFor={departmentSelectId} className="block text-sm font-medium">
             Department
           </label>
-          <Select id={departmentSelectId} value={departmentId} onChange={(e) => setFilter("department", e.target.value)} className="w-auto min-w-44">
+          <Select id={departmentSelectId} value={departmentId} onChange={(e) => setFilter("department", e.target.value)} className="w-full sm:w-auto sm:min-w-44">
             <option value="">All notices</option>
             {departments.data?.items.map((d) => (
               <option key={d.id} value={d.id}>

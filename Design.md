@@ -28,6 +28,8 @@ The **signal** motif — the brand's single warm accent — marks *things that n
 
 Avoid: gradients, glassmorphism, glows, neon, illustration-heavy empty states, oversized hero banners, emoji in UI chrome.
 
+**Craft references (owner, 2026-10-25).** The identity above stays. From Linear's and Notion's published design notes (`awesome-design-md`) and the taste skill's app-screen rules we borrow craft only: hierarchy from tone steps and type before extra borders, one 4 px spacing scale, display headings at 600 with tight tracking, the accent kept for what needs attention, a calm reading measure for notice text, and honest loading/empty/error states.
+
 ## 3. Design tokens
 
 Tokens are CSS custom properties on `:root` / `[data-theme="dark"]`, mapped into the Tailwind theme (`bg-surface`, `text-muted`, …). Components use **semantic** tokens only; raw palette values never appear in components (`Rules.md` R-3.1). Contrast ratios below were computed with the WCAG 2 formula against the listed background.
@@ -113,7 +115,7 @@ Self-hosted via @fontsource, `font-display: swap`, Latin subset only.
 | `text-2xl` | 24 / 32 | Page titles on mobile (h1), h2 on desktop |
 | `text-3xl` | 30 / 36 | Page titles on desktop (h1) |
 
-Rules: one h1 per page; headings in Space Grotesk, letter-spacing −0.01em at ≥ 24 px; reading measure ≤ 72 ch; numbers in tables use `font-variant-numeric: tabular-nums`.
+Rules: one h1 per page; headings in Space Grotesk at 600, letter-spacing −0.02em on h1 and −0.01em on h2; reading measure ≤ 72 ch; numbers in tables use `font-variant-numeric: tabular-nums`.
 
 ### 3.5 Spacing
 
@@ -198,7 +200,7 @@ States legend: **L** loading, **E** empty, **X** error, **U** unauthorized/forbi
 |---|---|---|---|---|
 | 1 | **Sign in / Register** | Get in | Centered single column (max 400 px), wordmark, form, secondary link. Register: name, email, password with requirements shown up-front. No marketing panel. | Field errors inline; generic sign-in error; 429 "Too many attempts, try again in N min"; verify-email sent screen with resend (cooldown visible) |
 | 2 | **College verification & onboarding** | "Which college, and are you on its roster?" | Step 1 search/select college (combobox). Step 2 roll number (mono font) + explanation of how verification works. Result screens: Active → go to Home; Pending → status page naming the college and expected next step; Rejected → reason + "Contact your college office". | Unverified email → block with resend; an unknown roll number shows the same Pending screen as any other unmatched request (MEMBER-004) |
-| 3 | **Student home** | "What do I need to know today?" | Ordered stack, no hero: (1) Urgent notices strip (only if any), (2) Today's classes (from timetable), (3) Attendance at a glance — one line per subject with percentage, mono figures, (4) My open issues with status, (5) Latest notices (5). Each block links to its section. | Each block has its own E state ("No classes today"); a failed block shows inline retry without breaking the page |
+| 3 | **Student home** | "What do I need to know today?" | Ordered stack, no hero: (1) Urgent notices strip (only if any), (2) Today's classes (from timetable), (3) Attendance at a glance — one line per subject with percentage, mono figures, (4) My open issues with status, (5) Latest notices (5). Each block links to its section. The urgent strip, Latest notices and an "N unread notifications" link shipped early, in Phase 4 (owner, 2026-10-25); the other blocks arrive with their phases. | Each block has its own E state ("No classes today"); a failed block shows inline retry without breaking the page |
 | 4 | **Academic Hub** | Container | Tabs: Timetable · Attendance · Results. Term name shown. "Demo data" banner when the college has `is_demo` set. | No current term → "Your college hasn't set up the current term yet." |
 | 5 | **Attendance** | "Am I attending enough?" | Table: Subject (code + name), Held, Attended, %, trend-free. Row → session list (date, slot, status with icon + text). | E: "No attendance has been recorded for this term yet." |
 | 6 | **Results** | "How did I do?" | Grouped by subject; table of published assessments: name, date, score / max, "Revised" tag where applicable. No GPA computation in MVP. | E: "No results have been published yet." Unpublished assessments never hinted at |
@@ -206,7 +208,7 @@ States legend: **L** loading, **E** empty, **X** error, **U** unauthorized/forbi
 | 8 | **Notices** | "What has the college officially said?" | Filters (category, department) as a compact row; Urgent pinned group; list of NoticeItems (title, issuer, date, category, priority, audience badge). "Past notices" link. Compose button for publishers. | E: "No current notices." Detail: reading width, issuer block, dates (published, updated, expires) |
 | 9 | **Community feed** | "What are people discussing?" | Tabs: College · My department. Composer collapsed at top (expands inline). PostItems: author, role badge, audience badge, body, reaction count, comment count, overflow menu (Report; Edit/Delete for author). Infinite "Load more" button (not auto-infinite scroll — keeps footer reachable and keyboard friendly). | E: "No posts yet. Start the first discussion." (with composer focus) |
 | 10 | **Post creation & discussion** | Write / discuss | Composer: textarea with character count, visibility selector (College / My department) defaulting to department, explicit audience badge preview, Post button. Post detail: post, comments list chronological, comment box at bottom. | Validation inline; 429 shown as inline error with wait time; hidden-by-moderator view for author with reason |
-| 11 | **Department page** | "What's happening in my department?" | Header (name, code, description, department admins), Department notices (current), link to department feed. No metrics. | Archived department → read-only notice |
+| 11 | **Department page** | "What's happening in my department?" | Header: the code in the heading ("Computer Science · CSE", never a label above it), description, department admins, Department notices (current) with a link to all of the department's notices, link to department feed. No metrics. | Archived department → read-only notice |
 | 12 | **Events** | — | **Deferred (P1, Phase 11).** Not shown in navigation in MVP. | — |
 | 13 | **Issue submission** | Report a problem quickly | Single form: category (radio list with icons), title, location, description; helper text about what happens next. Submit → confirmation with tracking link. | Rate-limit message; idempotent retries |
 | 14 | **Issue tracking** | "Is it being fixed?" | Mine list: status badge, title, location, age. Detail: status stepper (Submitted → Acknowledged → In progress → Resolved; Rejected shown as terminal branch), timeline of updates (internal ones visible only to staff, labelled "Internal"), actions available to the viewer only. Coordinator queue: table with filters, oldest first, bulk-free. | Duplicate → banner showing the canonical issue's status and resolution date only (no link to its details, ISSUE-006); 409 version conflict → "Updated by someone else" + reload |
@@ -271,6 +273,8 @@ Prohibited in all shipped UI:
 - Animations beyond §3.10; parallax; auto-playing carousels.
 - Gradients, glassmorphism, glows, neon colors.
 - Status conveyed by color alone.
+- Eyebrow labels: small text above a heading (a code, a category, "New"). Put it in the heading or the first line, or drop it.
+- Raw source as a loading state (Markdown asterisks, link syntax): use the Skeleton.
 - Notices and posts styled the same.
 
 ## 9. Verification

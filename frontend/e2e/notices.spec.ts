@@ -86,6 +86,12 @@ const SCREENS: { name: string; path: string; as: (page: Page) => Promise<void>; 
     },
   },
   { name: "department page", path: "/departments/d1", as: asStudent, ready: (p) => expect(p.getByText("Ravi Sharma")).toBeVisible() },
+  {
+    name: "home with notices",
+    path: "/home",
+    as: asStudent,
+    ready: (p) => expect(p.getByRole("region", { name: "Latest notices" }).getByRole("link", { name: /Mid-term timetable/ })).toBeVisible(),
+  },
 ];
 
 test.describe("notice screens", () => {
