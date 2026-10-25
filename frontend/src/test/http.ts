@@ -25,8 +25,12 @@ export function noContent(): Response {
   return new Response(null, { status: 204 });
 }
 
+/** Every signed-in screen polls the unread count (the shell's bell); tests may override it. */
+const SHELL_ROUTES: Route = { "/api/v1/me/notifications/unread-count": () => json({ unread: 0 }) };
+
 /** Replace global fetch with a route table; unknown requests fail the test loudly. */
-export function mockFetch(routes: Route) {
+export function mockFetch(overrides: Route) {
+  const routes: Route = { ...SHELL_ROUTES, ...overrides };
   const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
     const url = typeof input === "string" ? input : input instanceof URL ? input.pathname : input.url;
     const method = (init?.method ?? "GET").toUpperCase();

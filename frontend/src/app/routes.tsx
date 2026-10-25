@@ -28,6 +28,7 @@ import { DepartmentPage } from "@/features/notices/DepartmentPage";
 import { EditNoticePage, NewNoticePage } from "@/features/notices/NoticeEditorPage";
 import { NoticePage } from "@/features/notices/NoticePage";
 import { NoticesPage } from "@/features/notices/NoticesPage";
+import { NotificationsPage } from "@/features/notifications/NotificationsPage";
 import { StatusPage } from "@/features/system-status/StatusPage";
 
 import { AppShell } from "./shells/AppShell";
@@ -76,6 +77,7 @@ export const routes: RouteObject[] = [
               { path: "departments/:departmentId", element: <DepartmentPage /> },
             ],
           },
+          { path: "notifications", element: <NotificationsPage /> },
           { path: "join", element: <JoinPage /> },
           { path: "account", element: <AccountPage /> },
           {

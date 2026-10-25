@@ -3,6 +3,7 @@ import { NavLink, Outlet, useMatches } from "react-router";
 import { Wordmark } from "@/components/Wordmark";
 import type { Me } from "@/features/auth/api";
 import { useMe } from "@/features/auth/session";
+import { RailNotificationBell, TopBarNotificationBell } from "@/features/notifications/NotificationBell";
 import { cn } from "@/lib/utils";
 
 import { navItems } from "./nav";
@@ -15,7 +16,8 @@ function CollegeName({ me, className }: { me: Me; className?: string }) {
 
 /**
  * Signed-in layout (Design.md §4). Desktop (lg+): a one-level navigation rail with the wordmark
- * and college name. Mobile: a top bar and a bottom tab bar. The current item uses primary text
+ * and college name, notifications at its foot. Mobile: a top bar with the notifications bell and a
+ * bottom tab bar. The current item uses primary text
  * on primary-subtle with a 3 px accent marker on its leading edge.
  */
 export function AppShell() {
@@ -25,7 +27,7 @@ export function AppShell() {
   const wide = useMatches().some((match) => (match.handle as { wide?: boolean } | undefined)?.wide);
   return (
     <div className="min-h-dvh lg:flex">
-      <aside className="hidden shrink-0 border-r border-border bg-surface lg:flex lg:w-rail lg:flex-col">
+      <aside className="hidden shrink-0 border-r border-border bg-surface lg:sticky lg:top-0 lg:flex lg:h-dvh lg:w-rail lg:flex-col">
         <div className="space-y-1 px-5 pt-6 pb-8">
           <Wordmark />
           <CollegeName me={me} />
@@ -52,11 +54,17 @@ export function AppShell() {
             ))}
           </ul>
         </nav>
+        <div className="mt-auto border-t border-border px-3 py-3">
+          <RailNotificationBell />
+        </div>
       </aside>
 
-      <header className="flex items-center justify-between gap-4 border-b border-border bg-surface px-4 py-3 lg:hidden">
+      <header className="flex items-center justify-between gap-4 border-b border-border bg-surface px-4 py-1.5 lg:hidden">
         <Wordmark />
-        <CollegeName me={me} className="max-w-1/2 text-right" />
+        <div className="flex min-w-0 items-center gap-2">
+          <CollegeName me={me} className="text-right" />
+          <TopBarNotificationBell />
+        </div>
       </header>
 
       <main className="flex-1 px-4 pt-8 pb-28 sm:px-6 lg:px-10 lg:pt-10 lg:pb-12">
