@@ -148,6 +148,8 @@ export async function mockAuthApi(page: Page, initial: Partial<FakeAccount> = {}
   );
   // The shell's bell polls this on every signed-in screen; notifications.spec.ts overrides it.
   await page.route("**/api/v1/me/notifications/unread-count", (route) => json(route, 200, { unread: 0 }, "e2e-unread"));
+  // Home lists current notices; noticesApi.ts replaces this with real ones where a spec needs them.
+  await page.route("**/api/v1/campus/notices", (route) => json(route, 200, { items: [], next_cursor: null }, "e2e-no-notices"));
   await page.route("**/api/v1/colleges", (route) =>
     json(route, 200, { items: [{ name: "Northfield Institute", slug: "northfield" }, { name: "Riverside College", slug: "riverside" }] }, "e2e-colleges"),
   );

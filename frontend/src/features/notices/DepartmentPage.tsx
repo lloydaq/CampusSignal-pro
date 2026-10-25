@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Megaphone } from "lucide-react";
 import { useId, useState } from "react";
-import { useParams } from "react-router";
+import { Link, useParams } from "react-router";
 
 import { Callout } from "@/components/Callout";
 import { EmptyState } from "@/components/EmptyState";
@@ -44,8 +44,10 @@ function DepartmentView({ department }: { department: Department }) {
   return (
     <div className="space-y-8">
       <header className="space-y-3">
-        <p className="font-mono text-sm text-subtle">{department.code}</p>
-        <h1 className="text-2xl font-semibold text-fg sm:text-3xl">{department.name}</h1>
+        {/* The code sits in the heading, not as a label above it (Design.md §8: no eyebrows). */}
+        <h1 className="text-2xl font-semibold text-fg sm:text-3xl">
+          {department.name} <span className="font-normal text-muted">· {department.code}</span>
+        </h1>
         {department.archived && (
           <Callout tone="info" title="This department is archived">
             <p>It's kept for reference. New notices can't be posted to it.</p>
@@ -133,9 +135,14 @@ function DepartmentNotices({ department }: { department: Department }) {
   const { query, items } = useCursorList(noticeKeys.list(filters), (cursor, signal) => fetchNotices(filters, cursor, signal));
   return (
     <section aria-labelledby={headingId} className="space-y-3">
-      <h2 id={headingId} className="text-lg font-semibold">
-        Department notices
-      </h2>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <h2 id={headingId} className="text-lg font-semibold">
+          Department notices
+        </h2>
+        <Link to={`/notices?department=${department.id}`} className="text-sm font-medium text-primary underline-offset-2 hover:underline">
+          All {department.code} notices
+        </Link>
+      </div>
       {query.isPending ? (
         <ListLoading label="Loading department notices" />
       ) : query.isError ? (

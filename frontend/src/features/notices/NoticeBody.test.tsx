@@ -46,3 +46,14 @@ describe("notice body rendering (Rules R-2.18)", () => {
     expect(out.textContent).toContain("quoted");
   });
 });
+
+describe("notice body while the renderer loads", () => {
+  it("shows a loading status, never the Markdown source", async () => {
+    const { LazyNoticeBody } = await import("./LazyNoticeBody");
+    const { container, findByText, getByRole } = render(<LazyNoticeBody markdown={"Exams start **Monday**.\n\n- Bring your ID card"} />);
+    expect(getByRole("status", { name: "Loading the notice text" })).toBeInTheDocument();
+    expect(container.textContent).not.toContain("**");
+    expect(container.textContent).not.toContain("- Bring");
+    expect((await findByText("Monday")).tagName).toBe("STRONG");
+  });
+});

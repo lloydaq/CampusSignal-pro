@@ -15,7 +15,9 @@ from app.models import Department, Notice, NoticeCategory, NoticePriority, Notic
 from app.schemas.campus import DepartmentRef
 
 _CONTROL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
-_EXCERPT_MARKUP = re.compile(r"\[([^\]]*)\]\([^)]*\)|[*_`#>]|^\s*[-+]\s+", re.MULTILINE)
+_EXCERPT_ITEM = re.compile(r"^\s*(?:[-+*]|\d+\.)\s+")
+_EXCERPT_MARKUP = re.compile(r"\[([^\]]*)\]\([^)]*\)|[*_`#>]")
+_SENTENCE_END = (".", "!", "?", ":", ";", "…")
 EXCERPT_LENGTH = 160
 
 
@@ -92,7 +94,21 @@ class NoticeWithdraw(_Request):
 
 
 def excerpt(body: str) -> str:
-    text = " ".join(_EXCERPT_MARKUP.sub(lambda m: m.group(1) or "", body).split())
+    """Plain text for the list: markup removed, and a list item kept apart from its neighbours
+    with " · " unless a sentence already ends there."""
+    text = ""
+    previous_item = False
+    for line in body.splitlines():
+        item = bool(_EXCERPT_ITEM.match(line))
+        plain = _EXCERPT_MARKUP.sub(lambda m: m.group(1) or "", _EXCERPT_ITEM.sub("", line))
+        words = " ".join(plain.split())
+        if not words:
+            continue
+        if text:
+            joined = (item or previous_item) and not text.endswith(_SENTENCE_END)
+            text += " · " if joined else " "
+        text += words
+        previous_item = item
     return text if len(text) <= EXCERPT_LENGTH else text[: EXCERPT_LENGTH - 1].rstrip() + "…"
 
 
