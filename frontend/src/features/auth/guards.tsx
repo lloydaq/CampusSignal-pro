@@ -8,7 +8,7 @@ import { useDelayedFlag } from "@/lib/useDelayedFlag";
 import { AuthHeading } from "./AuthHeading";
 import { landingPath } from "./landing";
 import { safeNextPath, signInPathFor } from "./navigation";
-import { MeContext, useSession, useSessionEnded } from "./session";
+import { MeContext, useMe, useSession, useSessionEnded } from "./session";
 import { SessionEndedDialog } from "./SessionEndedDialog";
 
 function SessionLoading() {
@@ -83,4 +83,11 @@ export function HomeRedirect() {
   const session = useSession();
   if (session.isPending) return <SessionLoading />;
   return <Navigate to={session.data ? landingPath(session.data) : "/sign-in"} replace />;
+}
+
+/** Campus pages need an ACTIVE membership in an ACTIVE college; others go where they belong. */
+export function RequireCampus() {
+  const me = useMe();
+  if (!me.capabilities.includes("campus")) return <Navigate to={landingPath(me)} replace />;
+  return <Outlet />;
 }

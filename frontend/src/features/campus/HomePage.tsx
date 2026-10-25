@@ -1,4 +1,4 @@
-import { Navigate } from "react-router";
+import { Link, Navigate } from "react-router";
 
 import { AuthHeading } from "@/features/auth/AuthHeading";
 import { landingPath } from "@/features/auth/landing";
@@ -35,7 +35,15 @@ export function HomePage() {
           </div>
           <div>
             <dt className="text-muted">Department</dt>
-            <dd className="font-medium">{membership.department ? `${membership.department.name} (${membership.department.code})` : "Not set"}</dd>
+            <dd className="font-medium">
+              {membership.department ? (
+                <Link to={`/departments/${membership.department.id}`} className="text-primary underline underline-offset-2">
+                  {membership.department.name} ({membership.department.code})
+                </Link>
+              ) : (
+                "Not set"
+              )}
+            </dd>
           </div>
           {me.roles.length > 0 && (
             <div className="sm:col-span-2">

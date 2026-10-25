@@ -187,7 +187,7 @@ def hero(c: dict[str, str]) -> str:
 FEATURES = [
     ("key", "Accounts and sessions", ["Registration, email verification, password", "reset, server-side sessions with CSRF."], "built"),
     ("school", "Colleges, roles, joining", ["Roster or invite to join, approval queue,", "college and department admins."], "built"),
-    ("megaphone", "Notices and notifications", ["College and department notices, urgent", "pins, in-app alerts. Screens next."], "progress"),
+    ("megaphone", "Notices and notifications", ["College and department notices with", "urgent pins. Notification bell next."], "progress"),
     ("wrench", "Campus issue reporting", ["Report a problem, follow its status,", "coordinators work the queue."], "planned"),
     ("users", "Moderated community", ["College and department feeds with", "reactions, reports and moderation."], "planned"),
     ("book", "Academic Hub", ["Timetable, attendance and results,", "visible only to the right people."], "planned"),
@@ -346,7 +346,7 @@ RELEASES = {"4": "Release α", "6": "Release β", "10": "MVP"}
 def roadmap(c: dict[str, str]) -> str:
     w, h = 1280, 290
     parts = [t(40, 58, "Roadmap", size=28, fill=c["text"], weight=700, family=HEAD)]
-    parts.append(t(40, 86, "Phase 4 in progress: notices and notifications backend done, screens next.", size=16, fill=c["muted"]))
+    parts.append(t(40, 86, "Phase 4 in progress: notices are built; the notification bell is next.", size=16, fill=c["muted"]))
     left, right, y = 90, 1190, 170
     step = (right - left) / (len(PHASES) - 1)
     done_x = left + step * 4

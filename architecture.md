@@ -92,7 +92,7 @@ The repository's existing `CLAUDE.md` already fixes this stack; this document ad
 | CI | GitHub Actions | Already chosen. |
 | Reverse proxy | Caddy | Automatic TLS, simple config, same-origin serving (simplifies cookies/CSRF). |
 | Fonts | @fontsource packages (self-hosted) | **New dependency** — no third-party font requests; see `Design.md`. |
-| Notice Markdown | react-markdown + rehype-sanitize (Phase 4) | **New dependency** — renders the NOTICE-001 subset with raw HTML disabled; hand-written Markdown parsing would be an XSS risk. |
+| Notice Markdown | react-markdown 10.1.0 + rehype-sanitize 6.0.0 (added in Phase 4c, pinned; every transitive package was at least 5 days old at install) | **New dependency** — renders the NOTICE-001 subset with raw HTML disabled; hand-written Markdown parsing would be an XSS risk. Allowed elements p, strong, em, ul, ol, li, a, br; other elements unwrapped to text; links limited to http, https and mailto and opened with `rel="noopener noreferrer nofollow"`. Loaded lazily (a 37 kB gzip chunk) so it stays out of the main bundle. |
 | API types | openapi-typescript (dev only) | **New dev dependency** — generates client types from the OpenAPI schema (§6). |
 
 ## 5. Repository layout (proposed)

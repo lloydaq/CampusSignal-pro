@@ -10,7 +10,7 @@ import { RosterTab } from "@/features/admin/RosterTab";
 import { AccountPage } from "@/features/auth/AccountPage";
 import { CheckEmailPage } from "@/features/auth/CheckEmailPage";
 import { ForgotPasswordPage } from "@/features/auth/ForgotPasswordPage";
-import { GuestOnly, HomeRedirect, RequireAuth } from "@/features/auth/guards";
+import { GuestOnly, HomeRedirect, RequireAuth, RequireCampus } from "@/features/auth/guards";
 import { NotFoundPage } from "@/features/auth/NotFoundPage";
 import { RegisterPage } from "@/features/auth/RegisterPage";
 import { ResetPasswordPage } from "@/features/auth/ResetPasswordPage";
@@ -24,6 +24,10 @@ import { CollegesTab } from "@/features/platform/CollegesTab";
 import { PlatformAuditTab } from "@/features/platform/AuditTab";
 import { PlatformLayout } from "@/features/platform/PlatformLayout";
 import { UsersTab } from "@/features/platform/UsersTab";
+import { DepartmentPage } from "@/features/notices/DepartmentPage";
+import { EditNoticePage, NewNoticePage } from "@/features/notices/NoticeEditorPage";
+import { NoticePage } from "@/features/notices/NoticePage";
+import { NoticesPage } from "@/features/notices/NoticesPage";
 import { StatusPage } from "@/features/system-status/StatusPage";
 
 import { AppShell } from "./shells/AppShell";
@@ -62,6 +66,16 @@ export const routes: RouteObject[] = [
         element: <AppShell />,
         children: [
           { path: "home", element: <HomePage /> },
+          {
+            element: <RequireCampus />,
+            children: [
+              { path: "notices", element: <NoticesPage /> },
+              { path: "notices/new", element: <NewNoticePage /> },
+              { path: "notices/:noticeId", element: <NoticePage /> },
+              { path: "notices/:noticeId/edit", element: <EditNoticePage /> },
+              { path: "departments/:departmentId", element: <DepartmentPage /> },
+            ],
+          },
           { path: "join", element: <JoinPage /> },
           { path: "account", element: <AccountPage /> },
           {
