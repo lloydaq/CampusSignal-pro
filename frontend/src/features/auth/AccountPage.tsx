@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { CircleCheck, TriangleAlert } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { useForm } from "react-hook-form";
@@ -19,7 +19,7 @@ import { PASSWORD_RULES } from "./RegisterPage";
 import { ResendVerification } from "./ResendVerification";
 import { changePasswordSchema, type ChangePasswordValues } from "./schemas";
 import { applyServerError } from "./serverErrors";
-import { sessionQueryKey, useMe } from "./session";
+import { SIGN_OUT_FAILED, useMe, useSignOut } from "./session";
 import type { SignInNotice } from "./SignInPage";
 
 function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {
@@ -106,23 +106,20 @@ function ChangePassword() {
 }
 
 function SignOut() {
-  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [confirming, setConfirming] = useState(false);
 
-  // Whatever the server says (even 401: already signed out), this browser is now signed out.
-  const finish = (notice: string) => {
-    queryClient.removeQueries();
-    queryClient.setQueryData(sessionQueryKey, null);
+  const toSignIn = (notice: string) => {
     const state: SignInNotice = { notice };
     void navigate("/sign-in", { replace: true, state });
   };
-  const here = useMutation({ mutationFn: signOut, onSettled: () => finish("You've signed out.") });
-  const everywhere = useMutation({ mutationFn: signOutEverywhere, onSettled: () => finish("You've signed out on all devices.") });
+  const here = useSignOut(signOut, () => toSignIn("You've signed out."));
+  const everywhere = useSignOut(signOutEverywhere, () => toSignIn("You've signed out on all devices."));
   const pending = here.isPending || everywhere.isPending;
 
   return (
     <Section id="sign-out-heading" title="Sign out">
+      {(here.failed || everywhere.failed) && <Callout tone="danger">{SIGN_OUT_FAILED}</Callout>}
       <div className="flex flex-wrap gap-3">
         <Button variant="secondary" onClick={() => here.mutate()} disabled={pending}>
           {here.isPending ? "Signing out…" : "Sign out"}

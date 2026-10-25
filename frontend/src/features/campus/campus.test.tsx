@@ -239,6 +239,20 @@ describe("accepting an invitation", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "You're invited to join your college" })).toBeInTheDocument();
   });
 
+  it("keeps the invitee signed in when signing out fails", async () => {
+    openInvite();
+    mockFetch({
+      [ME]: signedIn(),
+      [ACCEPT]: () => envelope(403, "invite_email_mismatch", "This invitation is for a different email address."),
+      "POST /api/v1/auth/logout": () => envelope(500, "internal_error", "Something went wrong on our side."),
+    });
+    renderRoute("/invites/accept");
+    await userEvent.click(await screen.findByRole("button", { name: "Accept invitation" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Sign out" }));
+    expect(await screen.findByText(/Couldn't sign out\. You're still signed in on this browser\./)).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 1, name: "You're invited to join your college" })).not.toBeInTheDocument();
+  });
+
   it.each([
     ["token_used", "This invitation was already used"],
     ["token_expired", "This invitation has expired"],
