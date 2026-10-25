@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| Last updated | 2026-10-20 |
-| Current phase | **Phase 4 — Notices, department pages, in-app notifications, IN PROGRESS** (Phase 3 done 2026-10-24; 4a merged; 4b merged; 4c-1 merged (PR #24); 4c-2 implemented on `phase4/notifications-frontend`, awaiting review; 4d deployment deferred by the owner) |
+| Last updated | 2026-10-25 |
+| Current phase | **Phase 5 — Campus issues, NOT STARTED** (Phase 4 done 2026-10-25 without its staging deployment, 4d, which the owner deferred; plan Phase 5 and get approval before building) |
 
 Status values: `NOT STARTED` · `IN PROGRESS` · `DONE (verified <date>)`. A phase is DONE only per §4 and `Rules.md` §8 — never because files exist.
 
@@ -176,7 +176,7 @@ Decisions (2026-10-23, owner "go"): accepting an invite requires being signed in
 ---
 
 ## Phase 4 — Notices, department pages, in-app notifications → **Release α**
-**Status:** IN PROGRESS. Split (plan approved 2026-10-24, owner "go"; deployment deferred): [x] 4a notices backend + department pages (implemented 2026-10-24 on `phase4/notices-backend`); [x] 4b notifications backend (implemented 2026-10-24 on `phase4/notifications-backend`); [ ] 4c frontend, split in two: [x] 4c-1 notices list, notice page, editor with preview, department pages (implemented 2026-10-24 on `phase4/notices-frontend`); [x] 4c-2 notification bell, panel and polling (implemented 2026-10-25 on `phase4/notifications-frontend`); [ ] 4d staging deployment (deferred)
+**Status:** DONE (2026-10-25, `master` `02493f6`; 4d staging deployment deferred by the owner, so Release α is not deployed). US-04, US-12, US-15 green: backend `tests/integration/test_notices.py` (US-04, US-15) and `test_notifications.py` (US-12), CI green on PRs #21 and #22; frontend screens PRs #24 and #25. Split (plan approved 2026-10-24, owner "go"; deployment deferred): [x] 4a notices backend + department pages (implemented 2026-10-24 on `phase4/notices-backend`); [x] 4b notifications backend (implemented 2026-10-24 on `phase4/notifications-backend`); [x] 4c frontend, split in two: [x] 4c-1 notices list, notice page, editor with preview, department pages (implemented 2026-10-24 on `phase4/notices-frontend`); [x] 4c-2 notification bell, panel and polling (implemented 2026-10-25 on `phase4/notifications-frontend`); [ ] 4d staging deployment (deferred)
 **Objective:** Official communication works end to end; first staging release.
 **Dependencies:** Phase 3; P-1 decided for staging.
 **Included:** NOTICE-001…007, DEPT-003/004, NOTIF-001…005, membership-decision notifications.
