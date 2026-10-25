@@ -2,7 +2,7 @@
 
 Concise, verified state for new sessions. Details live in the linked documents; do not copy them here. Never store secrets here.
 
-**Last updated:** 2026-10-25 (Phase 3 done; 4a, 4b, 4c-1 merged; 4c-2 notification bell on `phase4/notifications-frontend`, awaiting review)
+**Last updated:** 2026-10-25 (Phases 0–4 done; Phase 4 closed without its deferred staging deployment; Phase 5 next, not started)
 
 ## 1. Project
 CampusSignal (official name, P-4) — multi-college campus platform: isolated college spaces with official notices, student community, department pages, private academic info (timetable, attendance, results), and campus issue reporting. Spec: `PRD.md`.
@@ -42,7 +42,7 @@ College derived from session's ACTIVE membership on `/api/v1/campus/*` (no clien
 | 1 Foundation | DONE (verified 2026-10-21, `master` `b8f5930`: both workflows green; clean-clone README run passed) |
 | 2 Identity | DONE (verified 2026-10-23, `master` `8c3aa4b`; owner's manual Mailpit check passed) — 2a merged (PR #5, `988e9d9`); 2b auth API merged (PR #6, `eb9f242`); 2c operator CLI merged (PR #7, `5ee1ada`; CI green on PG 17); 2d auth screens (PR #8) + full-stack E2E (PR #9, `88f2bc5`; CI `e2e-fullstack` green on PG 17.11) merged |
 | 3 Colleges & tenancy | DONE (2026-10-24, `master` `3a7b71a`) — 3a PR #12, 3b PR #13, 3c PR #14 (CI green after the `0005` fix), 3d PR #15, 3e PR #16, 3f-1 PR #17, 3f-2 PR #18 (platform UI, `seed-demo`, exit demo as full-stack E2E) |
-| 4 Notices & notifications | IN PROGRESS — 4a notices backend (PR #21) and 4b notifications backend (PR #22) merged; README redesign (PR #23) merged; 4c-1 notices screens merged (PR #24); 4c-2 notification bell on `phase4/notifications-frontend`, awaiting review; 4d deployment deferred (owner, 2026-10-24) |
+| 4 Notices & notifications | DONE (2026-10-25, `master` `02493f6`) — 4a notices backend PR #21, 4b notifications backend PR #22, README redesign PR #23, 4c-1 notices screens PR #24, 4c-2 notification bell PR #25. US-04/US-12/US-15 green (backend integration tests, CI). 4d staging deployment deferred (owner, 2026-10-24): Release α not deployed |
 | 5–11 | NOT STARTED |
 
 Completed milestones (2026-10-20): documentation set; pre-development review; owner decisions P-4/P-7/P-8/P-9 applied; `CLAUDE.md` aligned; `.gitignore`; initial commit `095ffef`. Nothing implemented.
@@ -115,4 +115,4 @@ CI: `.github/workflows/backend.yml` and `.github/workflows/frontend.yml` both gr
 - Backend deps: fastapi 0.156.4, uvicorn 0.54.0, pydantic-settings 2.16.1; dev: pytest 9.1.1, httpx2 2.13.1 + httpcore2 2.13.1 (pinned `==2.13.1`: Starlette ≥1.2 test client prefers httpx2 and deprecates `httpx`; 2.13.1 chosen over the same-day 2.16.0 release), ruff 0.17.1, mypy 2.4.0.
 
 ## 11. Next task
-Get 4c-2 (`phase4/notifications-frontend`) green in CI and merged. That completes Phase 4's build (then tick US-04/US-12/US-15 and close the phase, Release α without staging); 4d (staging deployment) is deferred. Supabase dev DB is at `0003` (head is `0007`; `0004`–`0007` add schema): the owner runs `uv run alembic upgrade head` when back at their computer (not needed for CI). Note: the CI `e2e` job's Chromium install once took 11 min (2026-10-23, PR #9 run); watch for repeats. 2d decisions (2026-10-23, owner "go"): expired session → redirect to sign-in with `next` in Phase 2, Design.md's modal in Phase 3; resending verification needs sign-in (no auto sign-in after register). 2c decisions (2026-10-23, owner "go"): `create-platform-admin` refuses existing emails (no `--promote`); the 2-year audit purge ships now under the PRD §21 retention assumption.
+Phase 5 (campus issues, `Phases.md`): propose a plan (split into reviewed PRs like Phase 4) and wait for the owner's approval before building. 4d (staging deployment) stays deferred until the owner picks it up (needs P-1 hosting, P-2 email). Supabase dev DB is at `0003` (head is `0007`; `0004`–`0007` add schema): the owner runs `uv run alembic upgrade head` when back at their computer (not needed for CI). Note: the CI `e2e` job's Chromium install once took 11 min (2026-10-23, PR #9 run); watch for repeats. 2d decisions (2026-10-23, owner "go"): expired session → redirect to sign-in with `next` in Phase 2, Design.md's modal in Phase 3; resending verification needs sign-in (no auto sign-in after register). 2c decisions (2026-10-23, owner "go"): `create-platform-admin` refuses existing emails (no `--promote`); the 2-year audit purge ships now under the PRD §21 retention assumption.
