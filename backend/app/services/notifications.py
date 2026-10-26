@@ -99,6 +99,31 @@ def notify_membership_decided(
     )
 
 
+def notify_issue(
+    db: Session,
+    *,
+    user_id: uuid.UUID,
+    college_id: uuid.UUID,
+    issue_id: uuid.UUID,
+    kind: NotificationType,
+    title: str,
+    now: datetime,
+) -> None:
+    """Tell the reporter their issue changed status, or a member an issue is now theirs
+    (ISSUE-004, ISSUE-008). The title is the issue's own, which the recipient may read."""
+    db.add(
+        Notification(
+            user_id=user_id,
+            college_id=college_id,
+            type=kind,
+            subject_type="ISSUE",
+            subject_id=issue_id,
+            title=_title(title),
+            created_at=now,
+        )
+    )
+
+
 # --- reading -----------------------------------------------------------------------------------
 
 

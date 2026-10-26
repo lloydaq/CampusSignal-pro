@@ -73,6 +73,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(campus.router, prefix=API_PREFIX)
     app.include_router(notices.router, prefix=API_PREFIX)
     app.include_router(issues.router, prefix=API_PREFIX)
+    app.include_router(issues.assignees_router, prefix=API_PREFIX)
     app.include_router(notifications.router, prefix=API_PREFIX)
     app.include_router(colleges.router, prefix=API_PREFIX)
     return app

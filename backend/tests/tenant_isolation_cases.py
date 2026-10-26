@@ -171,6 +171,28 @@ CASES: dict[tuple[str, str], IsolationCase] = {
     ("GET", f"{CAMPUS}/issues/{{issue_id}}"): IsolationCase(
         Kind.OBJECT, lambda w: (f"{CAMPUS}/issues/{w.river_issue['id']}", None)
     ),
+    ("POST", f"{CAMPUS}/issues/{{issue_id}}/transitions"): IsolationCase(
+        Kind.OBJECT,
+        lambda w: (
+            f"{CAMPUS}/issues/{w.river_issue['id']}/transitions",
+            {"to_status": "ACKNOWLEDGED", "version": w.river_issue["version"]},
+        ),
+    ),
+    ("POST", f"{CAMPUS}/issues/{{issue_id}}/assignment"): IsolationCase(
+        Kind.OBJECT,
+        lambda w: (
+            f"{CAMPUS}/issues/{w.river_issue['id']}/assignment",
+            {"assignee_id": str(w.members["admin"].id), "version": w.river_issue["version"]},
+        ),
+    ),
+    ("POST", f"{CAMPUS}/issues/{{issue_id}}/updates"): IsolationCase(
+        Kind.OBJECT,
+        lambda w: (f"{CAMPUS}/issues/{w.river_issue['id']}/updates", {"body": "Hello"}),
+    ),
+    # the assignee picker: Riverside's college admin is faculty, so a name search would find them
+    ("GET", f"{CAMPUS}/assignees"): IsolationCase(
+        Kind.LIST, _static(f"{CAMPUS}/assignees?query=River")
+    ),
     # audit
     ("GET", f"{CAMPUS}/audit-log"): IsolationCase(Kind.LIST, _static(f"{CAMPUS}/audit-log")),
 }

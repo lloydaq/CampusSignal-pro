@@ -1,19 +1,20 @@
 """Campus issue shapes (ISSUE-001, 005, 006; architecture.md §11.1). Requests reject unknown
 fields, so a body that names a college, a reporter or a status is a 422: the college comes from
-the session and an issue always starts SUBMITTED. Responses whitelist fields; a duplicate's
-original is reduced to its status and resolution time unless the viewer may read it (ISSUE-006).
+the session, an issue always starts SUBMITTED, and its status changes only through a transition.
+Responses whitelist fields; a duplicate's original is reduced to its status and resolution time
+unless the viewer may read it (ISSUE-006).
 """
 
 import re
 import uuid
 from collections.abc import Callable
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Self
 
-from pydantic import AfterValidator, BaseModel, ConfigDict
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, model_validator
 from pydantic_core import PydanticCustomError
 
-from app.models import IssueCategory
+from app.models import IssueCategory, IssueStatus
 
 _CONTROL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 
@@ -51,6 +52,58 @@ class IssueCreate(BaseModel):
     room: Room | None = None
 
 
+Version = Annotated[int, Field(ge=1)]
+
+
+class IssueTransition(BaseModel):
+    """A status change (PRD §9.8.1). A rejection may name the original it duplicates
+    (ISSUE-006); the link then stands as its reason, so the note becomes optional."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    to_status: IssueStatus
+    note: Description | None = None
+    duplicate_of_id: uuid.UUID | None = None
+    version: Version
+
+    @model_validator(mode="after")
+    def _duplicates_are_rejections(self) -> Self:
+        if self.duplicate_of_id is not None and self.to_status != IssueStatus.REJECTED:
+            raise PydanticCustomError(
+                "duplicate_needs_rejection", "Only a rejection can mark a duplicate."
+            )
+        return self
+
+
+class IssueAssignment(BaseModel):
+    """`assignee_id` must be sent; null unassigns."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    assignee_id: uuid.UUID | None
+    version: Version
+
+
+class IssueComment(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    body: Description
+    is_internal: bool = False
+
+
+class Assignee(BaseModel):
+    """Someone an issue can be assigned to: a name, never contact details."""
+
+    id: uuid.UUID
+    name: str
+    kind: str
+
+
+class AssigneePage(BaseModel):
+    items: list[Assignee]
+    next_cursor: str | None
+
+
 class IssueSummary(BaseModel):
     id: uuid.UUID
     title: str
@@ -72,6 +125,7 @@ class IssueUpdateOut(BaseModel):
     body: str | None
     is_internal: bool
     actor_name: str | None  # None: a change the system made
+    assignee_name: str | None  # ASSIGNMENT rows: who it went to (None: unassigned)
     created_at: datetime
 
 

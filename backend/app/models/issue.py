@@ -141,6 +141,11 @@ class IssueUpdate(Base):
             ["college_memberships.college_id", "college_memberships.id"],
             name="fk_issue_updates_actor_membership",
         ),
+        ForeignKeyConstraint(
+            ["college_id", "assignee_membership_id"],
+            ["college_memberships.college_id", "college_memberships.id"],
+            name="fk_issue_updates_assignee_membership",
+        ),
         CheckConstraint(_in("kind", IssueUpdateKind), name="kind"),
         CheckConstraint(
             f"from_status IS NULL OR {_in('from_status', IssueStatus)}", name="from_status"
@@ -153,6 +158,10 @@ class IssueUpdate(Base):
         ),
         CheckConstraint("body IS NULL OR char_length(body) BETWEEN 1 AND 3000", name="body_length"),
         CheckConstraint("kind <> 'COMMENT' OR body IS NOT NULL", name="comment_has_body"),
+        CheckConstraint(
+            "kind = 'ASSIGNMENT' OR assignee_membership_id IS NULL",
+            name="assignee_only_on_assignment",
+        ),
         Index("ix_issue_updates_issue_seq", "college_id", "issue_id", "seq"),
     )
 
@@ -165,6 +174,8 @@ class IssueUpdate(Base):
     # its note), so order by this instead.
     seq: Mapped[int] = mapped_column(BigInteger, Identity(always=True))
     actor_membership_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    # ASSIGNMENT rows: who the issue went to (NULL: unassigned). Migration 0009.
+    assignee_membership_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     kind: Mapped[str] = mapped_column(Text)
     from_status: Mapped[str | None] = mapped_column(Text)
     to_status: Mapped[str | None] = mapped_column(Text)

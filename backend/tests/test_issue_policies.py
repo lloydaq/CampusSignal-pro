@@ -1,6 +1,7 @@
 """Issue policies as pure functions (ISSUE-003, 004, 005): no database, objects in memory."""
 
 import uuid
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -22,9 +23,11 @@ from app.policies.issues import (
     can_read_issue,
     can_see_internal_updates,
     can_see_queue,
+    is_assignable,
     issue_actors,
+    transition_refusal,
 )
-from app.services.issues.state_machine import Actor
+from app.services.issues.state_machine import Actor, TransitionProblem
 
 ME = uuid.uuid4()
 SOMEONE = uuid.uuid4()
@@ -150,3 +153,60 @@ class TestComments:  # ISSUE-005
 
     def test_strangers_never_comment(self) -> None:
         assert not can_comment_issue(ctx(), issue(), internal=False)
+
+
+NOW = datetime(2026, 10, 21, 12, 0, tzinfo=UTC)
+
+
+class TestTransitions:  # ISSUE-002: the policy hands the issue's own facts to the table
+    def test_actors_come_from_the_campus_context(self) -> None:
+        subject = issue(assignee=ME, status=IssueStatus.ACKNOWLEDGED)
+        staff = ctx(kind=MembershipKind.STAFF)
+        assert (
+            transition_refusal(staff, subject, IssueStatus.IN_PROGRESS, note_given=False, now=NOW)
+            is None
+        )
+        stranger = ctx(kind=MembershipKind.STAFF)
+        stranger.membership.id = uuid.uuid4()
+        assert (
+            transition_refusal(
+                stranger, subject, IssueStatus.IN_PROGRESS, note_given=False, now=NOW
+            )
+            == TransitionProblem.NOT_ALLOWED
+        )
+
+    def test_the_reopen_history_comes_from_the_issue(self) -> None:
+        subject = issue(reporter=ME, status=IssueStatus.RESOLVED)
+        subject.resolved_at = NOW - timedelta(days=1)
+        subject.reporter_reopen_count = 1
+        reopen = IssueStatus.ACKNOWLEDGED
+        assert transition_refusal(ctx(), subject, reopen, note_given=True, now=NOW) is None
+        subject.reporter_reopen_count = 2
+        assert (
+            transition_refusal(ctx(), subject, reopen, note_given=True, now=NOW)
+            == TransitionProblem.REOPEN_LIMIT
+        )
+        subject.reporter_reopen_count = 0
+        subject.resolved_at = NOW - timedelta(days=14)
+        assert (
+            transition_refusal(ctx(), subject, reopen, note_given=True, now=NOW)
+            == TransitionProblem.REOPEN_WINDOW_CLOSED
+        )
+
+
+class TestAssignable:  # ISSUE-004
+    @pytest.mark.parametrize(
+        ("kind", "status", "allowed"),
+        [
+            (MembershipKind.FACULTY, MembershipStatus.ACTIVE, True),
+            (MembershipKind.STAFF, MembershipStatus.ACTIVE, True),
+            (MembershipKind.STUDENT, MembershipStatus.ACTIVE, False),
+            (MembershipKind.FACULTY, MembershipStatus.SUSPENDED, False),
+            (MembershipKind.STAFF, MembershipStatus.ENDED, False),
+            (MembershipKind.STAFF, MembershipStatus.PENDING, False),
+        ],
+    )
+    def test_active_faculty_and_staff_only(
+        self, kind: MembershipKind, status: MembershipStatus, allowed: bool
+    ) -> None:
+        assert is_assignable(CollegeMembership(kind=kind, status=status)) is allowed
