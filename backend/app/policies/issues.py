@@ -2,14 +2,23 @@
 
 What someone is to an issue is a set of actors (app/services/issues/state_machine.py): its
 reporter, its current assignee, an issue coordinator, a college admin. Reading needs any of them;
-the transition table decides changes. Lists filter in SQL by the same facts (reporter = me,
-assignee = me, or the whole college for the queue), so a list never shows an issue the
-single-issue route would refuse.
+the transition table decides changes (`transition_refusal`, the can_transition_issue check).
+Lists filter in SQL by the same facts (reporter = me, assignee = me, or the whole college for
+the queue), so a list never shows an issue the single-issue route would refuse.
 """
 
-from app.models import CampusIssue, IssueStatus, Role
+from datetime import datetime
+
+from app.models import (
+    CampusIssue,
+    CollegeMembership,
+    IssueStatus,
+    MembershipKind,
+    MembershipStatus,
+    Role,
+)
 from app.policies.campus import CampusContext, is_college_admin
-from app.services.issues.state_machine import Actor
+from app.services.issues.state_machine import Actor, TransitionProblem, transition_problem
 
 
 def is_issue_coordinator(campus: CampusContext) -> bool:
@@ -45,6 +54,33 @@ def can_see_queue(campus: CampusContext) -> bool:
 def can_assign_issues(campus: CampusContext) -> bool:
     """ISSUE-004: coordinators assign; college admins hold every issue power too."""
     return can_see_queue(campus)
+
+
+def transition_refusal(
+    campus: CampusContext,
+    issue: CampusIssue,
+    target: IssueStatus,
+    *,
+    note_given: bool,
+    now: datetime,
+) -> TransitionProblem | None:
+    """can_transition_issue (ISSUE-002): why this person may not move the issue to `target`,
+    or None. The PRD §9.8.1 table in app/services/issues/state_machine.py decides."""
+    return transition_problem(
+        IssueStatus(issue.status),
+        target,
+        issue_actors(campus, issue),
+        note_given=note_given,
+        resolved_at=issue.resolved_at,
+        reporter_reopens=issue.reporter_reopen_count,
+        now=now,
+    )
+
+
+def is_assignable(member: CollegeMembership) -> bool:
+    """ISSUE-004: issues go to ACTIVE faculty and staff, never to students."""
+    staff = member.kind in (MembershipKind.FACULTY, MembershipKind.STAFF)
+    return staff and member.status == MembershipStatus.ACTIVE
 
 
 def can_see_internal_updates(campus: CampusContext, issue: CampusIssue) -> bool:

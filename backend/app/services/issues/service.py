@@ -55,6 +55,7 @@ class IssueView:
 class UpdateView:
     update: IssueUpdate
     actor_name: str | None
+    assignee_name: str | None = None
 
 
 @dataclass(frozen=True)
@@ -209,7 +210,8 @@ def get_issue(db: Session, campus: CampusContext, issue_id: uuid.UUID) -> IssueD
         db,
         campus.college_id,
         [issue.reporter_membership_id, issue.assignee_membership_id]
-        + [u.actor_membership_id for u in updates],
+        + [u.actor_membership_id for u in updates]
+        + [u.assignee_membership_id for u in updates],
     )
     duplicate = None
     if issue.duplicate_of_id is not None:
@@ -227,7 +229,11 @@ def get_issue(db: Session, campus: CampusContext, issue_id: uuid.UUID) -> IssueD
         if issue.assignee_membership_id
         else None,
         updates=[
-            UpdateView(u, names.get(u.actor_membership_id) if u.actor_membership_id else None)
+            UpdateView(
+                u,
+                names.get(u.actor_membership_id) if u.actor_membership_id else None,
+                names.get(u.assignee_membership_id) if u.assignee_membership_id else None,
+            )
             for u in updates
         ],
         duplicate_of=duplicate,

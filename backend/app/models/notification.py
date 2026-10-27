@@ -27,6 +27,8 @@ from app.core.db import Base
 class NotificationType(StrEnum):
     NOTICE_PUBLISHED = "NOTICE_PUBLISHED"
     MEMBERSHIP_DECIDED = "MEMBERSHIP_DECIDED"
+    ISSUE_STATUS_CHANGED = "ISSUE_STATUS_CHANGED"
+    ISSUE_ASSIGNED = "ISSUE_ASSIGNED"
 
 
 class Notification(Base):
