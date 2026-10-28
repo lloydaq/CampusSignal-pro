@@ -18,7 +18,12 @@ from app.models import (
     Role,
 )
 from app.policies.campus import CampusContext, is_college_admin
-from app.services.issues.state_machine import Actor, TransitionProblem, transition_problem
+from app.services.issues.state_machine import (
+    TRANSITIONS,
+    Actor,
+    TransitionProblem,
+    transition_problem,
+)
 
 
 def is_issue_coordinator(campus: CampusContext) -> bool:
@@ -75,6 +80,20 @@ def transition_refusal(
         reporter_reopens=issue.reporter_reopen_count,
         now=now,
     )
+
+
+def allowed_transitions(
+    campus: CampusContext, issue: CampusIssue, now: datetime
+) -> list[tuple[IssueStatus, bool]]:
+    """The status changes this person may make now, each with whether it needs a note: what
+    the issue page offers. The transitions route still checks `transition_refusal` itself."""
+    current = IssueStatus(issue.status)
+    return [
+        (target, rule.needs_note)
+        for (source, target), rule in TRANSITIONS.items()
+        if source == current
+        and transition_refusal(campus, issue, target, note_given=True, now=now) is None
+    ]
 
 
 def is_assignable(member: CollegeMembership) -> bool:

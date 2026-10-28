@@ -24,6 +24,9 @@ import { CollegesTab } from "@/features/platform/CollegesTab";
 import { PlatformAuditTab } from "@/features/platform/AuditTab";
 import { PlatformLayout } from "@/features/platform/PlatformLayout";
 import { UsersTab } from "@/features/platform/UsersTab";
+import { IssuePage } from "@/features/issues/IssuePage";
+import { IssuesPage } from "@/features/issues/IssuesPage";
+import { ReportIssuePage } from "@/features/issues/ReportIssuePage";
 import { DepartmentPage } from "@/features/notices/DepartmentPage";
 import { EditNoticePage, NewNoticePage } from "@/features/notices/NoticeEditorPage";
 import { NoticePage } from "@/features/notices/NoticePage";
@@ -75,6 +78,9 @@ export const routes: RouteObject[] = [
               { path: "notices/:noticeId", element: <NoticePage /> },
               { path: "notices/:noticeId/edit", element: <EditNoticePage /> },
               { path: "departments/:departmentId", element: <DepartmentPage /> },
+              { path: "issues", element: <IssuesPage /> },
+              { path: "issues/new", element: <ReportIssuePage /> },
+              { path: "issues/:issueId", element: <IssuePage /> },
             ],
           },
           { path: "notifications", element: <NotificationsPage /> },

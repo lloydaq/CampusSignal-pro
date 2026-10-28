@@ -213,7 +213,7 @@ def transition_issue(
         now,
     )
     db.commit()
-    return get_issue(db, campus, issue.id)
+    return get_issue(db, campus, issue.id, now)
 
 
 # --- assignment (ISSUE-004) ------------------------------------------------------------------
@@ -246,7 +246,7 @@ def assign_issue(
             )
     if assignee_id == issue.assignee_membership_id:
         db.commit()  # nothing changes; release the lock
-        return get_issue(db, campus, issue.id)
+        return get_issue(db, campus, issue.id, now)
 
     issue.assignee_membership_id = assignee_id
     issue.version += 1
@@ -281,7 +281,7 @@ def assign_issue(
             now,
         )
     db.commit()
-    return get_issue(db, campus, issue.id)
+    return get_issue(db, campus, issue.id, now)
 
 
 def list_assignees(
@@ -342,4 +342,4 @@ def comment_on_issue(
     )
     issue.updated_at = now
     db.commit()
-    return get_issue(db, campus, issue.id)
+    return get_issue(db, campus, issue.id, now)

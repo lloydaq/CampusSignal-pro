@@ -138,12 +138,28 @@ class DuplicateOf(BaseModel):
     resolved_at: datetime | None
 
 
+class IssueTransitionOption(BaseModel):
+    to_status: str
+    needs_note: bool
+
+
+class IssueActions(BaseModel):
+    """What the viewer may do now, decided by app/policies/issues.py. The page shows only
+    these; the routes check again whatever the page sends."""
+
+    transitions: list[IssueTransitionOption]
+    assign: bool
+    comment: bool
+    comment_internal: bool
+
+
 class IssueDetail(IssueSummary):
     description: str
     resolved_at: datetime | None
     version: int
     duplicate_of: DuplicateOf | None
     updates: list[IssueUpdateOut]
+    actions: IssueActions
 
 
 class IssuePage(BaseModel):

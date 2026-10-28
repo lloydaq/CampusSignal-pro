@@ -13,6 +13,7 @@ from app.schemas.issues import (
     Assignee,
     AssigneePage,
     DuplicateOf,
+    IssueActions,
     IssueAssignment,
     IssueComment,
     IssueCreate,
@@ -20,6 +21,7 @@ from app.schemas.issues import (
     IssuePage,
     IssueSummary,
     IssueTransition,
+    IssueTransitionOption,
     IssueUpdateOut,
 )
 from app.services.issues import service as issues
@@ -83,6 +85,15 @@ def _detail(view: IssueDetailView) -> IssueDetail:
             )
             for u in view.updates
         ],
+        actions=IssueActions(
+            transitions=[
+                IssueTransitionOption(to_status=target, needs_note=needs_note)
+                for target, needs_note in view.actions.transitions
+            ],
+            assign=view.actions.assign,
+            comment=view.actions.comment,
+            comment_internal=view.actions.comment_internal,
+        ),
     )
 
 
@@ -130,8 +141,8 @@ def create_issue(body: IssueCreate, campus: Campus, db: Db, now: Now) -> IssueDe
 
 
 @router.get("/{issue_id}")
-def get_issue(issue_id: uuid.UUID, campus: Campus, db: Db) -> IssueDetail:
-    return _detail(issues.get_issue(db, campus, issue_id))
+def get_issue(issue_id: uuid.UUID, campus: Campus, db: Db, now: Now) -> IssueDetail:
+    return _detail(issues.get_issue(db, campus, issue_id, now))
 
 
 @router.post("/{issue_id}/transitions")

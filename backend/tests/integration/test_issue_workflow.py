@@ -497,3 +497,58 @@ def test_a_suspended_reporter_is_not_told(world: World, session: Session, conn: 
     moved(world.browser("coordinator"), issue, "ACKNOWLEDGED")
     count = "SELECT count(*) FROM notifications WHERE subject_id = %s"
     assert conn.exec_driver_sql(count, (issue["id"],)).scalar() == 0
+
+
+# --- what the issue page may offer ---
+
+
+def actions_of(who: Browser, issue: dict[str, Any]) -> dict[str, Any]:
+    response = who.get(f"{ISSUES}/{issue['id']}")
+    assert response.status_code == 200, response.text
+    actions: dict[str, Any] = response.json()["actions"]
+    return actions
+
+
+def test_each_viewer_is_offered_what_the_policies_allow(world: World, clock: Clock) -> None:
+    coordinator = world.browser("coordinator")
+    issue = report(world.browser("student"))
+    assert actions_of(world.browser("student"), issue) == {
+        "transitions": [],
+        "assign": False,
+        "comment": True,
+        "comment_internal": False,
+    }
+    assert actions_of(coordinator, issue) == {
+        "transitions": [
+            {"to_status": "ACKNOWLEDGED", "needs_note": False},
+            {"to_status": "REJECTED", "needs_note": True},
+        ],
+        "assign": True,
+        "comment": True,
+        "comment_internal": True,
+    }
+    issue = moved(coordinator, issue, "ACKNOWLEDGED")
+    issue = assign(coordinator, issue, world.members["faculty"].id).json()
+    as_assignee = actions_of(world.browser("faculty"), issue)
+    assert as_assignee["transitions"] == [{"to_status": "IN_PROGRESS", "needs_note": False}]
+    assert as_assignee["assign"] is False and as_assignee["comment_internal"] is True
+
+    issue = moved(coordinator, issue, "IN_PROGRESS")
+    issue = moved(coordinator, issue, "RESOLVED", note="Fixed.")
+    reopen = [{"to_status": "ACKNOWLEDGED", "needs_note": True}]
+    assert actions_of(world.browser("student"), issue)["transitions"] == reopen
+    clock.advance(days=14)  # the reporter's window closes; sessions lapse too
+    assert actions_of(world.browser("student"), issue)["transitions"] == []
+    assert actions_of(world.browser("coordinator"), issue)["transitions"] == reopen
+
+
+def test_a_rejected_issue_offers_the_reporter_nothing(world: World) -> None:
+    issue = moved(
+        world.browser("coordinator"), report(world.browser("student")), "REJECTED", note="No."
+    )
+    assert actions_of(world.browser("student"), issue) == {
+        "transitions": [],
+        "assign": False,
+        "comment": False,
+        "comment_internal": False,
+    }

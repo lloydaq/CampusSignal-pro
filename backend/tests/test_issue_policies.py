@@ -18,6 +18,7 @@ from app.models import (
 from app.models.user import User
 from app.policies.campus import CampusContext
 from app.policies.issues import (
+    allowed_transitions,
     can_assign_issues,
     can_comment_issue,
     can_read_issue,
@@ -210,3 +211,21 @@ class TestAssignable:  # ISSUE-004
         self, kind: MembershipKind, status: MembershipStatus, allowed: bool
     ) -> None:
         assert is_assignable(CollegeMembership(kind=kind, status=status)) is allowed
+
+
+class TestAllowedTransitions:  # what the issue page offers
+    def test_a_coordinator_on_a_new_issue(self) -> None:
+        assert allowed_transitions(ctx(Role.ISSUE_COORDINATOR), issue(), NOW) == [
+            (IssueStatus.ACKNOWLEDGED, False),
+            (IssueStatus.REJECTED, True),
+        ]
+
+    def test_the_reporter_gets_nothing_until_resolved(self) -> None:
+        for status in (IssueStatus.SUBMITTED, IssueStatus.IN_PROGRESS, IssueStatus.REJECTED):
+            assert allowed_transitions(ctx(), issue(reporter=ME, status=status), NOW) == []
+        resolved = issue(reporter=ME, status=IssueStatus.RESOLVED)
+        resolved.resolved_at = NOW - timedelta(days=1)
+        resolved.reporter_reopen_count = 0
+        assert allowed_transitions(ctx(), resolved, NOW) == [(IssueStatus.ACKNOWLEDGED, True)]
+        resolved.reporter_reopen_count = 2
+        assert allowed_transitions(ctx(), resolved, NOW) == []

@@ -64,7 +64,7 @@ describe("Manage access", () => {
     mockFetch({ [ME]: signedIn({}, ADMIN), [`${C}/membership-requests`]: () => page([]) });
     renderRoute("/manage");
     const [nav] = await screen.findAllByRole("navigation", { name: "Main" });
-    expect(within(nav!).getAllByRole("link").map((l) => l.textContent)).toEqual(["Home", "Notices", "Manage", "Account"]);
+    expect(within(nav!).getAllByRole("link").map((l) => l.textContent)).toEqual(["Home", "Notices", "Issues", "Manage", "Account"]);
     const tabs = screen.getByRole("navigation", { name: "Manage" });
     expect(within(tabs).getAllByRole("link").map((l) => l.textContent)).toEqual(["Requests", "Members", "Invites", "Departments", "Roster", "Audit log"]);
     await waitFor(() => expect(within(tabs).getByRole("link", { name: "Requests" })).toHaveAttribute("aria-current", "page"));

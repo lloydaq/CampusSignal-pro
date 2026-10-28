@@ -196,11 +196,25 @@ describe("notifications page", () => {
     expect(row).toHaveAttribute("href", "/home");
   });
 
-  it("shows unknown kinds of notification without a link", async () => {
-    mockFetch({ [ME]: signedIn({}, MEMBER), [LIST]: page([notification({ type: "ISSUE_STATUS_CHANGED", subject_type: "ISSUE", title: "Your issue was updated", read: true })]) });
+  it("links issue notifications to the issue", async () => {
+    mockFetch({
+      [ME]: signedIn({}, MEMBER),
+      [LIST]: page([
+        notification({ id: "a5", type: "ISSUE_STATUS_CHANGED", subject_type: "ISSUE", subject_id: "i1", title: "Issue resolved: Projector", read: true }),
+        notification({ id: "a6", type: "ISSUE_ASSIGNED", subject_type: "ISSUE", subject_id: "i2", title: "Issue assigned to you: Tap", read: true }),
+      ]),
+    });
     renderRoute("/notifications");
     const list = await screen.findByRole("list", { name: "Notifications" });
-    expect(within(list).getByText("Your issue was updated")).toBeInTheDocument();
+    expect(within(list).getByRole("link", { name: /Issue resolved: Projector/ })).toHaveAttribute("href", "/issues/i1");
+    expect(within(list).getByRole("link", { name: /Issue assigned to you: Tap/ })).toHaveAttribute("href", "/issues/i2");
+  });
+
+  it("shows unknown kinds of notification without a link", async () => {
+    mockFetch({ [ME]: signedIn({}, MEMBER), [LIST]: page([notification({ type: "RESULT_PUBLISHED", subject_type: "ASSESSMENT", title: "Results are out", read: true })]) });
+    renderRoute("/notifications");
+    const list = await screen.findByRole("list", { name: "Notifications" });
+    expect(within(list).getByText("Results are out")).toBeInTheDocument();
     expect(within(list).queryByRole("link")).not.toBeInTheDocument();
   });
 });

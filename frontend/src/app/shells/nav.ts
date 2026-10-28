@@ -1,4 +1,4 @@
-import { Building2, House, Megaphone, School, Settings2, UserRound, type LucideIcon } from "lucide-react";
+import { Building2, ClipboardList, House, Megaphone, School, Settings2, UserRound, type LucideIcon } from "lucide-react";
 
 import type { Me } from "@/features/auth/api";
 
@@ -14,6 +14,8 @@ export function navItems(me: Me): NavItem[] {
   if (me.capabilities.includes("campus")) {
     items.push({ to: "/home", label: "Home", Icon: House });
     items.push({ to: "/notices", label: "Notices", Icon: Megaphone });
+    // Every member reports issues; Phases 6 and 8 rearrange the bar (owner, 2026-10-25).
+    items.push({ to: "/issues", label: "Issues", Icon: ClipboardList });
   }
   else if (!me.capabilities.includes("platform")) items.push({ to: "/join", label: "Join your college", Icon: School });
   if (me.capabilities.includes("platform")) items.push({ to: "/platform", label: "Platform", Icon: Building2 });
