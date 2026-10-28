@@ -28,7 +28,14 @@ from app.models import (
     User,
 )
 from app.policies.campus import CampusContext
-from app.policies.issues import can_read_issue, can_see_internal_updates, can_see_queue
+from app.policies.issues import (
+    allowed_transitions,
+    can_assign_issues,
+    can_comment_issue,
+    can_read_issue,
+    can_see_internal_updates,
+    can_see_queue,
+)
 from app.services.audit import record_audit
 
 ACTION_CREATED = "issue.created"
@@ -67,9 +74,21 @@ class DuplicateView:
 
 
 @dataclass(frozen=True)
+class IssueActions:
+    """What the viewer may do to the issue now (app/policies/issues.py). The page offers only
+    these; every route still applies its own policy."""
+
+    transitions: list[tuple[IssueStatus, bool]]  # (target, needs a note)
+    assign: bool
+    comment: bool
+    comment_internal: bool
+
+
+@dataclass(frozen=True)
 class IssueDetailView(IssueView):
     updates: list[UpdateView]
     duplicate_of: DuplicateView | None
+    actions: IssueActions
 
 
 # --- names -----------------------------------------------------------------------------------
@@ -179,7 +198,7 @@ def create_issue(
         metadata={"category": category},
     )
     db.commit()
-    return get_issue(db, campus, issue.id)
+    return get_issue(db, campus, issue.id, now)
 
 
 # --- reading ---------------------------------------------------------------------------------
@@ -198,7 +217,9 @@ def load_issue(
     return issue
 
 
-def get_issue(db: Session, campus: CampusContext, issue_id: uuid.UUID) -> IssueDetailView:
+def get_issue(
+    db: Session, campus: CampusContext, issue_id: uuid.UUID, now: datetime
+) -> IssueDetailView:
     issue = load_issue(db, campus, issue_id)
     query = select(IssueUpdate).where(
         IssueUpdate.college_id == campus.college_id, IssueUpdate.issue_id == issue.id
@@ -237,6 +258,12 @@ def get_issue(db: Session, campus: CampusContext, issue_id: uuid.UUID) -> IssueD
             for u in updates
         ],
         duplicate_of=duplicate,
+        actions=IssueActions(
+            transitions=allowed_transitions(campus, issue, now),
+            assign=can_assign_issues(campus),
+            comment=can_comment_issue(campus, issue, internal=False),
+            comment_internal=can_comment_issue(campus, issue, internal=True),
+        ),
     )
 
 
