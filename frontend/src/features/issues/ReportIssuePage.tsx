@@ -54,7 +54,7 @@ export function ReportIssuePage() {
     <div className="mx-auto max-w-reading space-y-6">
       <Link to="/issues" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-fg">
         <ArrowLeft aria-hidden="true" strokeWidth={1.5} className="size-4" />
-        My issues
+        All issues
       </Link>
       <div className="space-y-2">
         <h1 className="text-2xl font-semibold text-fg sm:text-3xl">Report an issue</h1>

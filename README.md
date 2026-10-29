@@ -31,8 +31,8 @@ Every college gets its own private space. People only ever see their own college
 | ---- | ------ | ------------ |
 | 🔑 Accounts and sessions | ✅ Built | Registration, email verification, sign-in and out, password reset and change, server-side sessions with CSRF protection |
 | 🏫 Colleges, roles, joining | ✅ Built | Colleges onboarded by platform admins; students join by roll number against the college roster, staff by invitation; approval queue; college and department admins; the **Manage** and **Platform** screens |
-| 📢 Notices and notifications | 🟠 In progress | College and department notices with drafts, urgent pins, expiry and withdrawal; department pages; in-app notifications for urgent notices and join decisions. The notices screens are done; the notification bell is next |
-| 🛠️ Campus issue reporting | Planned | Report a problem, follow its status, coordinators work the queue (Phase 5) |
+| 📢 Notices and notifications | ✅ Built | College and department notices with drafts, urgent pins, expiry and withdrawal; department pages; in-app notifications with a bell and unread count |
+| 🛠️ Campus issue reporting | ✅ Built | Report a problem and follow its status; coordinators work the queue, assign faculty or staff, mark duplicates; internal notes; the reporter is notified of every status change |
 | 👥 Moderated community | Planned | College and department feeds with reactions, reports and moderation (Phase 6) |
 | 📚 Academic Hub | Planned | Timetable, attendance and results, shown only to the right people (Phase 7) |
 
@@ -95,8 +95,9 @@ Details and the reasons behind each choice are in [`architecture.md`](architectu
 * [x] **Phase 0–1:** requirements, architecture, design system; backend, database, frontend shell and CI
 * [x] **Phase 2:** accounts, email verification, sessions, password reset, platform admins
 * [x] **Phase 3:** colleges, departments, roster, joining and approval, roles, tenant isolation, Manage and Platform screens, `seed-demo`
-* [ ] **Phase 4:** notices ✅ (backend and screens), department pages ✅, notifications backend ✅, notification bell next; staging deployment deferred
-* [ ] **Phase 5–11:** campus issues, community, Academic Hub, home screens, hardening, launch
+* [x] **Phase 4:** notices, department pages, in-app notifications (staging deployment deferred)
+* [x] **Phase 5:** campus issues: reporting, the coordinator queue, assignment, duplicates, internal notes
+* [ ] **Phase 6–11:** community, Academic Hub, home screens, hardening, launch
 
 The checklist is updated only when work is completed and verified. [`Phases.md`](Phases.md) has every phase's tasks and definition of done.
 

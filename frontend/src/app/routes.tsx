@@ -80,6 +80,7 @@ export const routes: RouteObject[] = [
               { path: "departments/:departmentId", element: <DepartmentPage /> },
               { path: "issues", element: <IssuesPage /> },
               { path: "issues/new", element: <ReportIssuePage /> },
+              { path: "issues/queue", element: <IssuesPage queue />, handle: { wide: true } },
               { path: "issues/:issueId", element: <IssuePage /> },
             ],
           },

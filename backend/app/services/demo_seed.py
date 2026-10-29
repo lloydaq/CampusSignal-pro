@@ -2,8 +2,9 @@
 
 Two fictional colleges, "Northfield Institute" and "Riverside College", both flagged
 `is_demo` so every screen labels them. Each gets departments, a college admin, a faculty
-department admin and a student roster. The students are NOT accounts: a demo student
-registers with a roster email and joins by roll number, which is the Phase 3 exit demo.
+department admin and a student roster; Northfield also gets an issue coordinator. The
+students are NOT accounts: a demo student registers with a roster email and joins by roll
+number, which is the Phase 3 exit demo.
 
 All demo accounts share one password that the operator types at the prompt; nothing is
 hardcoded. Running it again adds only what is missing. Addresses are fictional
@@ -13,6 +14,7 @@ hardcoded. Running it again adds only what is missing. Addresses are fictional
 |---|---|---|
 | Northfield | `priya.menon@northfield.example` | college admin (staff) |
 | Northfield | `ravi.sharma@northfield.example` | faculty, department admin of CSE |
+| Northfield | `meera.iyer@northfield.example` | staff, issue coordinator |
 | Riverside | `meena.joshi@riverside.example` | college admin (staff) |
 | Riverside | `arjun.bose@riverside.example` | faculty, department admin of CIVIL |
 
@@ -95,6 +97,13 @@ DEMO_COLLEGES = (
                 MembershipKind.FACULTY,
                 "CSE",
                 (Role.DEPARTMENT_ADMIN,),
+            ),
+            DemoAccount(
+                "meera.iyer@northfield.example",
+                "Meera Iyer",
+                MembershipKind.STAFF,
+                None,
+                (Role.ISSUE_COORDINATOR,),
             ),
         ),
         students=(

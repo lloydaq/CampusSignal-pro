@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 
 import { Callout } from "@/components/Callout";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,8 @@ export function ConfirmDialog({
   confirmLabel,
   pendingLabel,
   reasonLabel,
+  reasonOptional = false,
+  children,
   destructive = true,
   pending,
   error,
@@ -25,8 +27,11 @@ export function ConfirmDialog({
   description: string;
   confirmLabel: string;
   pendingLabel: string;
-  /** When set, a reason (1–500 characters) is required. */
+  /** When set, a reason (1–500 characters) is asked for, and required unless `reasonOptional`. */
   reasonLabel?: string;
+  reasonOptional?: boolean;
+  /** Further fields, shown above the reason; the caller validates them in `onConfirm`. */
+  children?: ReactNode;
   destructive?: boolean;
   pending: boolean;
   error: string | null;
@@ -48,7 +53,7 @@ export function ConfirmDialog({
   }, []);
 
   const confirm = () => {
-    if (reasonLabel && !reason.trim()) {
+    if (reasonLabel && !reasonOptional && !reason.trim()) {
       setMissing(true);
       return;
     }
@@ -76,6 +81,7 @@ export function ConfirmDialog({
           </p>
         </div>
         {error && <Callout tone="danger">{error}</Callout>}
+        {children}
         {reasonLabel && (
           <div className="space-y-1.5">
             <label htmlFor={reasonId} className="block text-sm font-medium">
