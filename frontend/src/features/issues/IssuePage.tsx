@@ -1,16 +1,13 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Check } from "lucide-react";
 import { useId, useState, type ReactNode } from "react";
 import { useForm } from "react-hook-form";
-import { Link, useLocation, useNavigate, useParams } from "react-router";
+import { Link, useLocation, useParams } from "react-router";
 
 import { Callout } from "@/components/Callout";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { ErrorState } from "@/components/ErrorState";
 import { SubmitButton } from "@/components/SubmitButton";
-import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { errorText } from "@/features/admin/labels";
 import { ListLoading } from "@/features/admin/list";
 import { useCollegeTimezone } from "@/features/admin/tabs";
 import { applyServerError } from "@/features/auth/serverErrors";
@@ -20,9 +17,11 @@ import { usePageTitle } from "@/lib/usePageTitle";
 import { cn } from "@/lib/utils";
 import { zodResolver } from "@/lib/zodResolver";
 
-import { commentOnIssue, fetchIssue, transitionIssue, type Issue, type IssueStatus, type IssueUpdate } from "./api";
+import { commentOnIssue, fetchIssue, type Issue, type IssueStatus, type IssueUpdate } from "./api";
 import { CATEGORY_LABEL, REOPEN_DAYS, STATUS_LABEL, issueKeys } from "./labels";
 import { TEXT_MAX, commentSchema, type CommentFormValues } from "./schemas";
+import { useIssueSaved } from "./cache";
+import { AssignControl, StatusActions } from "./IssueActions";
 import { StatusBadge } from "./StatusBadge";
 
 export interface IssueFlash {
@@ -41,7 +40,7 @@ export function IssuePage() {
     <article className="mx-auto max-w-reading space-y-6">
       <Link to="/issues" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-fg">
         <ArrowLeft aria-hidden="true" strokeWidth={1.5} className="size-4" />
-        My issues
+        All issues
       </Link>
       {issue.isPending ? (
         <ListLoading label="Loading the issue" />
@@ -118,7 +117,8 @@ function IssueView({ issue }: { issue: Issue }) {
         {issue.description}
       </section>
 
-      {reopen && <ReopenAction issue={issue} />}
+      <StatusActions issue={issue} />
+      <AssignControl issue={issue} />
       <Timeline updates={issue.updates} timeZone={timeZone} />
       {issue.actions.comment && <CommentForm issue={issue} />}
     </>
@@ -210,72 +210,6 @@ function Timeline({ updates, timeZone }: { updates: IssueUpdate[]; timeZone: str
         ))}
       </ol>
     </section>
-  );
-}
-
-function useIssueSaved(issueId: string) {
-  const queryClient = useQueryClient();
-  return async (updated: Issue) => {
-    queryClient.setQueryData(issueKeys.one(issueId), updated);
-    await queryClient.invalidateQueries({ queryKey: [...issueKeys.all, "list"] });
-  };
-}
-
-function ConflictNotice({ issueId, onReloaded }: { issueId: string; onReloaded: () => void }) {
-  const queryClient = useQueryClient();
-  return (
-    <Callout tone="danger" title="Updated by someone else">
-      <p>Reload the issue to see the latest, then try again.</p>
-      <Button size="sm" variant="secondary" onClick={() => void queryClient.invalidateQueries({ queryKey: issueKeys.one(issueId) }).then(onReloaded)}>
-        Reload the issue
-      </Button>
-    </Callout>
-  );
-}
-
-/** PRD §9.8.1: a reopen always has a reason; the server decides whether it's still allowed. */
-function ReopenAction({ issue }: { issue: Issue }) {
-  const saved = useIssueSaved(issue.id);
-  const navigate = useNavigate();
-  const [open, setOpen] = useState(false);
-  const reopen = useMutation({
-    mutationFn: (note: string) => transitionIssue(issue.id, { to_status: "ACKNOWLEDGED", note, version: issue.version }),
-    onSuccess: async (updated) => {
-      setOpen(false);
-      await saved(updated);
-      await navigate(".", { replace: true, state: { flash: "Issue reopened." } satisfies IssueFlash });
-    },
-    // Someone else changed it: close the dialog so the reload notice is in view.
-    onError: (error) => {
-      if (error instanceof ApiError && error.code === "version_conflict") setOpen(false);
-    },
-  });
-  const conflict = reopen.error instanceof ApiError && reopen.error.code === "version_conflict";
-
-  return (
-    <div className="space-y-3">
-      {conflict && <ConflictNotice issueId={issue.id} onReloaded={() => reopen.reset()} />}
-      <Button variant="secondary" onClick={() => setOpen(true)}>
-        Reopen issue
-      </Button>
-      {open && (
-        <ConfirmDialog
-          title="Reopen this issue?"
-          description="It goes back to the coordinators as acknowledged. Say what's still wrong."
-          reasonLabel="What's still wrong?"
-          confirmLabel="Reopen issue"
-          pendingLabel="Reopening…"
-          destructive={false}
-          pending={reopen.isPending}
-          error={reopen.isError ? errorText(reopen.error) : null}
-          onConfirm={(note) => reopen.mutate(note)}
-          onCancel={() => {
-            setOpen(false);
-            reopen.reset();
-          }}
-        />
-      )}
-    </div>
   );
 }
 

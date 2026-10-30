@@ -1,6 +1,8 @@
 import { Building, Droplets, FlaskConical, LibraryBig, Projector, CircleQuestionMark, Wifi, Zap, type LucideIcon } from "lucide-react";
 
-import type { IssueCategory, IssueStatus } from "./api";
+import type { Me } from "@/features/auth/api";
+
+import type { IssueCategory, IssueScope, IssueStatus } from "./api";
 
 export const CATEGORIES: { value: IssueCategory; label: string; Icon: LucideIcon }[] = [
   { value: "CLASSROOM_EQUIPMENT", label: "Classroom equipment", Icon: Projector },
@@ -25,7 +27,7 @@ export const STATUS_LABEL: Record<IssueStatus, string> = {
 
 export const issueKeys = {
   all: ["issues"] as const,
-  list: (scope: string) => ["issues", "list", scope] as const,
+  list: (scope: string | object) => ["issues", "list", scope] as const,
   one: (id: string) => ["issues", "one", id] as const,
 };
 
@@ -39,4 +41,22 @@ export function ageText(iso: string, now: Date = new Date()): string {
   if (hours < 24) return hours === 1 ? "1 hour ago" : `${hours} hours ago`;
   const days = Math.floor(hours / 24);
   return days === 1 ? "1 day ago" : `${days} days ago`;
+}
+
+const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+
+/** The original's ID from what a coordinator pastes: a link to the issue or the ID itself. */
+export function originalIdFrom(text: string): string | null {
+  const match = UUID.exec(text.trim());
+  return match ? match[0].toLowerCase() : null;
+}
+
+/** Which lists this member gets (Design.md §4): everyone reports; faculty and staff can be
+ * assigned; coordinators and college admins see the whole college's queue (ISSUE-004, 009).
+ * The server decides again: the queue route refuses anyone else. */
+export function issueViews(me: Me): IssueScope[] {
+  const views: IssueScope[] = ["mine"];
+  if (me.membership?.kind === "FACULTY" || me.membership?.kind === "STAFF") views.push("assigned");
+  if (me.roles.some((r) => r.role === "ISSUE_COORDINATOR" || r.role === "COLLEGE_ADMIN")) views.push("queue");
+  return views;
 }

@@ -60,8 +60,20 @@ export interface Issue extends IssueSummary {
   actions: IssueActions;
 }
 
-export function fetchIssues(scope: IssueScope, cursor: string | null, signal?: AbortSignal): Promise<Page<IssueSummary>> {
+/** Coordinator queue filters (ISSUE-009); empty values mean "any". */
+export interface QueueFilters {
+  status: IssueStatus | "";
+  category: IssueCategory | "";
+  assigneeId: string;
+  olderThanDays: string;
+}
+
+export function fetchIssues(scope: IssueScope, cursor: string | null, signal?: AbortSignal, filters?: QueueFilters): Promise<Page<IssueSummary>> {
   const params = new URLSearchParams({ scope });
+  if (filters?.status) params.set("status", filters.status);
+  if (filters?.category) params.set("category", filters.category);
+  if (filters?.assigneeId) params.set("assignee_id", filters.assigneeId);
+  if (filters?.olderThanDays) params.set("older_than_days", filters.olderThanDays);
   if (cursor) params.set("cursor", cursor);
   return apiGet<Page<IssueSummary>>(`${ISSUES}?${params.toString()}`, signal);
 }
@@ -81,7 +93,24 @@ export function createIssue(input: IssueInput): Promise<Issue> {
   return apiPost<Issue>(ISSUES, room ? { ...rest, room } : rest);
 }
 
-export const transitionIssue = (id: string, body: { to_status: IssueStatus; note?: string; version: number }) =>
+export const transitionIssue = (id: string, body: { to_status: IssueStatus; note?: string; duplicate_of_id?: string; version: number }) =>
   apiPost<Issue>(`${ISSUES}/${id}/transitions`, body);
 
 export const commentOnIssue = (id: string, body: { body: string; is_internal: boolean }) => apiPost<Issue>(`${ISSUES}/${id}/updates`, body);
+
+export const assignIssue = (id: string, body: { assignee_id: string | null; version: number }) => apiPost<Issue>(`${ISSUES}/${id}/assignment`, body);
+
+/** Someone an issue can be assigned to: ACTIVE faculty and staff, names only. */
+export interface Assignee {
+  id: string;
+  name: string;
+  kind: "FACULTY" | "STAFF";
+}
+
+export function fetchAssignees(query: string, cursor: string | null, signal?: AbortSignal): Promise<Page<Assignee>> {
+  const params = new URLSearchParams();
+  if (query) params.set("query", query);
+  if (cursor) params.set("cursor", cursor);
+  const text = params.toString();
+  return apiGet<Page<Assignee>>(`/api/v1/campus/assignees${text ? `?${text}` : ""}`, signal);
+}

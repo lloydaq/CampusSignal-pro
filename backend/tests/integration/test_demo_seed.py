@@ -46,7 +46,7 @@ def test_adds_two_labelled_demo_colleges_without_printing_accounts(
     code, output = _seed(factory, clock)
 
     assert code == cli.EXIT_OK
-    assert "Added 2 colleges, 4 departments, 4 accounts and 8 roster entries." in output
+    assert "Added 2 colleges, 4 departments, 5 accounts and 8 roster entries." in output
     assert PRIYA not in output and PASSWORD not in output
     colleges = session.execute(select(College).order_by(College.slug)).scalars().all()
     assert [(c.name, c.is_demo, c.status) for c in colleges] == [
@@ -68,7 +68,7 @@ def test_running_it_again_adds_nothing(
     assert code == cli.EXIT_OK
     assert "Added 0 colleges, 0 departments, 0 accounts and 0 roster entries." in output
     assert session.execute(select(func.count()).select_from(College)).scalar_one() == 2
-    assert session.execute(select(func.count()).select_from(CollegeMembership)).scalar_one() == 4
+    assert session.execute(select(func.count()).select_from(CollegeMembership)).scalar_one() == 5
 
 
 def test_a_weak_password_creates_nothing(
