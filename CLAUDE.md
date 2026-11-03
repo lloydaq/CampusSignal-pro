@@ -100,4 +100,4 @@ Add folders only when a feature needs them.
 - Update `memory.md` after completing work; never claim tests passed unless they ran.
 
 ## Current phase
-Phase 5 — campus issues: DONE (2026-10-30, PRs #29–#32). Next: Phase 6 — community, NOT STARTED; propose a plan and wait for approval before starting. Phase 4 staging deployment still deferred; see `Phases.md`. Update this line as phases complete.
+Phase 6 — community: in progress (plan approved 2026-10-31; 6a posts/comments/reactions backend on review; then 6b moderation backend, 6c community screens, 6d moderation screens + navigation). Phase 5 done (PRs #29–#32). Phase 4 staging deployment still deferred; see `Phases.md`. Update this line as phases complete.

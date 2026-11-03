@@ -12,6 +12,7 @@ from app.api.v1 import (
     auth,
     campus,
     colleges,
+    community,
     invites,
     issues,
     me,
@@ -72,6 +73,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(platform.router, prefix=API_PREFIX)
     app.include_router(campus.router, prefix=API_PREFIX)
     app.include_router(notices.router, prefix=API_PREFIX)
+    app.include_router(community.router, prefix=API_PREFIX)
     app.include_router(issues.router, prefix=API_PREFIX)
     app.include_router(issues.assignees_router, prefix=API_PREFIX)
     app.include_router(notifications.router, prefix=API_PREFIX)

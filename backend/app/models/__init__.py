@@ -16,6 +16,7 @@ from app.models.college import (
     RosterEntry,
     VerificationFlag,
 )
+from app.models.community import Comment, ContentStatus, Post, PostVisibility, Reaction
 from app.models.issue import (
     CampusIssue,
     IssueCategory,
@@ -42,6 +43,8 @@ __all__ = [
     "College",
     "CollegeMembership",
     "CollegeStatus",
+    "Comment",
+    "ContentStatus",
     "Department",
     "Invite",
     "IssueCategory",
@@ -58,7 +61,10 @@ __all__ = [
     "Notification",
     "NotificationType",
     "PlatformRole",
+    "Post",
+    "PostVisibility",
     "RateLimitCounter",
+    "Reaction",
     "Role",
     "RoleGrant",
     "RosterEntry",
