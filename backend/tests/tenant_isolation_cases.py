@@ -193,6 +193,42 @@ CASES: dict[tuple[str, str], IsolationCase] = {
     ("GET", f"{CAMPUS}/assignees"): IsolationCase(
         Kind.LIST, _static(f"{CAMPUS}/assignees?query=River")
     ),
+    # community (the college feed and a department feed both list; posts and comments are objects)
+    ("GET", f"{CAMPUS}/posts"): IsolationCase(Kind.LIST, _static(f"{CAMPUS}/posts")),
+    ("POST", f"{CAMPUS}/posts"): IsolationCase(
+        Kind.CREATE,
+        lambda w: (
+            f"{CAMPUS}/posts",
+            {"body": "X", "visibility": "COLLEGE", "college_id": str(w.river.id)},
+        ),
+    ),
+    ("GET", f"{CAMPUS}/posts/{{post_id}}"): IsolationCase(
+        Kind.OBJECT, lambda w: (f"{CAMPUS}/posts/{w.river_post['id']}", None)
+    ),
+    ("PATCH", f"{CAMPUS}/posts/{{post_id}}"): IsolationCase(
+        Kind.OBJECT, lambda w: (f"{CAMPUS}/posts/{w.river_post['id']}", {"body": "Hacked"})
+    ),
+    ("DELETE", f"{CAMPUS}/posts/{{post_id}}"): IsolationCase(
+        Kind.OBJECT, lambda w: (f"{CAMPUS}/posts/{w.river_post['id']}", None)
+    ),
+    ("GET", f"{CAMPUS}/posts/{{post_id}}/comments"): IsolationCase(
+        Kind.OBJECT, lambda w: (f"{CAMPUS}/posts/{w.river_post['id']}/comments", None)
+    ),
+    ("POST", f"{CAMPUS}/posts/{{post_id}}/comments"): IsolationCase(
+        Kind.OBJECT, lambda w: (f"{CAMPUS}/posts/{w.river_post['id']}/comments", {"body": "X"})
+    ),
+    ("PATCH", f"{CAMPUS}/comments/{{comment_id}}"): IsolationCase(
+        Kind.OBJECT, lambda w: (f"{CAMPUS}/comments/{w.river_comment['id']}", {"body": "Hacked"})
+    ),
+    ("DELETE", f"{CAMPUS}/comments/{{comment_id}}"): IsolationCase(
+        Kind.OBJECT, lambda w: (f"{CAMPUS}/comments/{w.river_comment['id']}", None)
+    ),
+    ("PUT", f"{CAMPUS}/posts/{{post_id}}/reaction"): IsolationCase(
+        Kind.OBJECT, lambda w: (f"{CAMPUS}/posts/{w.river_post['id']}/reaction", None)
+    ),
+    ("DELETE", f"{CAMPUS}/posts/{{post_id}}/reaction"): IsolationCase(
+        Kind.OBJECT, lambda w: (f"{CAMPUS}/posts/{w.river_post['id']}/reaction", None)
+    ),
     # audit
     ("GET", f"{CAMPUS}/audit-log"): IsolationCase(Kind.LIST, _static(f"{CAMPUS}/audit-log")),
 }

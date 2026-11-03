@@ -247,9 +247,9 @@ erDiagram
 | `assessments` | college_id, section_id, name, kind, max_score numeric(6,2), held_on, published_at | idx(section_id) |
 | `assessment_results` | college_id, assessment_id, enrollment_id, score numeric(6,2) NULL, is_absent, revised_at, version | UNIQUE(assessment_id, enrollment_id); CHECK(score ≥ 0) |
 | `notices` | college_id, department_id NULL, author_membership_id, title, body, category, priority, scope, status, published_at, expires_at, edited_at, version (optimistic concurrency), created_at, updated_at | idx(college_id, status, published_at DESC, id DESC), idx(college_id, department_id); composite FKs for department and author; CHECK(scope='DEPARTMENT' ⇔ department_id IS NOT NULL), CHECK(status='DRAFT' ⇔ published_at IS NULL), CHECK(expires_at > published_at). Migration `0006` |
-| `posts` | college_id, author_membership_id, visibility, department_id NULL, body, status (VISIBLE, HIDDEN), edited_at, deleted_at | idx(college_id, visibility, department_id, created_at DESC, id DESC) |
-| `comments` | college_id, post_id, author_membership_id, body, status, deleted_at | idx(post_id, created_at) |
-| `reactions` | college_id, post_id, membership_id | UNIQUE(post_id, membership_id) |
+| `posts` | college_id, author_membership_id, visibility, department_id NULL, body (1–5,000), status (VISIBLE, HIDDEN), edited_at, deleted_at | idx(college_id, visibility, department_id, created_at DESC, id DESC), idx(college_id, author_membership_id, created_at); composite FKs for author and department; CHECK(visibility='DEPARTMENT' ⇔ department_id IS NOT NULL). Migration `0010` |
+| `comments` | college_id, post_id, author_membership_id, body (1–2,000), status, edited_at, deleted_at | idx(college_id, post_id, created_at, id), idx(college_id, author_membership_id, created_at); composite FKs for post and author |
+| `reactions` | college_id, post_id, membership_id | UNIQUE(post_id, membership_id); composite FKs; `ON DELETE CASCADE` from the post |
 | `content_reports` | college_id, reporter_membership_id, target_type, target_id, reason, note, status, handled_by, handled_at | partial UNIQUE(reporter_membership_id, target_type, target_id) WHERE status='OPEN' |
 | `campus_issues` | college_id, reporter_membership_id, category, title, description, location_text, room NULL (ISSUE-001 "building/room", free text), status, assignee_membership_id, duplicate_of_id, resolved_at, reporter_reopen_count, version | idx(college_id, status, created_at); composite FKs for assignee and duplicate_of; CHECK(duplicate_of_id <> id) |
 | `issue_updates` | college_id, issue_id, seq (identity: timeline order), actor_membership_id NULL (system), kind, from_status, to_status, body, is_internal, assignee_membership_id (ASSIGNMENT rows only; NULL = unassigned; migration `0009`) | append-only (trigger refuses UPDATE/DELETE, migration `0008`); composite FKs for actor and assignee |
@@ -399,12 +399,12 @@ Notice detail and list responses carry `can_manage`; the author's name is includ
 
 | Method | Route | Purpose | Auth / policy | Notable failures |
 |---|---|---|---|---|
-| GET | `/campus/posts?feed=college|department&department_id=&cursor=` | Feed | M, `can_read_post` in query | 404 department not accessible |
-| POST | `/campus/posts` | Create | M, `can_post(visibility)` | 403 other dept; 429 |
-| GET/PATCH/DELETE | `/campus/posts/{id}` | Read/edit/delete own | M, author for edit/delete | 404 |
-| GET/POST | `/campus/posts/{id}/comments` | List/add | M, `can_read_post` | 404; 429 |
-| PATCH/DELETE | `/campus/comments/{id}` | Edit/delete own | M, author | 404 |
-| PUT/DELETE | `/campus/posts/{id}/reaction` | Toggle reaction | M, `can_read_post` | 404 |
+| GET | `/campus/posts?feed=college|department&department_id=&cursor=` | Feed, newest first, 20 per page. `department` defaults to the member's own; hidden posts only for whoever moderates the whole feed (`sees_hidden_in_feed`); deleted never. Each post: author `{name, kind}`, department, counts, `reacted`, `can_edit`/`can_delete`/`can_engage`. A page costs a fixed number of queries (6a) | M, `feed_audience` (= department notice audience) | 404 department not accessible; 422 feed |
+| POST | `/campus/posts` `{body, visibility}` | Create (201). A DEPARTMENT post goes to the poster's home department; there's no department field (6a) | M, `can_post_with` | 422 no home department / body; 429 (10/h, counted from `posts`, deleted ones too) |
+| GET/PATCH/DELETE | `/campus/posts/{id}` | Read / edit own while visible (`edited_at`) / soft-delete own (204) | M, `can_read_post`; author for edit/delete | 403 not the author; 404 |
+| GET/POST | `/campus/posts/{id}/comments` | List oldest first (cursor) / add (201) | M, `can_read_post`; adding needs a visible post (`can_engage_post`) | 403 hidden post; 404; 429 (60/h) |
+| PATCH/DELETE | `/campus/comments/{id}` | Edit/delete own | M, `can_read_comment`; author | 403; 404 |
+| PUT/DELETE | `/campus/posts/{id}/reaction` | "Helpful" on / off, each idempotent, `{reacted, reaction_count}` (the UI's toggle; a repeat never duplicates: unique constraint + `ON CONFLICT DO NOTHING`) | M, `can_engage_post` (PUT), `can_read_post` (DELETE) | 403 hidden post; 404 |
 | POST | `/campus/reports` | Report content | M, `can_read_target` | 409 open report exists |
 | GET | `/campus/moderation/reports` | Queue | M, moderator | 403 |
 | POST | `/campus/moderation/reports/{id}/resolve` | Hide content / dismiss | M, `can_moderate(target)` | 403 dept admin on college post |
