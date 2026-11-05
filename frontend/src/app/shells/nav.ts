@@ -1,4 +1,4 @@
-import { Building2, ClipboardList, House, Megaphone, School, Settings2, UserRound, type LucideIcon } from "lucide-react";
+import { Building2, ClipboardList, House, Megaphone, MessagesSquare, School, Settings2, UserRound, type LucideIcon } from "lucide-react";
 
 import type { Me } from "@/features/auth/api";
 
@@ -14,7 +14,7 @@ export function navItems(me: Me): NavItem[] {
   if (me.capabilities.includes("campus")) {
     items.push({ to: "/home", label: "Home", Icon: House });
     items.push({ to: "/notices", label: "Notices", Icon: Megaphone });
-    // Every member reports issues; Phases 6 and 8 rearrange the bar (owner, 2026-10-25).
+    items.push({ to: "/community", label: "Community", Icon: MessagesSquare });
     items.push({ to: "/issues", label: "Issues", Icon: ClipboardList });
   }
   else if (!me.capabilities.includes("platform")) items.push({ to: "/join", label: "Join your college", Icon: School });
@@ -22,4 +22,13 @@ export function navItems(me: Me): NavItem[] {
   if (me.capabilities.includes("review_memberships")) items.push({ to: "/manage", label: "Manage", Icon: Settings2 });
   items.push({ to: "/account", label: "Account", Icon: UserRound });
   return items;
+}
+
+/** The phone's bottom bar holds four sections; the rest go in a "More" sheet (owner, 2026-10-31:
+ * Home · Notices · Community · Issues · More). Short lists fit as they are. */
+export const BAR_SIZE = 4;
+
+export function splitForBar(items: NavItem[]): { bar: NavItem[]; more: NavItem[] } {
+  if (items.length <= BAR_SIZE + 1) return { bar: items, more: [] };
+  return { bar: items.slice(0, BAR_SIZE), more: items.slice(BAR_SIZE) };
 }

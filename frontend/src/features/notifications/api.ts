@@ -51,6 +51,7 @@ export function useUnreadCount(): number {
 export function notificationHref(n: Notification): string | null {
   if (n.subject_type === "NOTICE") return `/notices/${n.subject_id}`;
   if (n.subject_type === "ISSUE") return `/issues/${n.subject_id}`;
+  if (n.subject_type === "POST") return `/community/posts/${n.subject_id}`;
   // A join decision: /home for the new member, or /join (via the landing redirect) after a rejection.
   if (n.subject_type === "MEMBERSHIP") return "/home";
   return null;
