@@ -1,4 +1,4 @@
-"""Community decisions (COMMUNITY-001, 002, 005, 007). Pure functions over loaded rows.
+"""Community decisions (COMMUNITY-001, 002, 005, 006, 007). Pure functions over loaded rows.
 
 Who reads a post: anyone in the college for a COLLEGE post; for a DEPARTMENT post, that
 department's members, its department admins and college admins (the same audience as a
@@ -11,7 +11,7 @@ import uuid
 
 from app.models import Comment, ContentStatus, Post, PostVisibility
 from app.policies.campus import CampusContext, administered_departments, is_college_admin
-from app.policies.notices import DepartmentAudience, published_audience
+from app.policies.notices import DepartmentAudience, ManagedAudience, published_audience
 
 
 def feed_audience(campus: CampusContext) -> DepartmentAudience:
@@ -104,4 +104,33 @@ def can_delete_comment(campus: CampusContext, post: Post, comment: Comment) -> b
     return (
         can_read_comment(campus, post, comment)
         and comment.author_membership_id == campus.membership.id
+    )
+
+
+def can_report(campus: CampusContext, post: Post, comment: Comment | None) -> bool:
+    """COMMUNITY-006: any member, about visible content they can read that isn't their own.
+    Hidden content has already been dealt with."""
+    if not can_read_post(campus, post) or post.status != ContentStatus.VISIBLE:
+        return False
+    if comment is None:
+        return not is_post_author(campus, post)
+    return (
+        can_read_comment(campus, post, comment)
+        and comment.status == ContentStatus.VISIBLE
+        and comment.author_membership_id != campus.membership.id
+    )
+
+
+def can_see_moderation_queue(campus: CampusContext) -> bool:
+    """COMMUNITY-007: college admins and department admins."""
+    return is_college_admin(campus.grants) or bool(administered_departments(campus.grants))
+
+
+def moderation_audience(campus: CampusContext) -> ManagedAudience:
+    """The reports a moderator sees, in SQL terms: those about college posts (college admins
+    only) and about these departments' posts. Matches `can_moderate_post` (a test checks)."""
+    if is_college_admin(campus.grants):
+        return ManagedAudience(True, DepartmentAudience(True))
+    return ManagedAudience(
+        False, DepartmentAudience(False, administered_departments(campus.grants))
     )

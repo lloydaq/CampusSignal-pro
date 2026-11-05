@@ -16,7 +16,16 @@ from app.models.college import (
     RosterEntry,
     VerificationFlag,
 )
-from app.models.community import Comment, ContentStatus, Post, PostVisibility, Reaction
+from app.models.community import (
+    Comment,
+    ContentReport,
+    ContentStatus,
+    Post,
+    PostVisibility,
+    Reaction,
+    ReportReason,
+    ReportStatus,
+)
 from app.models.issue import (
     CampusIssue,
     IssueCategory,
@@ -44,6 +53,7 @@ __all__ = [
     "CollegeMembership",
     "CollegeStatus",
     "Comment",
+    "ContentReport",
     "ContentStatus",
     "Department",
     "Invite",
@@ -65,6 +75,8 @@ __all__ = [
     "PostVisibility",
     "RateLimitCounter",
     "Reaction",
+    "ReportReason",
+    "ReportStatus",
     "Role",
     "RoleGrant",
     "RosterEntry",

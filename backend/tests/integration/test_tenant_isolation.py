@@ -96,6 +96,12 @@ def world(session: Session, app_factory: Callable[..., FastAPI]) -> World:
     )
     assert commented.status_code == 201, commented.text
     world.river_comment = commented.json()  # type: ignore[attr-defined]
+    # An open Riverside report on that post, so Riverside's queue isn't empty.
+    flagged = river.post(
+        "/api/v1/campus/reports", {"post_id": posted.json()["id"], "reason": "SPAM"}
+    )
+    assert flagged.status_code == 201, flagged.text
+    world.river_report = flagged.json()  # type: ignore[attr-defined]
     return world
 
 

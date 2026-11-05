@@ -1,10 +1,11 @@
 """Community posts, comments and reactions (COMMUNITY-001…005, 008, 009; US-10 first half):
 who posts where, who reads which feed and post, editing and soft deletion, comments,
 "Helpful" reactions, the hourly limits, and a fixed number of queries per feed page.
-Moderation (reports, hiding) arrives in 6b; hidden posts are set directly here."""
+Moderation (reports, hiding) is in test_moderation.py; hidden posts are set directly here."""
 
 import uuid
 from collections.abc import Callable, Iterator
+from datetime import UTC, datetime
 from typing import Any
 
 import httpx2
@@ -59,6 +60,12 @@ def not_found(response: httpx2.Response) -> None:
 
 
 def set_post(session: Session, post_id: str, **values: Any) -> None:
+    if values.get("status") == "HIDDEN":  # a hidden post always says why (migration 0011)
+        values = {
+            "hidden_reason": "Off-topic",
+            "hidden_at": datetime(2026, 10, 21, tzinfo=UTC),
+            **values,
+        }
     session.execute(update(Post).where(Post.id == uuid.UUID(post_id)).values(**values))
     session.commit()
 

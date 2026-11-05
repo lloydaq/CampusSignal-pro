@@ -211,3 +211,53 @@ class TestComments:  # COMMUNITY-003, 005
         assert not can_delete_comment(ctx(COLLEGE_ADMIN), post(), self.comment())
         # Once the post is hidden, its comments are frozen (owner, 2026-10-31).
         assert not can_edit_comment(ctx(), post(status=ContentStatus.HIDDEN), self.comment(ME))
+
+
+class TestReports:  # COMMUNITY-006, 007
+    def test_members_report_what_they_can_read_but_not_their_own(self) -> None:
+        from app.policies.community import can_report
+
+        assert can_report(ctx(), post(), None)
+        assert not can_report(ctx(), post(author=ME), None)
+        assert not can_report(ctx(department=MECH), dept_post(), None)  # can't read it
+        assert not can_report(ctx(), post(deleted=True), None)
+        comment = Comment(author_membership_id=SOMEONE, status=ContentStatus.VISIBLE)
+        assert can_report(ctx(), post(author=ME), comment)  # someone else's comment on mine
+        own = Comment(author_membership_id=ME, status=ContentStatus.VISIBLE)
+        assert not can_report(ctx(), post(), own)
+
+    def test_hidden_content_is_already_handled(self) -> None:
+        from app.policies.community import can_report
+
+        assert not can_report(ctx(COLLEGE_ADMIN), post(status=ContentStatus.HIDDEN), None)
+        hidden = Comment(author_membership_id=SOMEONE, status=ContentStatus.HIDDEN)
+        assert not can_report(ctx(COLLEGE_ADMIN), post(), hidden)
+
+    @pytest.mark.parametrize(
+        ("campus", "allowed"),
+        [
+            (ctx(), False),
+            (ctx(kind=MembershipKind.FACULTY), False),
+            (ctx((Role.ISSUE_COORDINATOR, None)), False),
+            (ctx(MECH_ADMIN), True),
+            (ctx(COLLEGE_ADMIN), True),
+        ],
+    )
+    def test_the_queue_is_for_moderators(self, campus: CampusContext, allowed: bool) -> None:
+        from app.policies.community import can_see_moderation_queue
+
+        assert can_see_moderation_queue(campus) is allowed
+
+    def test_the_queue_audience_matches_moderation_rights(self) -> None:
+        from app.policies.community import moderation_audience
+
+        for campus in (ctx(), ctx(MECH_ADMIN), ctx(COLLEGE_ADMIN)):
+            audience = moderation_audience(campus)
+            for target in (post(), dept_post(CSE), dept_post(MECH)):
+                in_queue = (
+                    audience.include_college
+                    if target.visibility == PostVisibility.COLLEGE
+                    else target.department_id is not None
+                    and audience.departments.includes(target.department_id)
+                )
+                assert in_queue is can_moderate_post(campus, target)
