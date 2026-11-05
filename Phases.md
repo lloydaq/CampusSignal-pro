@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Last updated | 2026-10-25 |
-| Current phase | **Phase 6 — Community, IN PROGRESS** (Phase 5 done 2026-10-30, `master` `4a42e47`; 6a merged in PR #34; 6b moderation backend on `phase6/moderation-backend`, awaiting review; Phase 4's staging deployment is still deferred) |
+| Current phase | **Phase 6 — Community, IN PROGRESS** (Phase 5 done 2026-10-30, `master` `4a42e47`; 6a merged in PR #34; 6b merged in PR #35; 6c community screens on `phase6/community-screens`, awaiting review; Phase 4's staging deployment is still deferred) |
 
 Status values: `NOT STARTED` · `IN PROGRESS` · `DONE (verified <date>)`. A phase is DONE only per §4 and `Rules.md` §8 — never because files exist.
 
@@ -215,7 +215,7 @@ Decisions (2026-10-23, owner "go"): accepting an invite requires being signed in
 ---
 
 ## Phase 6 — Community → **Release β**
-**Status:** IN PROGRESS. Split (plan approved 2026-10-31, owner "ok start"): [x] 6a posts, comments, reactions backend: feeds, edit/soft delete, hourly limits (merged, PR #34); [x] 6b reports and moderation backend: reports, queue, hide with reason / dismiss, author notified, audit (implemented 2026-11-05 on `phase6/moderation-backend`; US-10 green); [ ] 6c community screens; [ ] 6d moderation screens, navigation (bottom bar Home · Notices · Community · Issues · More) + E2E. Owner decisions (2026-10-31): the bottom bar gains a More sheet (Manage, Account); a hidden post's comments are hidden with it and it takes no new comments or reactions; members without a home department post to the college only; Release β waits with the deferred staging deployment.
+**Status:** IN PROGRESS. Split (plan approved 2026-10-31, owner "ok start"): [x] 6a posts, comments, reactions backend: feeds, edit/soft delete, hourly limits (merged, PR #34); [x] 6b reports and moderation backend: reports, queue, hide with reason / dismiss, author notified, audit (merged, PR #35; US-10 green); [x] 6c community screens: feed tabs, composer, post page with comments, Helpful, edit/delete, report dialog, links; plus the bottom bar's More sheet, brought forward from 6d (implemented 2026-11-05 on `phase6/community-screens`); [ ] 6d moderation screens (Manage → Moderation) + E2E post → comment → report → hide. Owner decisions (2026-10-31): the bottom bar gains a More sheet (Manage, Account); a hidden post's comments are hidden with it and it takes no new comments or reactions; members without a home department post to the college only; Release β waits with the deferred staging deployment.
 **Objective:** Moderated text community at college and department level.
 **Dependencies:** Phase 4.
 **Included:** COMMUNITY-001…010.

@@ -12,10 +12,12 @@ async function signInAsAdmin(page: Page) {
 const tab = (page: Page, name: string) => page.getByRole("navigation", { name: "Manage" }).getByRole("link", { name });
 
 test.describe("college administration", () => {
-  test("review the queue: approve a match, reject with a reason, see both in the audit log", async ({ page }) => {
+  test("review the queue: approve a match, reject with a reason, see both in the audit log", async ({ page }, info) => {
     await signInAsAdmin(page);
     await page.goto("/home");
-    await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Manage" }).first().click();
+    // On phones, Manage sits in the bottom bar's More sheet.
+    if (info.project.name === "mobile") await page.getByRole("button", { name: "More" }).click();
+    await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Manage" }).locator("visible=true").first().click();
     await expect(page).toHaveURL(/\/manage\/requests$/);
 
     const meera = page.getByRole("listitem").filter({ hasText: "Meera Iyer" });

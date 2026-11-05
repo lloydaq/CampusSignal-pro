@@ -1,4 +1,6 @@
-import { NavLink, Outlet, useMatches } from "react-router";
+import { Ellipsis } from "lucide-react";
+import { useEffect, useId, useState } from "react";
+import { NavLink, Outlet, useLocation, useMatches } from "react-router";
 
 import { Wordmark } from "@/components/Wordmark";
 import type { Me } from "@/features/auth/api";
@@ -6,7 +8,7 @@ import { useMe } from "@/features/auth/session";
 import { RailNotificationBell, TopBarNotificationBell } from "@/features/notifications/NotificationBell";
 import { cn } from "@/lib/utils";
 
-import { navItems } from "./nav";
+import { navItems, splitForBar, type NavItem } from "./nav";
 
 function CollegeName({ me, className }: { me: Me; className?: string }) {
   const college = me.membership?.status === "ACTIVE" ? me.membership.college : null;
@@ -73,28 +75,74 @@ export function AppShell() {
         </div>
       </main>
 
-      <nav aria-label="Main" className="fixed inset-x-0 bottom-0 border-t border-border bg-surface lg:hidden">
+      <BottomBar items={items} />
+    </div>
+  );
+}
+
+const BAR_ITEM = "relative flex min-h-14 w-full flex-col items-center justify-center gap-1 px-2 text-xs font-medium";
+const BAR_ACTIVE = "text-primary before:absolute before:inset-x-6 before:top-0 before:h-0.75 before:rounded-sm before:bg-accent";
+
+/**
+ * Phones (Design.md §4): four sections in the bar and a "More" sheet for the rest when there
+ * are more than five. The sheet closes when a link is chosen, on Escape or on a tap outside it.
+ */
+function BottomBar({ items }: { items: NavItem[] }) {
+  const { bar, more } = splitForBar(items);
+  const location = useLocation();
+  const [open, setOpen] = useState(false);
+  const sheetId = useId();
+  const inMore = more.some((item) => location.pathname.startsWith(item.to));
+  useEffect(() => {
+    if (!open) return;
+    const close = (event: KeyboardEvent) => event.key === "Escape" && setOpen(false);
+    document.addEventListener("keydown", close);
+    return () => document.removeEventListener("keydown", close);
+  }, [open]);
+  return (
+    <nav aria-label="Main" className="fixed inset-x-0 bottom-0 lg:hidden">
+      {open && (
+        <>
+          {/* The scrim sits behind the sheet and the bar (it paints over the page only). */}
+          <button type="button" aria-label="Close menu" tabIndex={-1} className="fixed inset-0 -z-10 cursor-default bg-fg/20" onClick={() => setOpen(false)} />
+          <div className="border-t border-border bg-surface">
+            <ul id={sheetId} className="mx-auto max-w-reading py-2">
+              {more.map(({ to, label, Icon }) => (
+                <li key={to}>
+                  <NavLink
+                    to={to}
+                    onClick={() => setOpen(false)}
+                    className={({ isActive }) => cn("flex min-h-12 items-center gap-3 px-6 text-sm font-medium", isActive ? "text-primary" : "text-fg")}
+                  >
+                    <Icon aria-hidden="true" strokeWidth={1.5} className="size-5" />
+                    {label}
+                  </NavLink>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </>
+      )}
+      <div className="border-t border-border bg-surface">
         <ul className="mx-auto flex max-w-reading">
-          {items.map(({ to, label, Icon }) => (
+          {bar.map(({ to, label, Icon }) => (
             <li key={to} className="flex-1">
-              <NavLink
-                to={to}
-                className={({ isActive }) =>
-                  cn(
-                    "relative flex min-h-14 flex-col items-center justify-center gap-1 px-2 text-xs font-medium",
-                    isActive
-                      ? "text-primary before:absolute before:inset-x-6 before:top-0 before:h-0.75 before:rounded-sm before:bg-accent"
-                      : "text-muted",
-                  )
-                }
-              >
+              <NavLink to={to} onClick={() => setOpen(false)} className={({ isActive }) => cn(BAR_ITEM, isActive ? BAR_ACTIVE : "text-muted")}>
                 <Icon aria-hidden="true" strokeWidth={1.5} className="size-5" />
                 {label}
               </NavLink>
             </li>
           ))}
+          {more.length > 0 && (
+            <li className="flex-1">
+              <button type="button" aria-expanded={open} aria-controls={sheetId} onClick={() => setOpen((o) => !o)} className={cn(BAR_ITEM, inMore ? BAR_ACTIVE : "text-muted")}>
+                <Ellipsis aria-hidden="true" strokeWidth={1.5} className="size-5" />
+                More
+              </button>
+            </li>
+          )}
         </ul>
-      </nav>
-    </div>
+      </div>
+    </nav>
   );
 }

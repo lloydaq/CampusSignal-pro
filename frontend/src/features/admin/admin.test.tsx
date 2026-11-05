@@ -64,10 +64,25 @@ describe("Manage access", () => {
     mockFetch({ [ME]: signedIn({}, ADMIN), [`${C}/membership-requests`]: () => page([]) });
     renderRoute("/manage");
     const [nav] = await screen.findAllByRole("navigation", { name: "Main" });
-    expect(within(nav!).getAllByRole("link").map((l) => l.textContent)).toEqual(["Home", "Notices", "Issues", "Manage", "Account"]);
+    expect(within(nav!).getAllByRole("link").map((l) => l.textContent)).toEqual(["Home", "Notices", "Community", "Issues", "Manage", "Account"]);
     const tabs = screen.getByRole("navigation", { name: "Manage" });
     expect(within(tabs).getAllByRole("link").map((l) => l.textContent)).toEqual(["Requests", "Members", "Invites", "Departments", "Roster", "Audit log"]);
     await waitFor(() => expect(within(tabs).getByRole("link", { name: "Requests" })).toHaveAttribute("aria-current", "page"));
+  });
+
+  it("puts the sections that don't fit the phone bar in a More sheet", async () => {
+    mockFetch({ [ME]: signedIn({}, ADMIN), [`${C}/membership-requests`]: () => page([]) });
+    renderRoute("/manage");
+    const [, bar] = await screen.findAllByRole("navigation", { name: "Main" });
+    expect(within(bar!).getAllByRole("link").map((l) => l.textContent)).toEqual(["Home", "Notices", "Community", "Issues"]);
+    const more = within(bar!).getByRole("button", { name: "More" });
+    expect(more).toHaveAttribute("aria-expanded", "false");
+    await userEvent.click(more);
+    expect(more).toHaveAttribute("aria-expanded", "true");
+    expect(within(bar!).getByRole("link", { name: "Manage" })).toHaveAttribute("href", "/manage");
+    expect(within(bar!).getByRole("link", { name: "Account" })).toHaveAttribute("href", "/account");
+    await userEvent.keyboard("{Escape}");
+    expect(within(bar!).queryByRole("link", { name: "Account" })).not.toBeInTheDocument();
   });
 
   it("shows department admins only their requests and members", async () => {

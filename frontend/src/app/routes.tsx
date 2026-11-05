@@ -24,6 +24,8 @@ import { CollegesTab } from "@/features/platform/CollegesTab";
 import { PlatformAuditTab } from "@/features/platform/AuditTab";
 import { PlatformLayout } from "@/features/platform/PlatformLayout";
 import { UsersTab } from "@/features/platform/UsersTab";
+import { CommunityPage } from "@/features/community/CommunityPage";
+import { PostPage } from "@/features/community/PostPage";
 import { IssuePage } from "@/features/issues/IssuePage";
 import { IssuesPage } from "@/features/issues/IssuesPage";
 import { ReportIssuePage } from "@/features/issues/ReportIssuePage";
@@ -78,6 +80,8 @@ export const routes: RouteObject[] = [
               { path: "notices/:noticeId", element: <NoticePage /> },
               { path: "notices/:noticeId/edit", element: <EditNoticePage /> },
               { path: "departments/:departmentId", element: <DepartmentPage /> },
+              { path: "community", element: <CommunityPage /> },
+              { path: "community/posts/:postId", element: <PostPage /> },
               { path: "issues", element: <IssuesPage /> },
               { path: "issues/new", element: <ReportIssuePage /> },
               { path: "issues/queue", element: <IssuesPage queue />, handle: { wide: true } },
