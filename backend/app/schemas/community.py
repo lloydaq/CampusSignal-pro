@@ -144,6 +144,7 @@ class ReportedContent(BaseModel):
     visibility: str
     department: DepartmentRef | None
     status: str
+    hidden_reason: str | None  # what its author was told, once hidden
 
 
 class QueueItemOut(BaseModel):
@@ -152,6 +153,7 @@ class QueueItemOut(BaseModel):
     note: str | None
     status: str
     created_at: datetime
+    handled_at: datetime | None  # set once hidden or dismissed
     open_reports: int  # on the same content, this one included
     content: ReportedContent
 

@@ -175,6 +175,7 @@ def _queue_item(item: QueueItem) -> QueueItemOut:
         note=report.note,
         status=report.status,
         created_at=report.created_at,
+        handled_at=report.handled_at,
         open_reports=item.open_reports,
         content=ReportedContent(
             type="comment" if comment else "post",
@@ -185,6 +186,7 @@ def _queue_item(item: QueueItem) -> QueueItemOut:
             visibility=post.visibility,
             department=DepartmentRef.from_department(item.department) if item.department else None,
             status=comment.status if comment else post.status,
+            hidden_reason=comment.hidden_reason if comment else post.hidden_reason,
         ),
     )
 

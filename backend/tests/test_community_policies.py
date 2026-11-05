@@ -8,6 +8,7 @@ import pytest
 from app.models import (
     College,
     CollegeMembership,
+    CollegeStatus,
     Comment,
     ContentStatus,
     MembershipKind,
@@ -50,7 +51,12 @@ def ctx(
         membership=CollegeMembership(
             id=ME, kind=kind, status=MembershipStatus.ACTIVE, department_id=department
         ),
-        college=College(name="Northfield Institute", slug="northfield", timezone="UTC"),
+        college=College(
+            name="Northfield Institute",
+            slug="northfield",
+            timezone="UTC",
+            status=CollegeStatus.ACTIVE,
+        ),
         grants=tuple(RoleGrant(role=r, department_id=d) for r, d in roles),
     )
 
@@ -247,6 +253,11 @@ class TestReports:  # COMMUNITY-006, 007
         from app.policies.community import can_see_moderation_queue
 
         assert can_see_moderation_queue(campus) is allowed
+        # /me offers Manage → Moderation to exactly these people.
+        from app.policies.campus import MODERATE_COMMUNITY, capabilities
+
+        offered = capabilities(campus.user, campus.membership, campus.college, campus.grants)
+        assert (MODERATE_COMMUNITY in offered) is allowed
 
     def test_the_queue_audience_matches_moderation_rights(self) -> None:
         from app.policies.community import moderation_audience

@@ -6,4 +6,5 @@ export const manageKeys = {
   invites: ["manage", "invites"],
   roster: ["manage", "roster"],
   audit: ["manage", "audit"],
+  moderation: ["manage", "moderation"],
 } as const;

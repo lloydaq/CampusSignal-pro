@@ -98,7 +98,12 @@ def test_roles_and_capabilities_of_admins(session: Session, client: TestClient) 
             },
         },
     ]
-    assert body["capabilities"] == ["campus", "manage_college", "review_memberships"]
+    assert body["capabilities"] == [
+        "campus",
+        "manage_college",
+        "review_memberships",
+        "moderate_community",
+    ]
 
 
 def test_a_department_admin_reviews_but_does_not_manage(
@@ -113,7 +118,7 @@ def test_a_department_admin_reviews_but_does_not_manage(
         roles=((Role.DEPARTMENT_ADMIN, "CSE"),),
     )
     session.commit()
-    assert me(client)["capabilities"] == ["campus", "review_memberships"]
+    assert me(client)["capabilities"] == ["campus", "review_memberships", "moderate_community"]
 
 
 def test_a_suspended_college_shows_the_membership_but_no_capabilities(

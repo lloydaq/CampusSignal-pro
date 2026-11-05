@@ -91,8 +91,14 @@ def test_department_admin_powers_cover_only_granted_departments() -> None:
     [
         ((), ["campus"]),
         ((grant(Role.ISSUE_COORDINATOR),), ["campus"]),
-        ((grant(Role.DEPARTMENT_ADMIN, MECH),), ["campus", "review_memberships"]),
-        ((grant(Role.COLLEGE_ADMIN),), ["campus", "manage_college", "review_memberships"]),
+        (
+            (grant(Role.DEPARTMENT_ADMIN, MECH),),
+            ["campus", "review_memberships", "moderate_community"],
+        ),
+        (
+            (grant(Role.COLLEGE_ADMIN),),
+            ["campus", "manage_college", "review_memberships", "moderate_community"],
+        ),
     ],
 )
 def test_capabilities_follow_roles(grants: tuple[RoleGrant, ...], expected: list[str]) -> None:

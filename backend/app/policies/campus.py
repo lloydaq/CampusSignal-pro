@@ -72,6 +72,7 @@ def uses_privileged_session_limits(user: User, holds_privileged_role: bool) -> b
 CAMPUS = "campus"
 MANAGE_COLLEGE = "manage_college"
 REVIEW_MEMBERSHIPS = "review_memberships"
+MODERATE_COMMUNITY = "moderate_community"
 PLATFORM = "platform"
 
 
@@ -93,6 +94,8 @@ def capabilities(
         found.append(MANAGE_COLLEGE)
     if is_college_admin(grants) or administered_departments(grants):
         found.append(REVIEW_MEMBERSHIPS)
+        # The same people as `community.can_see_moderation_queue` (COMMUNITY-007).
+        found.append(MODERATE_COMMUNITY)
     return found
 
 
