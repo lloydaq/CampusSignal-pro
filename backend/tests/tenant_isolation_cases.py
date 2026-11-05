@@ -229,6 +229,21 @@ CASES: dict[tuple[str, str], IsolationCase] = {
     ("DELETE", f"{CAMPUS}/posts/{{post_id}}/reaction"): IsolationCase(
         Kind.OBJECT, lambda w: (f"{CAMPUS}/posts/{w.river_post['id']}/reaction", None)
     ),
+    # reports and moderation (the queue lists the whole college for a college admin)
+    ("POST", f"{CAMPUS}/reports"): IsolationCase(
+        Kind.OBJECT,
+        lambda w: (f"{CAMPUS}/reports", {"post_id": w.river_post["id"], "reason": "SPAM"}),
+    ),
+    ("GET", f"{CAMPUS}/moderation/reports"): IsolationCase(
+        Kind.LIST, _static(f"{CAMPUS}/moderation/reports")
+    ),
+    ("POST", f"{CAMPUS}/moderation/reports/{{report_id}}/resolve"): IsolationCase(
+        Kind.OBJECT,
+        lambda w: (
+            f"{CAMPUS}/moderation/reports/{w.river_report['id']}/resolve",
+            {"action": "HIDE", "reason": "x"},
+        ),
+    ),
     # audit
     ("GET", f"{CAMPUS}/audit-log"): IsolationCase(Kind.LIST, _static(f"{CAMPUS}/audit-log")),
 }

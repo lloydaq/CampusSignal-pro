@@ -86,7 +86,7 @@ class CommentView:
 # --- shared ----------------------------------------------------------------------------------
 
 
-def _authors(
+def authors_of(
     db: Session, campus: CampusContext, membership_ids: Iterable[uuid.UUID]
 ) -> dict[uuid.UUID, Author]:
     wanted = set(membership_ids)
@@ -136,7 +136,7 @@ def _check_hourly_limit(
 # --- posts -----------------------------------------------------------------------------------
 
 
-def _load_post(
+def load_post(
     db: Session, campus: CampusContext, post_id: uuid.UUID, *, lock: bool = False
 ) -> Post:
     """The post in this college that the caller may read, else NotFound."""
@@ -153,7 +153,7 @@ def _views(db: Session, campus: CampusContext, posts: list[Post]) -> list[PostVi
     if not posts:
         return []
     ids = [p.id for p in posts]
-    authors = _authors(db, campus, (p.author_membership_id for p in posts))
+    authors = authors_of(db, campus, (p.author_membership_id for p in posts))
     department_ids = {p.department_id for p in posts if p.department_id}
     departments = (
         {
@@ -214,7 +214,7 @@ def _views(db: Session, campus: CampusContext, posts: list[Post]) -> list[PostVi
 
 
 def get_post(db: Session, campus: CampusContext, post_id: uuid.UUID) -> PostView:
-    return _views(db, campus, [_load_post(db, campus, post_id)])[0]
+    return _views(db, campus, [load_post(db, campus, post_id)])[0]
 
 
 def create_post(
@@ -246,7 +246,7 @@ def create_post(
 def edit_post(
     db: Session, campus: CampusContext, post_id: uuid.UUID, *, body: str, now: datetime
 ) -> PostView:
-    post = _load_post(db, campus, post_id, lock=True)
+    post = load_post(db, campus, post_id, lock=True)
     if not can_edit_post(campus, post):
         raise Forbidden()
     if body != post.body:
@@ -259,7 +259,7 @@ def edit_post(
 
 def delete_post(db: Session, campus: CampusContext, post_id: uuid.UUID, *, now: datetime) -> None:
     """COMMUNITY-005: soft. The post leaves every read; its row stays for reports about it."""
-    post = _load_post(db, campus, post_id, lock=True)
+    post = load_post(db, campus, post_id, lock=True)
     if not can_delete_post(campus, post):
         raise Forbidden()
     post.deleted_at = now
@@ -320,7 +320,7 @@ def list_feed(
 def _comment_views(
     db: Session, campus: CampusContext, post: Post, comments: list[Comment]
 ) -> list[CommentView]:
-    authors = _authors(db, campus, (c.author_membership_id for c in comments))
+    authors = authors_of(db, campus, (c.author_membership_id for c in comments))
     return [
         CommentView(
             comment=c,
@@ -341,7 +341,7 @@ def list_comments(
     limit: int,
 ) -> tuple[list[CommentView], str | None]:
     """Oldest first (Design.md §5 screen 10), the same rules as reading one comment."""
-    post = _load_post(db, campus, post_id)
+    post = load_post(db, campus, post_id)
     query: Select[Any] = select(Comment).where(
         Comment.college_id == campus.college_id,
         Comment.post_id == post.id,
@@ -369,7 +369,7 @@ def list_comments(
 def add_comment(
     db: Session, campus: CampusContext, post_id: uuid.UUID, *, body: str, now: datetime
 ) -> CommentView:
-    post = _load_post(db, campus, post_id)
+    post = load_post(db, campus, post_id)
     if not can_engage_post(campus, post):
         raise Forbidden()
     _check_hourly_limit(
@@ -394,9 +394,7 @@ def add_comment(
     return _comment_views(db, campus, post, [comment])[0]
 
 
-def _load_comment(
-    db: Session, campus: CampusContext, comment_id: uuid.UUID
-) -> tuple[Post, Comment]:
+def load_comment(db: Session, campus: CampusContext, comment_id: uuid.UUID) -> tuple[Post, Comment]:
     """The comment in this college that the caller may read, with its post, else NotFound."""
     row = db.execute(
         select(Comment, Post)
@@ -412,7 +410,7 @@ def _load_comment(
 def edit_comment(
     db: Session, campus: CampusContext, comment_id: uuid.UUID, *, body: str, now: datetime
 ) -> CommentView:
-    post, comment = _load_comment(db, campus, comment_id)
+    post, comment = load_comment(db, campus, comment_id)
     if not can_edit_comment(campus, post, comment):
         raise Forbidden()
     if body != comment.body:
@@ -426,7 +424,7 @@ def edit_comment(
 def delete_comment(
     db: Session, campus: CampusContext, comment_id: uuid.UUID, *, now: datetime
 ) -> None:
-    post, comment = _load_comment(db, campus, comment_id)
+    post, comment = load_comment(db, campus, comment_id)
     if not can_delete_comment(campus, post, comment):
         raise Forbidden()
     comment.deleted_at = now
@@ -450,7 +448,7 @@ def _reaction_count(db: Session, campus: CampusContext, post_id: uuid.UUID) -> i
 def react(db: Session, campus: CampusContext, post_id: uuid.UUID, *, now: datetime) -> int:
     """COMMUNITY-004: "Helpful" once per member; reacting again changes nothing (the unique
     constraint makes that a database rule, also for two requests at once)."""
-    post = _load_post(db, campus, post_id)
+    post = load_post(db, campus, post_id)
     if not can_engage_post(campus, post):
         raise Forbidden()
     db.execute(
@@ -468,7 +466,7 @@ def react(db: Session, campus: CampusContext, post_id: uuid.UUID, *, now: dateti
 
 
 def unreact(db: Session, campus: CampusContext, post_id: uuid.UUID) -> int:
-    post = _load_post(db, campus, post_id)
+    post = load_post(db, campus, post_id)
     db.execute(
         delete(Reaction).where(
             Reaction.college_id == campus.college_id,

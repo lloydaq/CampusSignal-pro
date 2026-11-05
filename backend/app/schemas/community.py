@@ -8,12 +8,12 @@ import re
 import uuid
 from collections.abc import Callable
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Self
 
-from pydantic import AfterValidator, BaseModel, ConfigDict
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, model_validator
 from pydantic_core import PydanticCustomError
 
-from app.models import PostVisibility
+from app.models import PostVisibility, ReportReason
 from app.schemas.campus import DepartmentRef
 
 POST_MAX = 5000
@@ -72,6 +72,7 @@ class PostOut(BaseModel):
     department: DepartmentRef | None
     author: Author
     status: str
+    hidden_reason: str | None  # only its author and moderators ever see a hidden post
     edited_at: datetime | None
     created_at: datetime
     reaction_count: int
@@ -92,6 +93,7 @@ class CommentOut(BaseModel):
     body: str
     author: Author
     status: str
+    hidden_reason: str | None
     edited_at: datetime | None
     created_at: datetime
     can_edit: bool
@@ -106,3 +108,74 @@ class CommentPage(BaseModel):
 class ReactionOut(BaseModel):
     reacted: bool
     reaction_count: int
+
+
+Reason = Annotated[str, Field(min_length=1, max_length=500)]
+
+
+class ReportCreate(_Request):
+    """A report names exactly one target: a post or a comment (COMMUNITY-006)."""
+
+    post_id: uuid.UUID | None = None
+    comment_id: uuid.UUID | None = None
+    reason: ReportReason
+    note: Reason | None = None
+
+    @model_validator(mode="after")
+    def _one_target(self) -> Self:
+        if (self.post_id is None) == (self.comment_id is None):
+            raise PydanticCustomError("one_target", "Report either a post or a comment.")
+        return self
+
+
+class ReportOut(BaseModel):
+    id: uuid.UUID
+    status: str
+
+
+class ReportedContent(BaseModel):
+    """What a moderator needs to decide; who reported it stays private."""
+
+    type: str  # post | comment
+    post_id: uuid.UUID
+    comment_id: uuid.UUID | None
+    body: str
+    author: Author
+    visibility: str
+    department: DepartmentRef | None
+    status: str
+
+
+class QueueItemOut(BaseModel):
+    id: uuid.UUID
+    reason: str
+    note: str | None
+    status: str
+    created_at: datetime
+    open_reports: int  # on the same content, this one included
+    content: ReportedContent
+
+
+class QueuePage(BaseModel):
+    items: list[QueueItemOut]
+    next_cursor: str | None
+
+
+class Resolve(_Request):
+    """HIDE needs the reason its author will read; DISMISS may say why (audit log only)."""
+
+    action: Annotated[str, Field(pattern="^(HIDE|DISMISS)$")]
+    reason: Reason | None = None
+
+    @model_validator(mode="after")
+    def _hiding_needs_a_reason(self) -> Self:
+        if self.action == "HIDE" and not (self.reason and self.reason.strip()):
+            raise PydanticCustomError(
+                "reason_required", "Say why it's hidden; its author sees this."
+            )
+        return self
+
+
+class ResolveOut(BaseModel):
+    action: str
+    closed_reports: int
