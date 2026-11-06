@@ -137,6 +137,7 @@ def test_the_queue_is_for_moderators_and_scoped_to_their_posts(world: World, clo
     # Reporters stay private; the reported content's author is named.
     assert "Faculty" not in world.browser("admin").get(QUEUE).text
     assert everything[0]["content"]["author"] == {"name": "Student", "kind": "STUDENT"}
+    assert everything[0]["handled_at"] is None and everything[0]["content"]["hidden_reason"] is None
     assert queue(world.browser("river_admin")) == []
 
 
@@ -165,7 +166,12 @@ def test_hiding_a_post(world: World, conn: Connection, clock: Clock) -> None:  #
     assert told["title"] == "A moderator hid your post"
     assert audit(conn, created["id"]) == [("community.content_hidden", REASON)]
     assert queue(world.browser("admin")) == []
-    assert len(queue(world.browser("admin"), "status=ACTIONED")) == 2
+    history = queue(world.browser("admin"), "status=ACTIONED")
+    assert len(history) == 2
+    # The history says when it was handled and the reason its author was given.
+    assert all(i["handled_at"] is not None for i in history)
+    assert [i["content"]["status"] for i in history] == ["HIDDEN", "HIDDEN"]
+    assert [i["content"]["hidden_reason"] for i in history] == [REASON, REASON]
     again = resolve(world.browser("admin"), first["id"], "HIDE")
     assert again.status_code == 409 and error_of(again)["code"] == "already_resolved"
 

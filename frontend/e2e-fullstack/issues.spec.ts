@@ -1,29 +1,12 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
-import { createIssueCollege } from "./campus";
+import { createIssueCollege, PASSWORD, signIn, signOut, unique } from "./campus";
 
 /**
  * J5 + J9 against the real API and database (PRD §8): a student reports an issue; the
  * coordinator acknowledges it and assigns it to a faculty member; the faculty member starts
  * work and resolves it with a note; the student is notified and sees it resolved.
  */
-
-const PASSWORD = "tidal-quartz-lantern";
-const unique = () => `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-
-async function signIn(page: Page, email: string) {
-  await page.goto("/sign-in");
-  await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill(PASSWORD);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(/\/home$/);
-}
-
-async function signOut(page: Page) {
-  await page.goto("/account");
-  await page.getByRole("button", { name: "Sign out", exact: true }).click();
-  await expect(page.getByText("You've signed out.")).toBeVisible();
-}
 
 test("a reported issue is acknowledged, assigned, worked on and resolved", async ({ page }) => {
   const run = unique();

@@ -358,7 +358,7 @@ Auth column: **—** public, **U** signed-in user, **M** ACTIVE member (campus c
 | POST | `/auth/logout` · `/auth/logout-all` | End session(s) | U | 401 |
 | POST | `/auth/password-reset/request` · `/confirm` | Reset (AUTH-006) | — | always 202 on request; 400 token |
 | GET | `/auth/csrf` | CSRF token for the current session, or `null` | — | — |
-| GET | `/me` | User, membership, grants, nav capabilities | U | 401 |
+| GET | `/me` | User, membership, grants, nav capabilities (`campus`, `manage_college`, `review_memberships`, `moderate_community`, `platform`) | U | 401 |
 | POST | `/me/password` | Change password | U | 400 wrong current |
 
 **Membership & college directory**
@@ -406,7 +406,7 @@ Notice detail and list responses carry `can_manage`; the author's name is includ
 | PATCH/DELETE | `/campus/comments/{id}` | Edit/delete own | M, `can_read_comment`; author | 403; 404 |
 | PUT/DELETE | `/campus/posts/{id}/reaction` | "Helpful" on / off, each idempotent, `{reacted, reaction_count}` (the UI's toggle; a repeat never duplicates: unique constraint + `ON CONFLICT DO NOTHING`) | M, `can_engage_post` (PUT), `can_read_post` (DELETE) | 403 hidden post; 404 |
 | POST | `/campus/reports` `{post_id \| comment_id, reason, note?}` | Report content (201). Reasons HARASSMENT, SPAM, MISINFORMATION, PERSONAL_INFORMATION, OTHER; note ≤ 500 (6b) | M, `can_report` (readable, visible, not one's own) | 403 own/hidden; 404; 409 `already_reported` (one OPEN per member per target, a partial unique index) |
-| GET | `/campus/moderation/reports?status=OPEN|ACTIONED|DISMISSED&cursor=` | Queue, oldest first: reason, note, the content (body, author, audience) and `open_reports` on it; never the reporter. Reports on deleted content drop out | M, `can_see_moderation_queue`; rows by `moderation_audience` (college admins: all; dept admins: their departments' posts and comments on them) | 403 |
+| GET | `/campus/moderation/reports?status=OPEN|ACTIONED|DISMISSED&cursor=` | Queue, oldest first: reason, note, the content (body, author, audience, status, `hidden_reason`), `open_reports` on it and `handled_at` once closed; never the reporter. Reports on deleted content drop out | M, `can_see_moderation_queue`; rows by `moderation_audience` (college admins: all; dept admins: their departments' posts and comments on them) | 403 |
 | POST | `/campus/moderation/reports/{id}/resolve` `{action: HIDE\|DISMISS, reason}` | HIDE (reason required, shown to the author): content HIDDEN with `hidden_reason`, author notified (`CONTENT_HIDDEN`, link to the post), audit `community.content_hidden`. DISMISS: audit `community.reports_dismissed`. Either closes every OPEN report on that content | M, `can_moderate_post` | 403 dept admin on college post (US-10); 404; 409 `already_resolved` / `content_deleted`; 422 reason |
 
 **Campus issues**

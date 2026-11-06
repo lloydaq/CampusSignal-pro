@@ -86,3 +86,40 @@ export const setHelpful = (postId: string, on: boolean) => send<ReactionState>(o
 
 export const reportContent = (body: { post_id?: string; comment_id?: string; reason: ReportReason; note?: string }) =>
   apiPost<{ id: string; status: string }>(`${CAMPUS}/reports`, body);
+
+// --- moderation (COMMUNITY-007; Manage → Moderation) ---
+
+export type ReportStatus = "OPEN" | "ACTIONED" | "DISMISSED";
+
+/** One report in the moderation queue. Who reported it is never sent. */
+export interface ModerationItem {
+  id: string;
+  reason: ReportReason;
+  note: string | null;
+  status: ReportStatus;
+  created_at: string;
+  handled_at: string | null;
+  /** Open reports on the same post or comment, this one included. */
+  open_reports: number;
+  content: {
+    type: "post" | "comment";
+    post_id: string;
+    comment_id: string | null;
+    body: string;
+    author: Author;
+    visibility: Visibility;
+    department: DepartmentRef | null;
+    status: ContentStatus;
+    hidden_reason: string | null;
+  };
+}
+
+export function fetchModerationQueue(status: ReportStatus, cursor: string | null, signal?: AbortSignal): Promise<Page<ModerationItem>> {
+  const params = new URLSearchParams({ status });
+  if (cursor) params.set("cursor", cursor);
+  return apiGet<Page<ModerationItem>>(`${CAMPUS}/moderation/reports?${params.toString()}`, signal);
+}
+
+/** HIDE needs the reason its author will read; DISMISS's reason goes to the audit log only. */
+export const resolveReport = (id: string, body: { action: "HIDE" | "DISMISS"; reason?: string }) =>
+  apiPost<{ action: string; closed_reports: number }>(`${CAMPUS}/moderation/reports/${id}/resolve`, body);

@@ -59,6 +59,33 @@ export async function mockManageApi(page: Page) {
   const record = (action: string, reason: string | null = null) =>
     audit.unshift({ id: `a${audit.length + 1}`, action, actor: { id: "admin", display_name: "Aarav Nair" }, target_type: null, target_id: null, reason, metadata: {}, created_at: NOW });
 
+  // The moderation queue (COMMUNITY-007): two reports on one post, one on a comment.
+  const reported = {
+    type: "post",
+    post_id: "p7",
+    comment_id: null,
+    body: "The hostel closes for good next week, the warden said so.",
+    author: { name: "Kabir Shah", kind: "STUDENT" },
+    visibility: "DEPARTMENT",
+    department: CSE,
+    status: "VISIBLE",
+    hidden_reason: null as string | null,
+  };
+  const reports = [
+    { id: "q1", reason: "MISINFORMATION", note: "Nobody announced this.", status: "OPEN", created_at: "2026-10-23T08:00:00Z", handled_at: null as string | null, content: reported },
+    { id: "q2", reason: "OTHER", note: null, status: "OPEN", created_at: "2026-10-23T08:30:00Z", handled_at: null as string | null, content: reported },
+    {
+      id: "q3",
+      reason: "SPAM",
+      note: null,
+      status: "OPEN",
+      created_at: "2026-10-23T09:00:00Z",
+      handled_at: null as string | null,
+      content: { ...reported, type: "comment", comment_id: "c9", body: "Buy cheap notes at notes.example", author: { name: "Dr. Lakshmi Pillai", kind: "FACULTY" }, visibility: "COLLEGE", department: null },
+    },
+  ];
+  const sameContent = (a: (typeof reports)[number], b: (typeof reports)[number]) => a.content.post_id === b.content.post_id && a.content.comment_id === b.content.comment_id;
+
   await page.route("**/api/v1/campus/**", (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -66,6 +93,26 @@ export async function mockManageApi(page: Page) {
     const method = request.method();
     const body = () => request.postDataJSON() as Record<string, string>;
 
+    if (path === "/moderation/reports" && method === "GET") {
+      const status = url.searchParams.get("status") ?? "OPEN";
+      const items = reports
+        .filter((r) => r.status === status)
+        .map((r) => ({ ...r, open_reports: reports.filter((o) => o.status === "OPEN" && sameContent(o, r)).length }));
+      return reply(route, 200, { items, next_cursor: null });
+    }
+    const resolving = path.match(/^\/moderation\/reports\/(\w+)\/resolve$/);
+    if (resolving && method === "POST") {
+      const target = reports.find((r) => r.id === resolving[1]);
+      if (!target) return problem(route, 404, "not_found", "Not found.");
+      if (target.status !== "OPEN") return problem(route, 409, "already_resolved", "This report has already been handled.");
+      const { action, reason } = body();
+      if (action === "HIDE" && !reason) return problem(route, 422, "validation_error", "Say why it's hidden; its author sees this.");
+      const closing = reports.filter((r) => r.status === "OPEN" && sameContent(r, target));
+      const content = action === "HIDE" ? { ...target.content, status: "HIDDEN", hidden_reason: reason ?? null } : target.content;
+      for (const r of closing) Object.assign(r, { status: action === "HIDE" ? "ACTIONED" : "DISMISSED", handled_at: NOW, content });
+      record(action === "HIDE" ? "community.content_hidden" : "community.reports_dismissed", reason ?? null);
+      return reply(route, 200, { action, closed_reports: closing.length });
+    }
     if (path === "/membership-requests" && method === "GET") return reply(route, 200, { items: requests, next_cursor: null });
     const decision = path.match(/^\/membership-requests\/(\w+)\/(approve|reject)$/);
     if (decision && method === "POST") {

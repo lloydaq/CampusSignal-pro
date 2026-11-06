@@ -15,13 +15,13 @@ const ADMIN: Partial<Me> = {
   ...MEMBER,
   membership: { ...MEMBER.membership!, kind: "STAFF", department: null },
   roles: [{ role: "COLLEGE_ADMIN", department: null }],
-  capabilities: ["campus", "manage_college", "review_memberships"],
+  capabilities: ["campus", "manage_college", "review_memberships", "moderate_community"],
 };
 const DEPT_ADMIN: Partial<Me> = {
   ...MEMBER,
   membership: { ...MEMBER.membership!, kind: "FACULTY" },
   roles: [{ role: "DEPARTMENT_ADMIN", department: CSE }],
-  capabilities: ["campus", "review_memberships"],
+  capabilities: ["campus", "review_memberships", "moderate_community"],
 };
 
 const page = <T,>(items: T[], next_cursor: string | null = null) => json({ items, next_cursor });
@@ -66,7 +66,7 @@ describe("Manage access", () => {
     const [nav] = await screen.findAllByRole("navigation", { name: "Main" });
     expect(within(nav!).getAllByRole("link").map((l) => l.textContent)).toEqual(["Home", "Notices", "Community", "Issues", "Manage", "Account"]);
     const tabs = screen.getByRole("navigation", { name: "Manage" });
-    expect(within(tabs).getAllByRole("link").map((l) => l.textContent)).toEqual(["Requests", "Members", "Invites", "Departments", "Roster", "Audit log"]);
+    expect(within(tabs).getAllByRole("link").map((l) => l.textContent)).toEqual(["Requests", "Members", "Moderation", "Invites", "Departments", "Roster", "Audit log"]);
     await waitFor(() => expect(within(tabs).getByRole("link", { name: "Requests" })).toHaveAttribute("aria-current", "page"));
   });
 
@@ -85,11 +85,11 @@ describe("Manage access", () => {
     expect(within(bar!).queryByRole("link", { name: "Account" })).not.toBeInTheDocument();
   });
 
-  it("shows department admins only their requests and members", async () => {
+  it("shows department admins their requests, members and moderation", async () => {
     mockFetch({ [ME]: signedIn({}, DEPT_ADMIN), [`${C}/membership-requests`]: () => page([]) });
     renderRoute("/manage/requests");
     const tabs = await screen.findByRole("navigation", { name: "Manage" });
-    expect(within(tabs).getAllByRole("link").map((l) => l.textContent)).toEqual(["Requests", "Members"]);
+    expect(within(tabs).getAllByRole("link").map((l) => l.textContent)).toEqual(["Requests", "Members", "Moderation"]);
   });
 
   it("sends department admins away from college-admin tabs", async () => {

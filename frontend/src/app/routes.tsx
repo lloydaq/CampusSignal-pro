@@ -5,6 +5,7 @@ import { DepartmentsTab } from "@/features/admin/DepartmentsTab";
 import { InvitesTab } from "@/features/admin/InvitesTab";
 import { ManageLayout, RequireCapability } from "@/features/admin/ManageLayout";
 import { MembersTab } from "@/features/admin/MembersTab";
+import { ModerationTab } from "@/features/admin/ModerationTab";
 import { RequestsTab } from "@/features/admin/RequestsTab";
 import { RosterTab } from "@/features/admin/RosterTab";
 import { AccountPage } from "@/features/auth/AccountPage";
@@ -111,6 +112,7 @@ export const routes: RouteObject[] = [
               { index: true, element: <Navigate to="requests" replace /> },
               { path: "requests", element: <RequestsTab /> },
               { path: "members", element: <MembersTab /> },
+              { path: "moderation", element: <RequireCapability needs="moderate_community"><ModerationTab /></RequireCapability> },
               { path: "invites", element: <RequireCapability needs="manage_college"><InvitesTab /></RequireCapability> },
               { path: "departments", element: <RequireCapability needs="manage_college"><DepartmentsTab /></RequireCapability> },
               { path: "roster", element: <RequireCapability needs="manage_college"><RosterTab /></RequireCapability> },

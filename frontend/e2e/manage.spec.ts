@@ -75,6 +75,40 @@ test.describe("college administration", () => {
     await expect(page.getByRole("table", { name: "Members" })).not.toContainText("Kabir Shah"); // filter: Active
   });
 
+  test("moderate: hide a post with a reason, dismiss a comment's report, see both in history and the audit log", async ({ page }) => {
+    await signInAsAdmin(page);
+    await page.goto("/manage/requests");
+    await tab(page, "Moderation").click();
+    const queue = page.getByRole("list", { name: "Open reports" });
+    const first = queue.getByRole("listitem").filter({ hasText: "False information" });
+    await expect(first).toContainText("2 open reports on this post");
+    await expect(first).toContainText("Reporter's note: Nobody announced this.");
+    await first.getByRole("button", { name: "Hide post" }).click();
+    const hide = page.getByRole("dialog", { name: "Hide this post?" });
+    await hide.getByLabel(/Reason/).fill("Unverified claim about a named person");
+    await hide.getByRole("button", { name: "Hide post" }).click();
+    await expect(page.getByText("Post hidden. Its author has been told why. 1 other report on it closed too.")).toBeVisible();
+    // Both reports about the post closed together; the comment's report is left.
+    await expect(queue.getByRole("listitem")).toHaveCount(1);
+    await queue.getByRole("button", { name: "Dismiss" }).click();
+    await page.getByRole("dialog", { name: "Dismiss this report?" }).getByRole("button", { name: "Dismiss report" }).click();
+    await expect(page.getByText("Report dismissed. The comment stays up.")).toBeVisible();
+    await expect(page.getByText("No reports to review.")).toBeVisible();
+
+    await page.getByLabel("Show").selectOption("ACTIONED");
+    const hidden = page.getByRole("list", { name: "Hidden" });
+    await expect(hidden.getByRole("listitem")).toHaveCount(2);
+    await expect(hidden.getByRole("listitem").first()).toContainText("Reason given to its author: Unverified claim about a named person");
+    await expect(hidden.getByRole("button")).toHaveCount(0);
+    await page.getByLabel("Show").selectOption("DISMISSED");
+    await expect(page.getByRole("list", { name: "Dismissed" })).toContainText("Buy cheap notes at notes.example");
+
+    await tab(page, "Audit log").click();
+    const log = page.getByRole("table", { name: "Audit log" });
+    await expect(log).toContainText("Post or comment hidden");
+    await expect(log).toContainText("Reports dismissed");
+  });
+
   test("students don't see Manage and can't open it", async ({ page }) => {
     await mockAuthApi(page, { signedIn: true, membership: "ACTIVE" });
     await page.goto("/manage/members");
@@ -105,6 +139,15 @@ const SCREENS: { name: string; path: string; ready: (page: Page) => Promise<void
     },
   },
   { name: "audit log", path: "/manage/audit", ready: (page) => expect(page.getByText("Nothing recorded yet.")).toBeVisible() },
+  { name: "moderation queue", path: "/manage/moderation", ready: (page) => expect(page.getByRole("list", { name: "Open reports" })).toBeVisible() },
+  {
+    name: "hide dialog",
+    path: "/manage/moderation",
+    ready: async (page) => {
+      await page.getByRole("button", { name: "Hide post" }).first().click();
+      await expect(page.getByRole("dialog")).toBeVisible();
+    },
+  },
   {
     name: "reject dialog",
     path: "/manage/requests",
