@@ -213,8 +213,9 @@ Run these from `backend/`, on the server or locally. They use the same `.env` se
 # Create a platform-admin account. You're asked for the password twice.
 uv run python -m app.cli create-platform-admin --email ops@example.org --display-name "Platform Ops"
 
-# Add two fictional demo colleges (Northfield Institute, Riverside College) with departments,
-# a college admin, a department-admin faculty member and a student roster each. You're asked
+# Add three demo colleges (Northfield Institute, Riverside College, and Mangalore Institute of
+# Technology and Engineering with made-up people), each with departments,
+# a college admin, a department-admin faculty member and a student roster. You're asked
 # for one password, used for all the demo accounts. Only with APP_ENV=local or ci.
 uv run python -m app.cli seed-demo
 
