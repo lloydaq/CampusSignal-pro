@@ -65,7 +65,7 @@ class SectionAccess:
     instructor_ids: list[uuid.UUID]
 
 
-def _readable(
+def readable_section(
     db: Session, campus: CampusContext, section_id: uuid.UUID, *, lock: bool = False
 ) -> SectionAccess:
     if not may_read_sections(campus):
@@ -186,7 +186,7 @@ def list_sessions(
     limit: int,
     now: datetime,
 ) -> tuple[list[SessionView], str | None]:
-    access = _readable(db, campus, section_id)
+    access = readable_section(db, campus, section_id)
     statement = select(AttendanceSession).where(
         AttendanceSession.college_id == campus.college_id,
         AttendanceSession.section_id == access.section.id,
@@ -239,7 +239,7 @@ def get_session(
     if not may_read_sections(campus):
         raise Forbidden()
     session = _load_session(db, campus, session_id)
-    access = _readable(db, campus, session.section_id)
+    access = readable_section(db, campus, session.section_id)
     return _session_views(db, campus, access, [session], now)[0], _records(db, session)
 
 
@@ -257,7 +257,7 @@ def record_session(
     now: datetime,
 ) -> tuple[SessionView, list[RecordRow]]:
     """US-06: assigned faculty only (others who can see the section: 403; the rest: 404)."""
-    access = _readable(db, campus, section_id, lock=True)
+    access = readable_section(db, campus, section_id, lock=True)
     if not can_record_attendance(campus, access.instructor_ids):
         raise Forbidden("Only the section's assigned faculty record attendance.")
     term = db.execute(
@@ -347,7 +347,7 @@ def edit_session(
     if not may_read_sections(campus):
         raise Forbidden()
     session = _load_session(db, campus, session_id, lock=True)
-    access = _readable(db, campus, session.section_id)
+    access = readable_section(db, campus, session.section_id)
     mode = attendance_edit(
         campus,
         access.subject.department_id,

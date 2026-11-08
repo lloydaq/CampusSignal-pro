@@ -1,9 +1,11 @@
-"""Academic Hub tables (ACADEMIC-001…007): terms, subjects, class sections, instructors,
-enrollments, timetable entries and attendance. College-scoped like every campus table (see
-app/models/college.py): references between them are composite (college_id, x_id) foreign keys."""
+"""Academic Hub tables (ACADEMIC-001…009): terms, subjects, class sections, instructors,
+enrollments, timetable entries, attendance, assessments and results. College-scoped like every
+campus table (see app/models/college.py): references between them are composite
+(college_id, x_id) foreign keys."""
 
 import uuid
 from datetime import date, datetime, time
+from decimal import Decimal
 from enum import StrEnum
 
 from sqlalchemy import (
@@ -15,6 +17,7 @@ from sqlalchemy import (
     ForeignKeyConstraint,
     Index,
     Integer,
+    Numeric,
     SmallInteger,
     Text,
     Time,
@@ -298,3 +301,111 @@ class AttendanceRecord(Base):
     session_id: Mapped[uuid.UUID] = mapped_column(Uuid)
     enrollment_id: Mapped[uuid.UUID] = mapped_column(Uuid)
     status: Mapped[str] = mapped_column(Text)
+
+
+class AssessmentKind(StrEnum):
+    QUIZ = "QUIZ"
+    ASSIGNMENT = "ASSIGNMENT"
+    LAB = "LAB"
+    MIDTERM = "MIDTERM"
+    ENDTERM = "ENDTERM"
+    OTHER = "OTHER"
+
+
+class Assessment(Base):
+    """A graded piece of work in a section (ACADEMIC-008): created by its assigned faculty,
+    invisible to students until `published_at` is set (ACADEMIC-009). `version` guards score
+    entry, so two people saving the same grid can't overwrite each other silently."""
+
+    __tablename__ = "assessments"
+    __table_args__ = (
+        UniqueConstraint("college_id", "id"),
+        ForeignKeyConstraint(
+            ["college_id", "section_id"],
+            ["class_sections.college_id", "class_sections.id"],
+            name="fk_assessments_section",
+        ),
+        ForeignKeyConstraint(
+            ["college_id", "created_by_membership_id"],
+            ["college_memberships.college_id", "college_memberships.id"],
+            name="fk_assessments_created_by",
+        ),
+        ForeignKeyConstraint(
+            ["college_id", "published_by_membership_id"],
+            ["college_memberships.college_id", "college_memberships.id"],
+            name="fk_assessments_published_by",
+        ),
+        CheckConstraint("char_length(name) BETWEEN 1 AND 80", name="name_length"),
+        CheckConstraint(
+            "kind IN ('QUIZ', 'ASSIGNMENT', 'LAB', 'MIDTERM', 'ENDTERM', 'OTHER')", name="kind"
+        ),
+        CheckConstraint("max_score > 0", name="max_score_positive"),
+        CheckConstraint(
+            "(published_at IS NULL) = (published_by_membership_id IS NULL)", name="published"
+        ),
+        CheckConstraint("version >= 1", name="version_positive"),
+        Index("ix_assessments_section_id", "section_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    college_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("colleges.id"))
+    section_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    name: Mapped[str] = mapped_column(Text)
+    kind: Mapped[str] = mapped_column(Text)
+    max_score: Mapped[Decimal] = mapped_column(Numeric(6, 2))
+    held_on: Mapped[date] = mapped_column(Date)
+    created_by_membership_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    published_by_membership_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    version: Mapped[int] = mapped_column(Integer, server_default=text("1"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class AssessmentResult(Base):
+    """One enrolled student's score (or ABSENT) on one assessment. `revised_at` is set when a
+    published score changes (ACADEMIC-009: the student sees "Revised"). Its enrollment can't be
+    removed while it exists (ACADEMIC-002: 409)."""
+
+    __tablename__ = "assessment_results"
+    __table_args__ = (
+        UniqueConstraint("college_id", "id"),
+        UniqueConstraint("assessment_id", "enrollment_id"),
+        ForeignKeyConstraint(
+            ["college_id", "assessment_id"],
+            ["assessments.college_id", "assessments.id"],
+            name="fk_assessment_results_assessment",
+        ),
+        ForeignKeyConstraint(
+            ["college_id", "enrollment_id"],
+            ["enrollments.college_id", "enrollments.id"],
+            name="fk_assessment_results_enrollment",
+        ),
+        # Either a score of at least 0, or ABSENT with no score (the maximum is the
+        # assessment's, checked by the service).
+        CheckConstraint(
+            "(is_absent AND score IS NULL) OR (NOT is_absent AND score IS NOT NULL AND score >= 0)",
+            name="score_or_absent",
+        ),
+        CheckConstraint("version >= 1", name="version_positive"),
+        Index("ix_assessment_results_enrollment_id", "enrollment_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    college_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("colleges.id"))
+    assessment_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    enrollment_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    score: Mapped[Decimal | None] = mapped_column(Numeric(6, 2))
+    is_absent: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    revised_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    version: Mapped[int] = mapped_column(Integer, server_default=text("1"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )

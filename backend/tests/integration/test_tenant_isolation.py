@@ -160,6 +160,26 @@ def world(session: Session, app_factory: Callable[..., FastAPI]) -> World:
     )
     assert recorded.status_code == 201, recorded.text
     world.river_session = recorded.json()  # type: ignore[attr-defined]
+    # A published Riverside assessment with its student's score.
+    assessment = river.post(
+        f"{section_path}/assessments",
+        {"name": "Riverside quiz", "kind": "QUIZ", "max_score": "10", "held_on": "2026-10-20"},
+    )
+    assert assessment.status_code == 201, assessment.text
+    scored = river.send(
+        "PUT",
+        f"/api/v1/campus/assessments/{assessment.json()['id']}/results",
+        {
+            "version": 1,
+            "results": [{"enrollment_id": enrollments[0]["id"], "score": "7", "absent": False}],
+        },
+    )
+    assert scored.status_code == 200, scored.text
+    published = river.post(
+        f"/api/v1/campus/assessments/{assessment.json()['id']}/publish", {"version": 2}
+    )
+    assert published.status_code == 200, published.text
+    world.river_assessment = published.json()  # type: ignore[attr-defined]
     return world
 
 

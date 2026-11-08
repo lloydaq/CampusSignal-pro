@@ -244,8 +244,8 @@ erDiagram
 | `timetable_entries` | college_id, section_id, weekday, starts_at time, ends_at time, room | exclusion constraint: no overlap per (section, weekday) |
 | `attendance_sessions` | college_id, section_id, held_on date, slot smallint, recorded_by, version | UNIQUE(section_id, held_on, slot) |
 | `attendance_records` | college_id, attendance_session_id, enrollment_id, status | UNIQUE(attendance_session_id, enrollment_id) |
-| `assessments` | college_id, section_id, name, kind, max_score numeric(6,2), held_on, published_at | idx(section_id) |
-| `assessment_results` | college_id, assessment_id, enrollment_id, score numeric(6,2) NULL, is_absent, revised_at, version | UNIQUE(assessment_id, enrollment_id); CHECK(score ≥ 0) |
+| `assessments` | college_id, section_id, name (1–80), kind (QUIZ/ASSIGNMENT/LAB/MIDTERM/ENDTERM/OTHER), max_score numeric(6,2) > 0, held_on (in the term), created_by_membership_id, published_at + published_by_membership_id (set together), version | idx(section_id) |
+| `assessment_results` | college_id, assessment_id, enrollment_id, score numeric(6,2) NULL, is_absent, revised_at, version | UNIQUE(assessment_id, enrollment_id); CHECK(score ≥ 0 XOR absent); score ≤ max checked by the service; FK to enrollment blocks its removal |
 | `notices` | college_id, department_id NULL, author_membership_id, title, body, category, priority, scope, status, published_at, expires_at, edited_at, version (optimistic concurrency), created_at, updated_at | idx(college_id, status, published_at DESC, id DESC), idx(college_id, department_id); composite FKs for department and author; CHECK(scope='DEPARTMENT' ⇔ department_id IS NOT NULL), CHECK(status='DRAFT' ⇔ published_at IS NULL), CHECK(expires_at > published_at). Migration `0006` |
 | `posts` | college_id, author_membership_id, visibility, department_id NULL, body (1–5,000), status (VISIBLE, HIDDEN), edited_at, deleted_at | idx(college_id, visibility, department_id, created_at DESC, id DESC), idx(college_id, author_membership_id, created_at); composite FKs for author and department; CHECK(visibility='DEPARTMENT' ⇔ department_id IS NOT NULL). Migration `0010` |
 | `comments` | college_id, post_id, author_membership_id, body (1–2,000), status, edited_at, deleted_at | idx(college_id, post_id, created_at, id), idx(college_id, author_membership_id, created_at); composite FKs for post and author |
@@ -436,11 +436,11 @@ Notice detail and list responses carry `can_manage`; the author's name is includ
 | GET | `/campus/sections/{id}/attendance-sessions` · `/campus/attendance-sessions/{id}` | Section attendance view | M, assigned faculty, dept admin of dept, college admin | 404 |
 | PATCH | `/campus/attendance-sessions/{id}` | Edit records (window/reason rules) | M, `can_edit_attendance(now)` | 403 window closed; 409 version |
 | GET | `/campus/me/attendance` · `/campus/me/attendance/{section_id}` | Student summary/detail | M, own enrollment | 404 |
-| POST | `/campus/sections/{id}/assessments` | Create assessment | M, assigned faculty | 404 |
-| GET | `/campus/sections/{id}/assessments` · `/campus/assessments/{id}/results` | Section results view (incl. unpublished) | M, assigned faculty, dept admin of dept, college admin | 404 |
-| PUT | `/campus/assessments/{id}/results` | Bulk upsert scores | M, assigned faculty; reason if published | 422 score > max |
-| POST | `/campus/assessments/{id}/publish` | Publish | M, assigned faculty or dept admin | 409 already published |
-| GET | `/campus/me/results` | Student's published results | M, own | — |
+| POST | `/campus/sections/{id}/assessments` `{name, kind, max_score, held_on}` | Create assessment; audit `academic.assessment_created` | M, `can_manage_assessments` (assigned faculty) | 403 other readers; 404; 422 date outside the term |
+| GET | `/campus/sections/{id}/assessments` · `/campus/assessments/{id}/results` | Section results view (incl. unpublished): counts {enrolled, entered, absent}, `actions` {enter_scores, publish}; results list every enrolled student (score, absent, revised) | M, assigned faculty, dept admin of dept, college admin | 403 students; 404 |
+| PUT | `/campus/assessments/{id}/results` `{version, results: [{enrollment_id, score, absent}], reason?}` | Upsert the entries sent (score, ABSENT, or neither = clear, unpublished only). Once published, a change needs `reason`, sets `revised_at`, notifies the student (`ASSESSMENT_REVISED`). Changing an entered result is audited `academic.results_changed` with the enrollment ids and reason, never values (ADMIN-006) | M, `can_manage_assessments` | 403; 404; 409 `version_conflict`; 422 score > max / both / reason / clear after publish |
+| POST | `/campus/assessments/{id}/publish` `{version}` | Publish: every enrolled student needs a score or ABSENT; one `ASSESSMENT_PUBLISHED` notification per ACTIVE enrolled student (title names subject code and assessment, no score); audit `academic.assessment_published` | M, `can_publish_assessment` (assigned faculty or dept admin of the dept; not college admins) | 403; 404; 409 `already_published` / `version_conflict`; 422 missing scores |
+| GET | `/campus/me/results` | Student's published results in the current term, grouped by section (score, absent, revised); unpublished never selected | M, student | 403 non-students |
 
 **Notifications, audit, platform**
 
