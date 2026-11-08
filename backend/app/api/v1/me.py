@@ -7,7 +7,13 @@ from app.api.deps import AppSettings, Auth, Db, Now, no_store
 from app.models import MembershipStatus
 from app.policies.campus import capabilities
 from app.repositories.memberships import current_membership_view
-from app.schemas.auth import ChangePasswordRequest, MeResponse, PasswordChangedResponse, UserOut
+from app.schemas.auth import (
+    ChangePasswordRequest,
+    MeResponse,
+    PasswordChangedResponse,
+    ProfileUpdate,
+    UserOut,
+)
 from app.schemas.campus import membership_out, roles_out
 from app.schemas.membership import (
     CollegeListing,
@@ -37,6 +43,12 @@ def me(auth: Auth, db: Db) -> MeResponse:
         roles=roles_out(view) if active else [],
         capabilities=capabilities(auth.user, view.membership, view.college, view.grants),
     )
+
+
+@router.patch("")
+def update_profile(body: ProfileUpdate, auth: Auth, db: Db, now: Now) -> UserOut:
+    """PROFILE-001: change the display name."""
+    return UserOut.from_user(auth_service.update_profile(db, auth.user, body.display_name, now))
 
 
 @router.post("/password")

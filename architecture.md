@@ -358,7 +358,8 @@ Auth column: **—** public, **U** signed-in user, **M** ACTIVE member (campus c
 | POST | `/auth/logout` · `/auth/logout-all` | End session(s) | U | 401 |
 | POST | `/auth/password-reset/request` · `/confirm` | Reset (AUTH-006) | — | always 202 on request; 400 token |
 | GET | `/auth/csrf` | CSRF token for the current session, or `null` | — | — |
-| GET | `/me` | User, membership, grants, nav capabilities (`campus`, `manage_college`, `review_memberships`, `moderate_community`, `platform`) | U | 401 |
+| GET | `/me` | User, membership, grants, nav capabilities (`campus`, `manage_college`, `review_memberships`, `moderate_community`, `manage_academics`, `academics` (students), `teaching` (faculty), `platform`) | U | 401 |
+| PATCH | `/me` `{display_name}` | PROFILE-001: change the display name (1–60, whitespace collapsed) | U | 422 |
 | POST | `/me/password` | Change password | U | 400 wrong current |
 
 **Membership & college directory**
@@ -447,7 +448,7 @@ Notice detail and list responses carry `can_manage`; the author's name is includ
 | Method | Route | Purpose | Auth / policy | Notable failures |
 |---|---|---|---|---|
 | GET | `/me/notifications?unread=&cursor=&limit=` · `/me/notifications/unread-count` | List (newest first) / count (own rows; college-less or current college only — NOTIF-001) | U, `policies/notifications.py` | 422 bad cursor |
-| GET | `/campus/home` | Role-aware home blocks (HOME-001..004), composed from module services | M | partial block errors returned per block |
+| GET | `/campus/home` | Role-aware home (HOME-001..004), from module services (`services/home.py`): `today` (college date), `is_demo`, and the viewer's blocks, each `{status: ok\|error, …}` in its own savepoint: students `classes` (today, own) + `attendance` (per subject); faculty `classes` (their sections today) + `needs_attendance` (timetabled classes in the last 7 days, already over, with no session that day, per section/day, newest first); everyone `my_issues` (open, 3 newest + `open_count`); `queues` only with something to act on: `membership_requests` (directory viewers), `content_reports` (moderators, their audience), `unacknowledged_issues` (coordinators/college admins). Absent block = not for this viewer | M | a failing block → `status: error`, others intact |
 | POST | `/me/notifications/{id}/read` · `/me/notifications/read-all` | Mark one (idempotent) / all visible ones read | U, owner | 404 someone else's or another college's |
 | GET | `/campus/audit-log?actor=&action=&from=&to=&cursor=` | College audit | M, college admin | 403 |
 | GET/POST | `/platform/colleges` | List/create colleges | PA | 409 slug |

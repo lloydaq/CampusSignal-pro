@@ -434,3 +434,13 @@ def sign_out(db: Session, *, session: AuthSession) -> None:
 def sign_out_everywhere(db: Session, *, user: User) -> None:
     sessions.revoke_all_sessions(db, user.id)
     db.commit()
+
+
+def update_profile(db: Session, user: User, display_name: str, now: datetime) -> User:
+    """PROFILE-001. The name is the user's own; it isn't audited (no privilege changes)."""
+    user = db.merge(user)
+    if user.display_name != display_name:
+        user.display_name = display_name
+        user.updated_at = now
+        db.commit()
+    return user

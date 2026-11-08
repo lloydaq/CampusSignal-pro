@@ -10,7 +10,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-from sqlalchemy import exists, select
+from sqlalchemy import Select, exists, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -201,6 +201,23 @@ def review_queue(
     cursor: Cursor | None,
     limit: int,
 ) -> tuple[list[QueueRow], str | None]:
+    statement = _queue_statement(campus, status)
+    rows = db.execute(
+        newest_first(statement, CollegeMembership.created_at, CollegeMembership.id, cursor, limit)
+    ).all()
+    page, next_cursor = split_page(list(rows), limit, lambda r: (r[0].created_at, r[0].id))
+    return [QueueRow(m, u, e, d) for m, u, e, d in page], next_cursor
+
+
+def pending_count(db: Session, campus: CampusContext) -> int:
+    """HOME-003: how many requests the caller could act on (the queue's own filter)."""
+    statement = _queue_statement(campus, MembershipStatus.PENDING)
+    return int(db.execute(select(func.count()).select_from(statement.subquery())).scalar_one())
+
+
+def _queue_statement(
+    campus: CampusContext, status: MembershipStatus
+) -> Select[CollegeMembership, User, RosterEntry, Department]:
     if not can_view_directory(campus):  # college admins and department admins
         raise Forbidden()
     statement = (
@@ -228,11 +245,7 @@ def review_queue(
             CollegeMembership.verification_flag != VerificationFlag.NO_ROSTER_MATCH,
             CollegeMembership.department_id.in_(administered_departments(campus.grants)),
         )
-    rows = db.execute(
-        newest_first(statement, CollegeMembership.created_at, CollegeMembership.id, cursor, limit)
-    ).all()
-    page, next_cursor = split_page(list(rows), limit, lambda r: (r[0].created_at, r[0].id))
-    return [QueueRow(m, u, e, d) for m, u, e, d in page], next_cursor
+    return statement
 
 
 def _load_request(db: Session, campus: CampusContext, request_id: uuid.UUID) -> CollegeMembership:
