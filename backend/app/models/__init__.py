@@ -3,6 +3,9 @@ which Alembic (alembic/env.py) compares against the migrations."""
 
 from app.models.academic import (
     AcademicTerm,
+    AttendanceRecord,
+    AttendanceSession,
+    AttendanceStatus,
     ClassSection,
     Enrollment,
     SectionInstructor,
@@ -55,6 +58,9 @@ from app.models.user_token import TokenPurpose, UserToken
 
 __all__ = [
     "AcademicTerm",
+    "AttendanceRecord",
+    "AttendanceSession",
+    "AttendanceStatus",
     "AuditLog",
     "AuthSession",
     "CampusIssue",

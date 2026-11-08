@@ -150,6 +150,16 @@ def world(session: Session, app_factory: Callable[..., FastAPI]) -> World:
     )
     assert entry.status_code == 201, entry.text
     world.river_entry = entry.json()  # type: ignore[attr-defined]
+    recorded = river.post(
+        f"{section_path}/attendance-sessions",
+        {
+            "held_on": "2026-10-20",
+            "slot": 1,
+            "records": [{"enrollment_id": enrollments[0]["id"], "status": "PRESENT"}],
+        },
+    )
+    assert recorded.status_code == 201, recorded.text
+    world.river_session = recorded.json()  # type: ignore[attr-defined]
     return world
 
 

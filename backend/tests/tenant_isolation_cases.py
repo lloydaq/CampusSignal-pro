@@ -361,6 +361,45 @@ CASES: dict[tuple[str, str], IsolationCase] = {
     ("GET", f"{CAMPUS}/teaching/sections"): IsolationCase(
         Kind.LIST, _static(f"{CAMPUS}/teaching/sections")
     ),
+    # attendance (Riverside has a session recorded by its college admin, who teaches the section)
+    ("POST", f"{CAMPUS}/sections/{{section_id}}/attendance-sessions"): IsolationCase(
+        Kind.OBJECT,
+        lambda w: (
+            f"{CAMPUS}/sections/{w.river_section['id']}/attendance-sessions",
+            {
+                "held_on": "2026-10-21",
+                "slot": 2,
+                "records": [{"enrollment_id": w.river_enrollment["id"], "status": "ABSENT"}],
+            },
+        ),
+    ),
+    ("GET", f"{CAMPUS}/sections/{{section_id}}/attendance-sessions"): IsolationCase(
+        Kind.OBJECT,
+        lambda w: (f"{CAMPUS}/sections/{w.river_section['id']}/attendance-sessions", None),
+    ),
+    ("GET", f"{CAMPUS}/attendance-sessions/{{session_id}}"): IsolationCase(
+        Kind.OBJECT, lambda w: (f"{CAMPUS}/attendance-sessions/{w.river_session['id']}", None)
+    ),
+    ("PATCH", f"{CAMPUS}/attendance-sessions/{{session_id}}"): IsolationCase(
+        Kind.OBJECT,
+        lambda w: (
+            f"{CAMPUS}/attendance-sessions/{w.river_session['id']}",
+            {
+                "version": 1,
+                "reason": "x",
+                "records": [{"enrollment_id": w.river_enrollment["id"], "status": "ABSENT"}],
+            },
+        ),
+    ),
+    # A student's own attendance: Northfield's student, while Riverside's has a session.
+    ("GET", f"{CAMPUS}/me/attendance"): IsolationCase(
+        Kind.LIST, _static(f"{CAMPUS}/me/attendance"), who="student"
+    ),
+    ("GET", f"{CAMPUS}/me/attendance/{{section_id}}"): IsolationCase(
+        Kind.OBJECT,
+        lambda w: (f"{CAMPUS}/me/attendance/{w.river_section['id']}", None),
+        who="student",
+    ),
     # audit
     ("GET", f"{CAMPUS}/audit-log"): IsolationCase(Kind.LIST, _static(f"{CAMPUS}/audit-log")),
 }
