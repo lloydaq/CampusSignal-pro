@@ -40,23 +40,24 @@ def factory(session: Session) -> sessionmaker[Session]:
     )
 
 
-def test_adds_two_labelled_demo_colleges_without_printing_accounts(
+def test_adds_the_labelled_demo_colleges_without_printing_accounts(
     factory: sessionmaker[Session], session: Session, clock: Clock
 ) -> None:
     code, output = _seed(factory, clock)
 
     assert code == cli.EXIT_OK
-    assert "Added 2 colleges, 4 departments, 5 accounts and 8 roster entries." in output
+    assert "Added 3 colleges, 8 departments, 9 accounts and 16 roster entries." in output
     assert PRIYA not in output and PASSWORD not in output
     colleges = session.execute(select(College).order_by(College.slug)).scalars().all()
     assert [(c.name, c.is_demo, c.status) for c in colleges] == [
+        ("Mangalore Institute of Technology and Engineering", True, "ACTIVE"),
         ("Northfield Institute", True, "ACTIVE"),
         ("Riverside College", True, "ACTIVE"),
     ]
     entry = session.execute(
         select(AuditLog).where(AuditLog.action == demo_seed.ACTION_DEMO_SEEDED)
     ).scalar_one()
-    assert entry.data["colleges"] == 2
+    assert entry.data["colleges"] == 3
 
 
 def test_running_it_again_adds_nothing(
@@ -67,8 +68,8 @@ def test_running_it_again_adds_nothing(
 
     assert code == cli.EXIT_OK
     assert "Added 0 colleges, 0 departments, 0 accounts and 0 roster entries." in output
-    assert session.execute(select(func.count()).select_from(College)).scalar_one() == 2
-    assert session.execute(select(func.count()).select_from(CollegeMembership)).scalar_one() == 5
+    assert session.execute(select(func.count()).select_from(College)).scalar_one() == 3
+    assert session.execute(select(func.count()).select_from(CollegeMembership)).scalar_one() == 9
 
 
 def test_a_weak_password_creates_nothing(
@@ -145,4 +146,4 @@ def test_no_roster_entry_is_claimed_by_seeding(
         .where(CollegeMembership.roster_entry_id.is_not(None))
     ).scalar_one()
     assert claimed == 0
-    assert session.execute(select(func.count()).select_from(RosterEntry)).scalar_one() == 8
+    assert session.execute(select(func.count()).select_from(RosterEntry)).scalar_one() == 16

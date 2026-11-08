@@ -1,7 +1,8 @@
 """Demo data for development and demos (PRD §21 item 15, architecture.md §5 `seed-demo`).
 
-Two fictional colleges, "Northfield Institute" and "Riverside College", both flagged
-`is_demo` so every screen labels them. Each gets departments, a college admin, a faculty
+Three colleges: the fictional "Northfield Institute" and "Riverside College", and
+"Mangalore Institute of Technology and Engineering" (MITE) with made-up people. All are
+flagged `is_demo` so every screen labels them. Each gets departments, a college admin, a faculty
 department admin and a student roster; Northfield also gets an issue coordinator. The
 students are NOT accounts: a demo student registers with a roster email and joins by roll
 number, which is the Phase 3 exit demo.
@@ -17,6 +18,10 @@ hardcoded. Running it again adds only what is missing. Addresses are fictional
 | Northfield | `meera.iyer@northfield.example` | staff, issue coordinator |
 | Riverside | `meena.joshi@riverside.example` | college admin (staff) |
 | Riverside | `arjun.bose@riverside.example` | faculty, department admin of CIVIL |
+| MITE | `shreya.kamath@mite.example` | college admin (staff) |
+| MITE | `prakash.shetty@mite.example` | faculty, department admin of CSE |
+| MITE | `rohan.pai@mite.example` | faculty (CSE) |
+| MITE | `deepa.bhat@mite.example` | staff, issue coordinator |
 
 Roster emails are `<roll number in lower case>@<college>.example`; roll numbers are listed
 below. Northfield's first student has no roster email (it exercises the approval queue).
@@ -138,6 +143,56 @@ DEMO_COLLEGES = (
             DemoStudent("RC-CSE-001", "Tara Iyer", "CSE", 2025),
             DemoStudent("RC-CSE-002", "Nikhil Rao", "CSE", 2024),
             DemoStudent("RC-CIV-001", "Zoya Ansari", "CIVIL", 2025),
+        ),
+    ),
+    DemoCollege(
+        name="Mangalore Institute of Technology and Engineering",
+        slug="mite",
+        departments=(
+            ("CSE", "Computer Science and Engineering"),
+            ("ECE", "Electronics and Communication Engineering"),
+            ("MECH", "Mechanical Engineering"),
+            ("CIVIL", "Civil Engineering"),
+        ),
+        accounts=(
+            DemoAccount(
+                "shreya.kamath@mite.example",
+                "Shreya Kamath",
+                MembershipKind.STAFF,
+                None,
+                (Role.COLLEGE_ADMIN,),
+            ),
+            DemoAccount(
+                "prakash.shetty@mite.example",
+                "Prakash Shetty",
+                MembershipKind.FACULTY,
+                "CSE",
+                (Role.DEPARTMENT_ADMIN,),
+            ),
+            DemoAccount(
+                "rohan.pai@mite.example",
+                "Rohan Pai",
+                MembershipKind.FACULTY,
+                "CSE",
+                (),
+            ),
+            DemoAccount(
+                "deepa.bhat@mite.example",
+                "Deepa Bhat",
+                MembershipKind.STAFF,
+                None,
+                (Role.ISSUE_COORDINATOR,),
+            ),
+        ),
+        students=(
+            DemoStudent("MITE-CSE-001", "Ananya Hegde", "CSE", 2025),
+            DemoStudent("MITE-CSE-002", "Karthik Poojary", "CSE", 2025),
+            DemoStudent("MITE-CSE-003", "Fathima Shaikh", "CSE", 2024),
+            DemoStudent("MITE-CSE-004", "Joel Pinto", "CSE", 2024),
+            DemoStudent("MITE-ECE-001", "Vivek Kini", "ECE", 2025),
+            DemoStudent("MITE-ECE-002", "Nisha D'Souza", "ECE", 2024),
+            DemoStudent("MITE-ME-001", "Rahul Salian", "MECH", 2025),
+            DemoStudent("MITE-CV-001", "Sneha Acharya", "CIVIL", 2025),
         ),
     ),
 )
