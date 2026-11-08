@@ -148,14 +148,14 @@ export async function mockManageApi(page: Page) {
     const sec = path.match(/^\/sections\/(\w+)(?:\/(instructors|enrollments|enrollments\/import|timetable))?$/);
     const found = sec && sections.find((s) => s.id === sec[1]);
     if (sec && !found) return problem(route, 404, "not_found", "Not found.");
-    if (found && !sec![2]) return reply(route, 200, found);
-    if (found && sec![2] === "instructors") {
+    if (found && !sec[2]) return reply(route, 200, found);
+    if (found && sec[2] === "instructors") {
       const ids = (request.postDataJSON() as { membership_ids: string[] }).membership_ids;
       found.instructors = members.filter((m) => ids.includes(m.id)).map((m) => ({ membership_id: m.id, display_name: m.display_name }));
       return reply(route, 200, found);
     }
-    if (found && sec![2] === "enrollments") return reply(route, 200, { items: enrollments, next_cursor: null });
-    if (found && sec![2] === "enrollments/import") {
+    if (found && sec[2] === "enrollments") return reply(route, 200, { items: enrollments, next_cursor: null });
+    if (found && sec[2] === "enrollments/import") {
       const rolls = body().csv!.trim().split("\n").slice(1);
       const unknown = rolls.findIndex((r) => !r.startsWith("CSE"));
       if (unknown >= 0) return problem(route, 422, "enrollment_invalid", "The file has problems. Nobody was enrolled.", [{ row: unknown + 2, column: "roll_number", message: "No active student has this roll number." }]);
@@ -163,8 +163,8 @@ export async function mockManageApi(page: Page) {
       found.enrollment_count = enrollments.length;
       return reply(route, 201, { enrolled: rolls.length, already_enrolled: 0 });
     }
-    if (found && sec![2] === "timetable" && method === "GET") return reply(route, 200, { items: timetable });
-    if (found && sec![2] === "timetable") {
+    if (found && sec[2] === "timetable" && method === "GET") return reply(route, 200, { items: timetable });
+    if (found && sec[2] === "timetable") {
       const entry = { id: `tt${timetable.length + 1}`, section_id: found.id, ...(request.postDataJSON() as { weekday: number; starts_at: string; ends_at: string; room: string }) };
       entry.starts_at += ":00";
       entry.ends_at += ":00";
