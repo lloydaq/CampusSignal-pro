@@ -10,6 +10,9 @@ admin (the widest campus permissions) and, per kind:
 - LIST: calls the route while Riverside has matching data. Expect 200 and no Riverside data.
 - CREATE: sends a body that names Riverside's college. Expect 422 (unknown field): the acting
   college only ever comes from the session (TENANT-001).
+
+A case may name another Northfield member (`who`) for a route the college admin's role
+doesn't use, such as a student's own timetable.
 """
 
 from collections.abc import Callable
@@ -32,6 +35,7 @@ class IsolationCase:
     kind: Kind
     # Given the world (tests/integration/campus_world.World), the concrete path and JSON body.
     request: Callable[[Any], tuple[str, dict[str, Any] | None]]
+    who: str = "admin"
 
 
 def _static(
@@ -243,6 +247,119 @@ CASES: dict[tuple[str, str], IsolationCase] = {
             f"{CAMPUS}/moderation/reports/{w.river_report['id']}/resolve",
             {"action": "HIDE", "reason": "x"},
         ),
+    ),
+    # academic setup (Riverside has a current term, a subject, a section with an instructor,
+    # an enrolled student and a timetable entry: see test_tenant_isolation.world)
+    ("GET", f"{CAMPUS}/terms"): IsolationCase(Kind.LIST, _static(f"{CAMPUS}/terms")),
+    ("POST", f"{CAMPUS}/terms"): IsolationCase(
+        Kind.CREATE,
+        lambda w: (
+            f"{CAMPUS}/terms",
+            {
+                "name": "X",
+                "starts_on": "2027-01-01",
+                "ends_on": "2027-05-01",
+                "college_id": str(w.river.id),
+            },
+        ),
+    ),
+    ("PATCH", f"{CAMPUS}/terms/{{term_id}}"): IsolationCase(
+        Kind.OBJECT, lambda w: (f"{CAMPUS}/terms/{w.river_term['id']}", {"name": "Hacked"})
+    ),
+    ("GET", f"{CAMPUS}/subjects"): IsolationCase(
+        Kind.LIST, _static(f"{CAMPUS}/subjects?query=RIV")
+    ),
+    ("POST", f"{CAMPUS}/subjects"): IsolationCase(
+        Kind.CREATE,
+        lambda w: (
+            f"{CAMPUS}/subjects",
+            {
+                "department_id": str(w.north.departments["CSE"].id),
+                "code": "X1",
+                "name": "X",
+                "college_id": str(w.river.id),
+            },
+        ),
+    ),
+    ("PATCH", f"{CAMPUS}/subjects/{{subject_id}}"): IsolationCase(
+        Kind.OBJECT, lambda w: (f"{CAMPUS}/subjects/{w.river_subject['id']}", {"name": "Hacked"})
+    ),
+    ("DELETE", f"{CAMPUS}/subjects/{{subject_id}}"): IsolationCase(
+        Kind.OBJECT, lambda w: (f"{CAMPUS}/subjects/{w.river_subject['id']}", None)
+    ),
+    ("GET", f"{CAMPUS}/sections"): IsolationCase(Kind.LIST, _static(f"{CAMPUS}/sections")),
+    ("POST", f"{CAMPUS}/sections"): IsolationCase(
+        Kind.CREATE,
+        lambda w: (
+            f"{CAMPUS}/sections",
+            {
+                "term_id": w.river_term["id"],
+                "subject_id": w.river_subject["id"],
+                "name": "X",
+                "college_id": str(w.river.id),
+            },
+        ),
+    ),
+    ("GET", f"{CAMPUS}/sections/{{section_id}}"): IsolationCase(
+        Kind.OBJECT, lambda w: (f"{CAMPUS}/sections/{w.river_section['id']}", None)
+    ),
+    ("PATCH", f"{CAMPUS}/sections/{{section_id}}"): IsolationCase(
+        Kind.OBJECT, lambda w: (f"{CAMPUS}/sections/{w.river_section['id']}", {"name": "Hacked"})
+    ),
+    ("DELETE", f"{CAMPUS}/sections/{{section_id}}"): IsolationCase(
+        Kind.OBJECT, lambda w: (f"{CAMPUS}/sections/{w.river_section['id']}", None)
+    ),
+    ("PUT", f"{CAMPUS}/sections/{{section_id}}/instructors"): IsolationCase(
+        Kind.OBJECT,
+        lambda w: (
+            f"{CAMPUS}/sections/{w.river_section['id']}/instructors",
+            {"membership_ids": [str(w.members["faculty"].id)]},
+        ),
+    ),
+    ("GET", f"{CAMPUS}/sections/{{section_id}}/enrollments"): IsolationCase(
+        Kind.OBJECT, lambda w: (f"{CAMPUS}/sections/{w.river_section['id']}/enrollments", None)
+    ),
+    ("POST", f"{CAMPUS}/sections/{{section_id}}/enrollments"): IsolationCase(
+        Kind.OBJECT,
+        lambda w: (
+            f"{CAMPUS}/sections/{w.river_section['id']}/enrollments",
+            {"membership_ids": [str(w.members["student"].id)]},
+        ),
+    ),
+    ("POST", f"{CAMPUS}/sections/{{section_id}}/enrollments/import"): IsolationCase(
+        Kind.OBJECT,
+        lambda w: (
+            f"{CAMPUS}/sections/{w.river_section['id']}/enrollments/import",
+            {"csv": "roll_number\nN-001\n"},
+        ),
+    ),
+    ("DELETE", f"{CAMPUS}/enrollments/{{enrollment_id}}"): IsolationCase(
+        Kind.OBJECT, lambda w: (f"{CAMPUS}/enrollments/{w.river_enrollment['id']}", None)
+    ),
+    ("GET", f"{CAMPUS}/sections/{{section_id}}/timetable"): IsolationCase(
+        Kind.OBJECT, lambda w: (f"{CAMPUS}/sections/{w.river_section['id']}/timetable", None)
+    ),
+    ("POST", f"{CAMPUS}/sections/{{section_id}}/timetable"): IsolationCase(
+        Kind.OBJECT,
+        lambda w: (
+            f"{CAMPUS}/sections/{w.river_section['id']}/timetable",
+            {"weekday": 2, "starts_at": "09:00", "ends_at": "10:00", "room": "X"},
+        ),
+    ),
+    ("PATCH", f"{CAMPUS}/timetable-entries/{{entry_id}}"): IsolationCase(
+        Kind.OBJECT,
+        lambda w: (f"{CAMPUS}/timetable-entries/{w.river_entry['id']}", {"room": "Hacked"}),
+    ),
+    ("DELETE", f"{CAMPUS}/timetable-entries/{{entry_id}}"): IsolationCase(
+        Kind.OBJECT, lambda w: (f"{CAMPUS}/timetable-entries/{w.river_entry['id']}", None)
+    ),
+    # A student's own week: called by Northfield's student while Riverside's student has classes.
+    ("GET", f"{CAMPUS}/me/timetable"): IsolationCase(
+        Kind.LIST, _static(f"{CAMPUS}/me/timetable"), who="student"
+    ),
+    # Northfield's college admin is faculty; Riverside's (also faculty) teaches its section.
+    ("GET", f"{CAMPUS}/teaching/sections"): IsolationCase(
+        Kind.LIST, _static(f"{CAMPUS}/teaching/sections")
     ),
     # audit
     ("GET", f"{CAMPUS}/audit-log"): IsolationCase(Kind.LIST, _static(f"{CAMPUS}/audit-log")),

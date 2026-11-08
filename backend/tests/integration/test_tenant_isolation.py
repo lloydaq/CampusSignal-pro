@@ -25,6 +25,8 @@ RIVERSIDE_MARKERS = (
     "River Applicant",
     "R-001",
     "R-404",
+    "RIV101",
+    "Hydrology",
 )
 
 
@@ -102,6 +104,52 @@ def world(session: Session, app_factory: Callable[..., FastAPI]) -> World:
     )
     assert flagged.status_code == 201, flagged.text
     world.river_report = flagged.json()  # type: ignore[attr-defined]
+    # Riverside academics: a current term, a subject and a section taught by its college admin,
+    # its student enrolled, and a timetable entry.
+    term = river.post(
+        "/api/v1/campus/terms",
+        {
+            "name": "Riverside monsoon term",
+            "starts_on": "2026-07-01",
+            "ends_on": "2026-12-01",
+            "is_current": True,
+        },
+    )
+    assert term.status_code == 201, term.text
+    world.river_term = term.json()  # type: ignore[attr-defined]
+    subject = river.post(
+        "/api/v1/campus/subjects",
+        {
+            "department_id": str(world.river.departments["CSE"].id),
+            "code": "RIV101",
+            "name": "Hydrology",
+        },
+    )
+    assert subject.status_code == 201, subject.text
+    world.river_subject = subject.json()  # type: ignore[attr-defined]
+    section = river.post(
+        "/api/v1/campus/sections",
+        {"term_id": term.json()["id"], "subject_id": subject.json()["id"], "name": "Riverside A"},
+    )
+    assert section.status_code == 201, section.text
+    world.river_section = section.json()  # type: ignore[attr-defined]
+    section_path = f"/api/v1/campus/sections/{section.json()['id']}"
+    taught = river.send(
+        "PUT",
+        f"{section_path}/instructors",
+        {"membership_ids": [str(world.members["river_admin"].id)]},
+    )
+    assert taught.status_code == 200, taught.text
+    enrolled = river.post(f"{section_path}/enrollments/import", {"csv": "roll_number\nR-001\n"})
+    assert enrolled.status_code == 201, enrolled.text
+    enrollments = river.get(f"{section_path}/enrollments").json()["items"]
+    world.river_enrollment = enrollments[0]  # type: ignore[attr-defined]
+    entry = river.post(
+        f"{section_path}/timetable",
+        {"weekday": 1, "starts_at": "09:00", "ends_at": "10:00", "room": "Riverside hall"},
+    )
+    assert entry.status_code == 201, entry.text
+    world.river_entry = entry.json()  # type: ignore[attr-defined]
     return world
 
 
@@ -119,7 +167,7 @@ def test_northfield_admin_cannot_reach_riverside(world: World, operation: tuple[
     method, _ = operation
     case = CASES[operation]
     path, body = case.request(world)
-    response = world.browser("admin").send(method, path, body)
+    response = world.browser(case.who).send(method, path, body)
 
     if case.kind == Kind.OBJECT:
         assert response.status_code == 404, response.text

@@ -424,11 +424,12 @@ Notice detail and list responses carry `can_manage`; the author's name is includ
 
 | Method | Route | Purpose | Auth / policy | Notable failures |
 |---|---|---|---|---|
-| CRUD | `/campus/terms` | Terms | M, college admin | 409 overlapping current |
+| GET/POST/PATCH | `/campus/terms` · `/campus/terms/{id}` | Terms (list: catalog managers) | M, college admin | 409 second current term |
 | CRUD | `/campus/subjects`, `/campus/sections` | Catalog | M, dept admin of subject's dept, or college admin | 404 |
 | PUT | `/campus/sections/{id}/instructors` | Assign faculty | M, dept admin of dept, or college admin | 422 non-faculty |
+| GET/POST | `/campus/sections/{id}/enrollments` | List (assigned faculty too; roll numbers for managers only) / enroll picked members | M, dept admin of dept, or college admin | 422 non-students listed |
 | POST/DELETE | `/campus/sections/{id}/enrollments/import` · `/campus/enrollments/{id}` | CSV roll numbers / remove | M, dept admin of dept, or college admin | 422 unknown or non-student roll numbers listed; 409 remove with records |
-| CRUD | `/campus/sections/{id}/timetable` | Timetable | M, dept admin of dept, or college admin | 409 overlap |
+| GET/POST · PATCH/DELETE | `/campus/sections/{id}/timetable` · `/campus/timetable-entries/{id}` | Timetable (GET: assigned faculty too) | M, dept admin of dept, or college admin | 409 overlap |
 | GET | `/campus/me/timetable` | Student weekly view | M, student | — |
 | GET | `/campus/teaching/sections` | Faculty's assigned sections | M, faculty | — |
 | POST | `/campus/sections/{id}/attendance-sessions` | Record session + records | M, `can_record_attendance` | 404 not assigned; 409 duplicate; 422 future/out-of-term date |
