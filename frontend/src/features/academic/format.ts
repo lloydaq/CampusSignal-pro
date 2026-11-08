@@ -24,3 +24,8 @@ export function formatDay(isoDate: string): string {
 export function formatScore(value: number): string {
   return String(Math.round(value * 100) / 100);
 }
+
+/** Today's date ("2026-10-21") in the college's time zone, for date inputs. */
+export function collegeToday(timeZone: string, now: Date = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+}

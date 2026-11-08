@@ -87,6 +87,8 @@ export interface FakeAccount {
   admin: boolean;
   /** A platform admin account (no college, can't join one). */
   platform: boolean;
+  /** A faculty member of CSE (Teaching); needs membership ACTIVE. */
+  faculty?: boolean;
 }
 
 const NORTHFIELD = {
@@ -133,13 +135,13 @@ export async function mockAuthApi(page: Page, initial: Partial<FakeAccount> = {}
         ? null
         : {
             id: "5b1c0d5e-0000-4000-8000-000000000001",
-            kind: account.admin ? "STAFF" : "STUDENT",
+            kind: account.admin ? "STAFF" : account.faculty ? "FACULTY" : "STUDENT",
             status: account.membership,
             college: NORTHFIELD,
             department: account.membership === "ACTIVE" && !account.admin ? { id: "d1", code: "CSE", name: "Computer Science" } : null,
           },
     roles: account.admin ? [{ role: "COLLEGE_ADMIN", department: null }] : [],
-    capabilities: account.platform ? ["platform"] : account.membership !== "ACTIVE" ? [] : account.admin ? ["campus", "manage_college", "review_memberships", "moderate_community"] : ["campus", "academics"],
+    capabilities: account.platform ? ["platform"] : account.membership !== "ACTIVE" ? [] : account.admin ? ["campus", "manage_college", "review_memberships", "moderate_community"] : account.faculty ? ["campus", "teaching"] : ["campus", "academics"],
   });
   await mockBackend(page, "ready");
 
