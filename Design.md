@@ -187,7 +187,7 @@ Navigation is built from `/me` capabilities. Users see only sections they can us
 **Desktop (≥ lg):** left navigation rail (one level, no nested trees). Top of rail: wordmark + college name (not a switcher in MVP — one active membership). Bottom: notifications bell with unread count, profile menu (Profile & settings, Theme, Sign out). Section sub-pages use **tabs** at the top of the main column (e.g., Academics: Timetable · Attendance · Results).
 
 **Mobile (< lg):** top app bar (page title, notifications bell, profile avatar) + **bottom tab bar** with 4 items: Home, Notices, (Academics for students | Teaching for faculty | Issues for staff), Community; a 5th **More** item opens a sheet with remaining sections (Issues, Manage). Bottom bar hidden while typing in a composer.
-*As built (Phase 6c, owner 2026-10-31):* Home · Notices · Community · Issues, then either the fifth section itself (Account, for members with five) or **More**, a sheet above the bar with the rest (Manage, Account) when there are six or more. Phase 7/8 revisit it for Academics/Teaching. The bar stays visible while typing (not yet hidden).
+*As built (Phase 6c, owner 2026-10-31):* Home · Notices · Community · Issues, then either the fifth section itself (Account, for members with five) or **More**, a sheet above the bar with the rest (Manage, Account) when there are six or more. *Phase 7d:* students' bar is Home · Notices · Academics · Community · More (Issues, Account); Teaching for faculty arrives in 7e. The bar stays visible while typing (not yet hidden).
 
 **Depth:** maximum two levels (section → tab/detail). Breadcrumbs only in Manage and Platform.
 

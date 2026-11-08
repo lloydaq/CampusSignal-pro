@@ -71,7 +71,7 @@ def test_a_matching_roster_email_activates_at_once(
     me = browser.get(f"{PREFIX}/me").json()
     assert me["membership"]["status"] == "ACTIVE"
     assert me["membership"]["department"]["code"] == "MECH"  # from the roster entry
-    assert me["capabilities"] == ["campus"]
+    assert me["capabilities"] == ["campus", "academics"]
     assert (
         scalar(conn, "SELECT count(*) FROM audit_log WHERE action = 'membership.auto_activated'")
         == 1

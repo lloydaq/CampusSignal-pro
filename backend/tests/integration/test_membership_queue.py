@@ -88,7 +88,7 @@ def test_approving_activates_the_membership_and_audits_it(world: World, conn: Co
     assert response.json()["status"] == "ACTIVE"
     me = Browser(world.app, "cse_kid@northfield.example").get(f"{PREFIX}/me").json()
     assert me["membership"]["department"]["code"] == "CSE"
-    assert me["capabilities"] == ["campus"]
+    assert me["capabilities"] == ["campus", "academics"]
     assert (
         scalar(
             conn,

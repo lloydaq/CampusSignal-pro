@@ -211,7 +211,7 @@ describe("notifications page", () => {
   });
 
   it("shows unknown kinds of notification without a link", async () => {
-    mockFetch({ [ME]: signedIn({}, MEMBER), [LIST]: page([notification({ type: "RESULT_PUBLISHED", subject_type: "ASSESSMENT", title: "Results are out", read: true })]) });
+    mockFetch({ [ME]: signedIn({}, MEMBER), [LIST]: page([notification({ type: "EVENT_REMINDER", subject_type: "EVENT", title: "Results are out", read: true })]) });
     renderRoute("/notifications");
     const list = await screen.findByRole("list", { name: "Notifications" });
     expect(within(list).getByText("Results are out")).toBeInTheDocument();

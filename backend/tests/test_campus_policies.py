@@ -89,21 +89,33 @@ def test_department_admin_powers_cover_only_granted_departments() -> None:
 @pytest.mark.parametrize(
     ("grants", "expected"),
     [
-        ((), ["campus"]),
-        ((grant(Role.ISSUE_COORDINATOR),), ["campus"]),
+        ((), ["campus", "academics"]),
+        ((grant(Role.ISSUE_COORDINATOR),), ["campus", "academics"]),
         (
             (grant(Role.DEPARTMENT_ADMIN, MECH),),
-            ["campus", "review_memberships", "moderate_community"],
+            ["campus", "review_memberships", "moderate_community", "academics"],
         ),
         (
             (grant(Role.COLLEGE_ADMIN),),
-            ["campus", "manage_college", "review_memberships", "moderate_community"],
+            ["campus", "manage_college", "review_memberships", "moderate_community", "academics"],
         ),
     ],
 )
 def test_capabilities_follow_roles(grants: tuple[RoleGrant, ...], expected: list[str]) -> None:
     membership, college = active()
     assert capabilities(user(), membership, college, grants) == expected
+
+
+def test_academics_for_students_and_teaching_for_faculty() -> None:
+    """Design.md §4: students get Academics, faculty Teaching, staff neither."""
+    membership, college = active()
+    for kind, expected in (
+        (MembershipKind.STUDENT, ["campus", "academics"]),
+        (MembershipKind.FACULTY, ["campus", "teaching"]),
+        (MembershipKind.STAFF, ["campus"]),
+    ):
+        membership.kind = kind
+        assert capabilities(user(), membership, college, ()) == expected
 
 
 def test_no_capabilities_without_campus_access() -> None:

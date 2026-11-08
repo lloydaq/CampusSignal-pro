@@ -1,4 +1,4 @@
-import { Building2, ClipboardList, House, Megaphone, MessagesSquare, School, Settings2, UserRound, type LucideIcon } from "lucide-react";
+import { Building2, ClipboardList, GraduationCap, House, Megaphone, MessagesSquare, School, Settings2, UserRound, type LucideIcon } from "lucide-react";
 
 import type { Me } from "@/features/auth/api";
 
@@ -14,6 +14,8 @@ export function navItems(me: Me): NavItem[] {
   if (me.capabilities.includes("campus")) {
     items.push({ to: "/home", label: "Home", Icon: House });
     items.push({ to: "/notices", label: "Notices", Icon: Megaphone });
+    // Design.md §4: Academics sits third in the phone bar for students.
+    if (me.capabilities.includes("academics")) items.push({ to: "/academics", label: "Academics", Icon: GraduationCap });
     items.push({ to: "/community", label: "Community", Icon: MessagesSquare });
     items.push({ to: "/issues", label: "Issues", Icon: ClipboardList });
   }
