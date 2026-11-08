@@ -39,6 +39,10 @@ export const signInSchema = z.object({ email, password: existingPassword });
 export type SignInValues = z.infer<typeof signInSchema>;
 
 export const registerSchema = z.object({ display_name: displayName, email, password: newPassword });
+
+/** PROFILE-001: the display name alone. */
+export const profileSchema = z.object({ display_name: displayName });
+export type ProfileValues = z.infer<typeof profileSchema>;
 export type RegisterValues = z.infer<typeof registerSchema>;
 
 export const forgotPasswordSchema = z.object({ email });

@@ -50,4 +50,9 @@ test("faculty record attendance and publish scores; the student sees only their 
   await expect(results).not.toContainText("12");
   await page.getByRole("navigation", { name: "Academics" }).getByRole("link", { name: "Attendance" }).click();
   await expect(page.getByRole("table", { name: "Attendance by subject" }).getByRole("row", { name: /CS301/ })).toContainText("100%");
+
+  // US-16: the home's attendance block shows the same, from /campus/home.
+  await page.goto("/home");
+  await expect(page.getByRole("list", { name: "Attendance by subject" })).toContainText("CS301 Compilers100%");
+  await expect(page.getByRole("heading", { name: "Needs your attention" })).toHaveCount(0);
 });

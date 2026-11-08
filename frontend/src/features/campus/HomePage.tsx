@@ -8,12 +8,15 @@ import { ErrorState } from "@/components/ErrorState";
 import { ListLoading } from "@/features/admin/list";
 import { AuthHeading } from "@/features/auth/AuthHeading";
 import { landingPath } from "@/features/auth/landing";
+import type { CollegeSummary, Me, Membership } from "@/features/auth/api";
 import { useMe } from "@/features/auth/session";
 import { fetchNotices, type NoticeFilters, type NoticeSummary } from "@/features/notices/api";
 import { noticeKeys } from "@/features/notices/labels";
 import { NoticeItem } from "@/features/notices/NoticeItem";
 import { useUnreadCount } from "@/features/notifications/api";
 
+import { AttendanceBlock, ClassesBlock, MyIssuesBlock, NeedsAttendanceBlock, QueuesBlock } from "./HomeBlocks";
+import { fetchHome, homeKey } from "./homeApi";
 import { KIND_LABEL, roleLabel } from "./labels";
 
 const LATEST = 5;
@@ -21,15 +24,20 @@ const CURRENT: NoticeFilters = { status: "PUBLISHED", past: false, category: "",
 
 /**
  * The college home (Design.md §5 screen 3): "What do I need to know today?" An ordered stack, no
- * hero. The notice blocks of HOME-001 were brought forward from Phase 8 (owner, 2026-10-25);
- * classes, attendance and issues arrive with their phases, and nothing that can't be used yet is
- * shown (Design.md §8).
+ * hero: urgent notices, what's waiting for an admin (HOME-003), today's classes, attendance not
+ * taken (faculty, HOME-002), attendance at a glance (students), own open issues, latest notices.
+ * Each block loads, fails and empties on its own (US-16); a block the viewer can't use isn't shown.
  */
 export function HomePage() {
   const me = useMe();
   const membership = me.membership;
   if (!membership || !me.capabilities.includes("campus")) return <Navigate to={landingPath(me)} replace />;
   const { college } = membership;
+  return <CampusHome me={me} college={college} membership={membership} />;
+}
+
+function CampusHome({ me, college, membership }: { me: Me; college: CollegeSummary; membership: Membership }) {
+  const home = useQuery({ queryKey: homeKey, queryFn: ({ signal }) => fetchHome(signal) });
   return (
     <div className="space-y-10">
       <div className="space-y-4">
@@ -41,7 +49,13 @@ export function HomePage() {
         )}
         <UnreadLink />
       </div>
-      <NoticeBlocks collegeName={college.name} timeZone={college.timezone} />
+      <NoticeBlocks collegeName={college.name} timeZone={college.timezone}>
+        <QueuesBlock query={home} />
+        <ClassesBlock query={home} teaching={me.capabilities.includes("teaching")} />
+        <NeedsAttendanceBlock query={home} />
+        <AttendanceBlock query={home} />
+        <MyIssuesBlock query={home} />
+      </NoticeBlocks>
       <Block title="Your membership">
         <dl className="grid gap-4 text-sm sm:grid-cols-2">
           <div>
@@ -90,7 +104,7 @@ function UnreadLink() {
  * Urgent notices (only if any) and the latest few, from one request: the list already puts
  * unexpired urgent notices first (NOTICE-005), with the same visibility as the Notices screen.
  */
-function NoticeBlocks({ collegeName, timeZone }: { collegeName: string; timeZone: string }) {
+function NoticeBlocks({ collegeName, timeZone, children }: { collegeName: string; timeZone: string; children: ReactNode }) {
   const query = useQuery({ queryKey: [...noticeKeys.all, "list", "home"], queryFn: ({ signal }) => fetchNotices(CURRENT, null, signal) });
   const allLink = (
     <Link to="/notices" className="text-sm font-medium text-primary underline-offset-2 hover:underline">
@@ -99,16 +113,22 @@ function NoticeBlocks({ collegeName, timeZone }: { collegeName: string; timeZone
   );
   if (query.isPending) {
     return (
-      <Block title="Latest notices" action={allLink}>
-        <ListLoading label="Loading notices" />
-      </Block>
+      <>
+        {children}
+        <Block title="Latest notices" action={allLink}>
+          <ListLoading label="Loading notices" />
+        </Block>
+      </>
     );
   }
   if (query.isError) {
     return (
-      <Block title="Latest notices" action={allLink}>
-        <ErrorState title="Couldn't load notices." error={query.error} onRetry={() => void query.refetch()} retrying={query.isFetching} />
-      </Block>
+      <>
+        {children}
+        <Block title="Latest notices" action={allLink}>
+          <ErrorState title="Couldn't load notices." error={query.error} onRetry={() => void query.refetch()} retrying={query.isFetching} />
+        </Block>
+      </>
     );
   }
   const urgent = query.data.items.filter((n) => n.pinned);
@@ -120,6 +140,7 @@ function NoticeBlocks({ collegeName, timeZone }: { collegeName: string; timeZone
           <NoticeList notices={urgent} collegeName={collegeName} timeZone={timeZone} />
         </Block>
       )}
+      {children}
       <Block title="Latest notices" action={allLink}>
         {latest.length === 0 ? (
           <EmptyState Icon={Megaphone} title={urgent.length > 0 ? "No other current notices." : "No current notices."} />

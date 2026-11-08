@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
-import { Link, useBlocker, useLocation, useNavigate, useParams } from "react-router";
+import { Link, useBlocker, useLocation, useNavigate, useParams, useSearchParams } from "react-router";
 
 import { Callout } from "@/components/Callout";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -89,7 +89,12 @@ function Sheet({ section, students, session }: { section: Section; students: Stu
     [session, students],
   );
   const [marks, setMarks] = useState(initial);
-  const [heldOn, setHeldOn] = useState(() => collegeToday(timeZone));
+  const [params] = useSearchParams();
+  // From the home's "Attendance not taken": the class's date, if it's a real past date.
+  const [heldOn, setHeldOn] = useState(() => {
+    const asked = params.get("date");
+    return asked && /^\d{4}-\d{2}-\d{2}$/.test(asked) && asked <= collegeToday(timeZone) ? asked : collegeToday(timeZone);
+  });
   const [slot, setSlot] = useState(1);
   const [reason, setReason] = useState("");
   const [reasonMissing, setReasonMissing] = useState(false);

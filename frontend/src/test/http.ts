@@ -25,8 +25,13 @@ export function noContent(): Response {
   return new Response(null, { status: 204 });
 }
 
-/** Every signed-in screen polls the unread count (the shell's bell); tests may override it. */
-const SHELL_ROUTES: Route = { "/api/v1/me/notifications/unread-count": () => json({ unread: 0 }) };
+/** Every signed-in screen polls the unread count (the shell's bell), and the home loads its
+ * blocks (a member with nothing to show); tests may override either. */
+const SHELL_ROUTES: Route = {
+  "/api/v1/me/notifications/unread-count": () => json({ unread: 0 }),
+  "/api/v1/campus/home": () =>
+    json({ today: "2026-10-21", is_demo: false, classes: null, attendance: null, needs_attendance: null, my_issues: { status: "ok", open_count: 0, items: [] }, queues: null }),
+};
 
 /** Replace global fetch with a route table; unknown requests fail the test loudly. */
 export function mockFetch(overrides: Route) {
