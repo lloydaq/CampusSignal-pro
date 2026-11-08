@@ -73,6 +73,7 @@ CAMPUS = "campus"
 MANAGE_COLLEGE = "manage_college"
 REVIEW_MEMBERSHIPS = "review_memberships"
 MODERATE_COMMUNITY = "moderate_community"
+MANAGE_ACADEMICS = "manage_academics"  # terms, subjects, sections, enrollment, timetable
 ACADEMICS = "academics"  # a student's own timetable, attendance and results
 TEACHING = "teaching"  # a faculty member's sections
 PLATFORM = "platform"
@@ -98,6 +99,8 @@ def capabilities(
         found.append(REVIEW_MEMBERSHIPS)
         # The same people as `community.can_see_moderation_queue` (COMMUNITY-007).
         found.append(MODERATE_COMMUNITY)
+        # The same people as `academic.manages_any_catalog` (ACADEMIC-001…003).
+        found.append(MANAGE_ACADEMICS)
     # Design.md §4: Academics for students, Teaching for faculty (PRD §11).
     if membership.kind == MembershipKind.STUDENT:
         found.append(ACADEMICS)

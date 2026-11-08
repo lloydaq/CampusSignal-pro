@@ -25,10 +25,16 @@ hardcoded. Running it again adds only what is missing. Addresses are fictional
 
 Roster emails are `<roll number in lower case>@<college>.example`; roll numbers are listed
 below. Northfield's first student has no roster email (it exercises the approval queue).
+
+Academics (Phase 7): each college gets a current demo term around the seeding date (unless it
+already has terms), a few subjects and sections taught by its demo faculty, and a weekly
+timetable. Students aren't accounts, so nobody is enrolled: once a demo student joins, an admin
+enrolls them by roll number (Manage → Academics). No attendance or scores are invented.
 """
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, time, timedelta
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -36,6 +42,8 @@ from sqlalchemy.orm import Session
 from app.core.errors import ValidationFailed
 from app.core.security import hash_password, password_problem
 from app.models import (
+    AcademicTerm,
+    ClassSection,
     College,
     CollegeMembership,
     CollegeStatus,
@@ -45,6 +53,9 @@ from app.models import (
     Role,
     RoleGrant,
     RosterEntry,
+    SectionInstructor,
+    Subject,
+    TimetableEntry,
     User,
 )
 from app.services.audit import record_audit
@@ -198,12 +209,75 @@ DEMO_COLLEGES = (
 )
 
 
+@dataclass(frozen=True)
+class DemoSection:
+    """A subject and its section "A", taught by `faculty` (an account email, or None)."""
+
+    code: str
+    name: str
+    department: str
+    faculty: str | None
+    classes: tuple[tuple[int, str, str, str], ...]  # weekday, starts, ends, room
+
+
+DEMO_ACADEMICS: dict[str, tuple[DemoSection, ...]] = {
+    "northfield": (
+        DemoSection(
+            "CS301",
+            "Compilers",
+            "CSE",
+            "ravi.sharma@northfield.example",
+            (
+                (1, "09:00", "10:00", "C-103"),
+                (3, "09:00", "10:00", "C-103"),
+                (5, "11:00", "12:00", "C-103"),
+            ),
+        ),
+        DemoSection(
+            "CS205",
+            "Data Structures",
+            "CSE",
+            "ravi.sharma@northfield.example",
+            ((2, "10:00", "11:00", "C-104"), (4, "14:00", "16:00", "Computing lab 2")),
+        ),
+        DemoSection("ME201", "Thermodynamics", "MECH", None, ((1, "11:00", "12:00", "M-201"),)),
+    ),
+    "riverside": (
+        DemoSection(
+            "CV201",
+            "Surveying",
+            "CIVIL",
+            "arjun.bose@riverside.example",
+            ((2, "09:00", "10:00", "Field lab"), (4, "09:00", "10:00", "R-12")),
+        ),
+    ),
+    "mite": (
+        DemoSection(
+            "CS301",
+            "Operating Systems",
+            "CSE",
+            "rohan.pai@mite.example",
+            ((1, "10:00", "11:00", "LH-3"), (3, "10:00", "11:00", "LH-3")),
+        ),
+        DemoSection(
+            "CS302",
+            "Database Management Systems",
+            "CSE",
+            "prakash.shetty@mite.example",
+            ((2, "11:00", "12:00", "LH-4"), (5, "14:00", "16:00", "DB lab")),
+        ),
+    ),
+}
+
+
 @dataclass
 class SeedReport:
     colleges: int = 0
     departments: int = 0
     accounts: int = 0
     roster_entries: int = 0
+    terms: int = 0
+    sections: int = 0
 
 
 def _email(college: DemoCollege, student: DemoStudent) -> str | None:
@@ -312,6 +386,8 @@ def seed_demo(db: Session, *, password: str, now: datetime) -> SeedReport:
                 )
             report.accounts += 1
 
+        _seed_academics(db, demo, college, departments, now, report)
+
     record_audit(
         db,
         action=ACTION_DEMO_SEEDED,
@@ -320,7 +396,113 @@ def seed_demo(db: Session, *, password: str, now: datetime) -> SeedReport:
             "departments": report.departments,
             "accounts": report.accounts,
             "roster_entries": report.roster_entries,
+            "terms": report.terms,
+            "sections": report.sections,
         },
     )
     db.commit()
     return report
+
+
+def _seed_academics(
+    db: Session,
+    demo: DemoCollege,
+    college: College,
+    departments: dict[str, Department],
+    now: datetime,
+    report: SeedReport,
+) -> None:
+    """A current term around today (only for a college with no terms yet), then the demo
+    subjects, their section A, its faculty and timetable, skipping what exists."""
+    sections = DEMO_ACADEMICS.get(demo.slug, ())
+    if not sections:
+        return
+    term = db.execute(
+        select(AcademicTerm).where(AcademicTerm.college_id == college.id, AcademicTerm.is_current)
+    ).scalar_one_or_none()
+    if term is None:
+        if db.execute(
+            select(AcademicTerm.id).where(AcademicTerm.college_id == college.id).limit(1)
+        ).first():
+            return  # the college has its own terms but none current: leave them alone
+        today = now.astimezone(ZoneInfo(college.timezone)).date()
+        term = AcademicTerm(
+            college_id=college.id,
+            name=f"Demo term {today.year}",
+            starts_on=today - timedelta(days=60),
+            ends_on=today + timedelta(days=90),
+            is_current=True,
+            created_at=now,
+            updated_at=now,
+        )
+        db.add(term)
+        db.flush()
+        report.terms += 1
+    faculty = {
+        email: membership_id
+        for email, membership_id in db.execute(
+            select(User.email, CollegeMembership.id)
+            .join(CollegeMembership, CollegeMembership.user_id == User.id)
+            .where(
+                CollegeMembership.college_id == college.id,
+                CollegeMembership.kind == MembershipKind.FACULTY,
+                CollegeMembership.status == MembershipStatus.ACTIVE,
+            )
+        ).all()
+    }
+    for demo_section in sections:
+        subject = db.execute(
+            select(Subject).where(
+                Subject.college_id == college.id, Subject.code == demo_section.code
+            )
+        ).scalar_one_or_none()
+        if subject is None:
+            subject = Subject(
+                college_id=college.id,
+                department_id=departments[demo_section.department].id,
+                code=demo_section.code,
+                name=demo_section.name,
+                created_at=now,
+                updated_at=now,
+            )
+            db.add(subject)
+            db.flush()
+        if db.execute(
+            select(ClassSection.id).where(
+                ClassSection.college_id == college.id,
+                ClassSection.term_id == term.id,
+                ClassSection.subject_id == subject.id,
+                ClassSection.name == "A",
+            )
+        ).first():
+            continue
+        section = ClassSection(
+            college_id=college.id,
+            term_id=term.id,
+            subject_id=subject.id,
+            name="A",
+            created_at=now,
+            updated_at=now,
+        )
+        db.add(section)
+        db.flush()
+        report.sections += 1
+        teacher = faculty.get(demo_section.faculty) if demo_section.faculty else None
+        if teacher is not None:
+            db.add(
+                SectionInstructor(
+                    college_id=college.id, section_id=section.id, membership_id=teacher
+                )
+            )
+        for weekday, starts, ends, room in demo_section.classes:
+            db.add(
+                TimetableEntry(
+                    college_id=college.id,
+                    section_id=section.id,
+                    weekday=weekday,
+                    starts_at=time.fromisoformat(starts),
+                    ends_at=time.fromisoformat(ends),
+                    room=room,
+                )
+            )
+    db.flush()

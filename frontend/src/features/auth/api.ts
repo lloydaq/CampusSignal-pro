@@ -44,7 +44,7 @@ export interface RoleGrant {
   department: DepartmentRef | null;
 }
 
-export type Capability = "campus" | "manage_college" | "review_memberships" | "moderate_community" | "academics" | "teaching" | "platform";
+export type Capability = "campus" | "manage_college" | "review_memberships" | "moderate_community" | "manage_academics" | "academics" | "teaching" | "platform";
 
 /** GET /me: who is signed in, their open college membership, roles and what they may open. */
 export interface Me {

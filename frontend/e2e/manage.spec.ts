@@ -109,6 +109,36 @@ test.describe("college administration", () => {
     await expect(log).toContainText("Reports dismissed");
   });
 
+  test("academics: add a section, assign faculty, enroll by roll number and schedule a class", async ({ page }) => {
+    await signInAsAdmin(page);
+    await page.goto("/manage/requests");
+    await tab(page, "Academics").click();
+    const add = page.getByRole("form", { name: "Add section" });
+    await add.getByLabel("Subject").selectOption("s1");
+    await add.getByLabel("Section name").fill("B");
+    await add.getByRole("button", { name: "Add section" }).click();
+    const sections = page.getByRole("table", { name: "Sections" });
+    await sections.getByRole("link", { name: /CS301 Compilers · B/ }).click();
+
+    await page.getByLabel("Find faculty to assign").fill("La");
+    await page.getByRole("button", { name: "Assign Dr. Lakshmi Pillai" }).click();
+    await expect(page.getByRole("list", { name: "Assigned faculty" })).toContainText("Dr. Lakshmi Pillai");
+
+    await page.getByLabel("Enroll by roll number").fill("CSE2025001\nME9");
+    await page.getByRole("button", { name: "Enroll" }).click();
+    await expect(page.getByRole("table", { name: "Problems in the list" })).toContainText("No active student has this roll number.");
+    await page.getByLabel("Enroll by roll number").fill("CSE2025001\nCSE2025002");
+    await page.getByRole("button", { name: "Enroll" }).click();
+    await expect(page.getByText("2 students enrolled.")).toBeVisible();
+    await expect(page.getByRole("table", { name: "Enrolled students" })).toContainText("CSE2025002");
+
+    const klass = page.getByRole("form", { name: "Add a class" });
+    await klass.getByLabel("Day").selectOption("3");
+    await klass.getByLabel("Room").fill("C-103");
+    await klass.getByRole("button", { name: "Add class" }).click();
+    await expect(page.getByRole("list", { name: "Scheduled classes" })).toContainText("Wednesday 09:00–10:00 · C-103");
+  });
+
   test("students don't see Manage and can't open it", async ({ page }) => {
     await mockAuthApi(page, { signedIn: true, membership: "ACTIVE" });
     await page.goto("/manage/members");
@@ -139,6 +169,10 @@ const SCREENS: { name: string; path: string; ready: (page: Page) => Promise<void
     },
   },
   { name: "audit log", path: "/manage/audit", ready: (page) => expect(page.getByText("Nothing recorded yet.")).toBeVisible() },
+  { name: "academics sections", path: "/manage/academics", ready: (page) => expect(page.getByRole("table", { name: "Sections" })).toBeVisible() },
+  { name: "academics subjects", path: "/manage/academics?view=subjects", ready: (page) => expect(page.getByRole("table", { name: "Subjects" })).toBeVisible() },
+  { name: "academics terms", path: "/manage/academics?view=terms", ready: (page) => expect(page.getByRole("table", { name: "Terms" })).toBeVisible() },
+  { name: "section setup", path: "/manage/academics/sections/sec1", ready: (page) => expect(page.getByRole("form", { name: "Add a class" })).toBeVisible() },
   { name: "moderation queue", path: "/manage/moderation", ready: (page) => expect(page.getByRole("list", { name: "Open reports" })).toBeVisible() },
   {
     name: "hide dialog",

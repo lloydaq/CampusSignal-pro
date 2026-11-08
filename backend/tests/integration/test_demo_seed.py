@@ -147,3 +147,53 @@ def test_no_roster_entry_is_claimed_by_seeding(
     ).scalar_one()
     assert claimed == 0
     assert session.execute(select(func.count()).select_from(RosterEntry)).scalar_one() == 16
+
+
+RAVI = "ravi.sharma@northfield.example"
+
+
+def test_demo_academics_are_set_up_once_and_taught_by_demo_faculty(
+    factory: sessionmaker[Session], api: TestClient, mailer: InMemoryMailer, clock: Clock
+) -> None:
+    """A current term, sections with faculty and a timetable; nobody enrolled, nothing scored."""
+    _, output = _seed(factory, clock)
+    assert "Academic setup: 3 terms and 6 sections." in output
+    _, again = _seed(factory, clock)
+    assert "Academic setup: 0 terms and 0 sections." in again
+
+    assert login(api, RAVI, PASSWORD).status_code == 200
+    teaching = api.get(f"{PREFIX}/campus/teaching/sections").json()
+    assert teaching["term"]["name"] == "Demo term 2026" and teaching["term"]["is_current"]
+    assert sorted((s["subject"]["code"], s["enrollment_count"]) for s in teaching["items"]) == [
+        ("CS205", 0),
+        ("CS301", 0),
+    ]
+    cs301 = next(s for s in teaching["items"] if s["subject"]["code"] == "CS301")
+    timetable = api.get(f"{PREFIX}/campus/sections/{cs301['id']}/timetable").json()["items"]
+    assert [(e["weekday"], e["starts_at"], e["room"]) for e in timetable] == [
+        (1, "09:00:00", "C-103"),
+        (3, "09:00:00", "C-103"),
+        (5, "11:00:00", "C-103"),
+    ]
+
+    # A demo student who joins can be enrolled by roll number and then sees the timetable.
+    api.cookies.clear()
+    create_user(api, mailer, email="nf-cse-002@northfield.example", password=PASSWORD)
+    assert login(api, "nf-cse-002@northfield.example", PASSWORD).status_code == 200
+    api.post(
+        f"{PREFIX}/me/membership-requests",
+        json={"college_slug": "northfield", "roll_number": "NF-CSE-002"},
+        headers=csrf(api),
+    )
+    api.cookies.clear()
+    assert login(api, RAVI, PASSWORD).status_code == 200  # department admin of CSE
+    enrolled = api.post(
+        f"{PREFIX}/campus/sections/{cs301['id']}/enrollments/import",
+        json={"csv": "roll_number\nNF-CSE-002\n"},
+        headers=csrf(api),
+    )
+    assert enrolled.status_code == 201, enrolled.text
+    api.cookies.clear()
+    assert login(api, "nf-cse-002@northfield.example", PASSWORD).status_code == 200
+    week = api.get(f"{PREFIX}/campus/me/timetable").json()
+    assert week["is_demo"] and len(week["classes"]) == 3
