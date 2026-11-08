@@ -7,6 +7,8 @@ don't teach) gets 404, the same answer as for an object that doesn't exist.
 
 import uuid
 from collections.abc import Iterable
+from datetime import datetime, timedelta
+from enum import StrEnum
 
 from app.models import CollegeMembership, MembershipKind, MembershipStatus
 from app.policies.campus import CampusContext, administered_departments, is_college_admin
@@ -77,3 +79,56 @@ def enrollment_problem(member: CollegeMembership) -> str | None:
     if member.kind != MembershipKind.STUDENT or member.status != MembershipStatus.ACTIVE:
         return NOT_ACTIVE_STUDENT
     return None
+
+
+# --- attendance (ACADEMIC-005, 006) --------------------------------------------------------
+
+
+def is_assigned_teacher(campus: CampusContext, instructor_ids: Iterable[uuid.UUID]) -> bool:
+    return is_teacher(campus) and campus.membership.id in set(instructor_ids)
+
+
+def can_record_attendance(campus: CampusContext, instructor_ids: Iterable[uuid.UUID]) -> bool:
+    """ACADEMIC-005: only the section's assigned faculty record a session."""
+    return is_assigned_teacher(campus, instructor_ids)
+
+
+def edit_window_open(created_at: datetime, window_hours: int, now: datetime) -> bool:
+    """ACADEMIC-006 / P-5: faculty may edit a session until `window_hours` after it was
+    recorded (the college's setting, 48 by default)."""
+    return now < created_at + timedelta(hours=window_hours)
+
+
+class AttendanceEdit(StrEnum):
+    FACULTY = "faculty"  # the assigned teacher, inside the window; a reason is optional
+    CORRECTION = "correction"  # a department admin of the section's department; reason required
+    WINDOW_CLOSED = "window_closed"  # the assigned teacher, too late: 403
+
+
+def attendance_edit(
+    campus: CampusContext,
+    department_id: uuid.UUID,
+    instructor_ids: Iterable[uuid.UUID],
+    *,
+    created_at: datetime,
+    window_hours: int,
+    now: datetime,
+) -> AttendanceEdit | None:
+    """How `campus` may edit a session of a section in `department_id`, or None if not at all.
+    College admins don't record or correct attendance (PRD §11); they only read it."""
+    teacher = is_assigned_teacher(campus, instructor_ids)
+    if teacher and edit_window_open(created_at, window_hours, now):
+        return AttendanceEdit.FACULTY
+    if department_id in administered_departments(campus.grants):
+        return AttendanceEdit.CORRECTION
+    if teacher:
+        return AttendanceEdit.WINDOW_CLOSED
+    return None
+
+
+def attendance_percentage(held: int, attended: int, excused: int) -> float | None:
+    """ACADEMIC-007: EXCUSED sessions leave the denominator. None when nothing counts yet."""
+    counted = held - excused
+    if counted <= 0:
+        return None
+    return round(100 * attended / counted, 1)

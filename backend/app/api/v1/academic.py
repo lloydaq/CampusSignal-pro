@@ -1,4 +1,4 @@
-"""Academic setup routes (architecture.md §11.1, ACADEMIC-001…004). The college comes from
+"""Academic Hub routes (architecture.md §11.1, ACADEMIC-001…007). The college comes from
 `Campus`; app/services/academic_setup.py loads objects inside it and applies
 app/policies/academic.py."""
 
@@ -10,13 +10,24 @@ from fastapi import APIRouter, Depends, Query, Response
 from app.api.deps import Campus, Db, Now, no_store
 from app.core.pagination import DEFAULT_LIMIT, MAX_LIMIT, decode_cursor
 from app.schemas.academic import (
+    AttendanceCounts,
+    AttendanceRecordOut,
+    AttendanceSessionCreate,
+    AttendanceSessionDetail,
+    AttendanceSessionEdit,
+    AttendanceSessionOut,
+    AttendanceSessionPage,
     EnrollmentAdd,
     EnrollmentImport,
     EnrollmentOut,
     EnrollmentPage,
     EnrollmentsAdded,
     InstructorsSet,
+    MyAttendance,
+    MyAttendanceItem,
     MyClass,
+    MySectionAttendance,
+    MySession,
     MyTimetable,
     Person,
     SectionCreate,
@@ -42,6 +53,7 @@ from app.schemas.academic import (
 )
 from app.schemas.campus import DepartmentRef
 from app.services import academic_setup as service
+from app.services import attendance
 from app.services.academic_setup import SectionView
 
 router = APIRouter(prefix="/campus", tags=["academic"], dependencies=[Depends(no_store)])
@@ -345,4 +357,135 @@ def teaching_sections(campus: Campus, db: Db) -> TeachingSections:
     term, views = service.teaching_sections(db, campus)
     return TeachingSections(
         term=TermRef.from_term(term) if term else None, items=[_section_out(v) for v in views]
+    )
+
+
+# --- attendance (ACADEMIC-005…007) ---------------------------------------------------------
+
+
+def _session_out(view: attendance.SessionView) -> AttendanceSessionOut:
+    s = view.session
+    return AttendanceSessionOut(
+        id=s.id,
+        section_id=s.section_id,
+        held_on=s.held_on,
+        slot=s.slot,
+        version=s.version,
+        recorded_by=Person(membership_id=view.recorded_by[0], display_name=view.recorded_by[1]),
+        counts=AttendanceCounts(
+            present=view.counts["PRESENT"],
+            absent=view.counts["ABSENT"],
+            excused=view.counts["EXCUSED"],
+        ),
+        edit=view.edit.value if view.edit else None,
+        edit_window_closes_at=view.edit_window_closes_at,
+        created_at=s.created_at,
+        updated_at=s.updated_at,
+    )
+
+
+def _session_detail(
+    view: attendance.SessionView, records: list[attendance.RecordRow]
+) -> AttendanceSessionDetail:
+    return AttendanceSessionDetail(
+        **_session_out(view).model_dump(),
+        records=[
+            AttendanceRecordOut(
+                enrollment_id=r.record.enrollment_id,
+                membership_id=r.membership_id,
+                display_name=r.display_name,
+                status=r.record.status,
+            )
+            for r in records
+        ],
+    )
+
+
+@router.post("/sections/{section_id}/attendance-sessions", status_code=201)
+def record_attendance(
+    section_id: uuid.UUID, body: AttendanceSessionCreate, campus: Campus, db: Db, now: Now
+) -> AttendanceSessionDetail:
+    view, records = attendance.record_session(
+        db,
+        campus,
+        section_id,
+        held_on=body.held_on,
+        slot=body.slot,
+        marks=[(m.enrollment_id, m.status) for m in body.records],
+        now=now,
+    )
+    return _session_detail(view, records)
+
+
+@router.get("/sections/{section_id}/attendance-sessions")
+def list_attendance_sessions(
+    section_id: uuid.UUID,
+    campus: Campus,
+    db: Db,
+    now: Now,
+    cursor: CursorParam = None,
+    limit: Limit = DEFAULT_LIMIT,
+) -> AttendanceSessionPage:
+    views, next_cursor = attendance.list_sessions(
+        db, campus, section_id, cursor=decode_cursor(cursor), limit=limit, now=now
+    )
+    return AttendanceSessionPage(items=[_session_out(v) for v in views], next_cursor=next_cursor)
+
+
+@router.get("/attendance-sessions/{session_id}")
+def get_attendance_session(
+    session_id: uuid.UUID, campus: Campus, db: Db, now: Now
+) -> AttendanceSessionDetail:
+    return _session_detail(*attendance.get_session(db, campus, session_id, now))
+
+
+@router.patch("/attendance-sessions/{session_id}")
+def edit_attendance_session(
+    session_id: uuid.UUID, body: AttendanceSessionEdit, campus: Campus, db: Db, now: Now
+) -> AttendanceSessionDetail:
+    view, records = attendance.edit_session(
+        db,
+        campus,
+        session_id,
+        version=body.version,
+        marks=[(m.enrollment_id, m.status) for m in body.records],
+        reason=body.reason,
+        now=now,
+    )
+    return _session_detail(view, records)
+
+
+@router.get("/me/attendance")
+def my_attendance(campus: Campus, db: Db) -> MyAttendance:
+    term, rows = attendance.my_attendance(db, campus)
+    return MyAttendance(
+        term=TermRef.from_term(term) if term else None,
+        is_demo=campus.college.is_demo,
+        items=[
+            MyAttendanceItem(
+                section=SectionRef(id=r.section.id, name=r.section.name),
+                subject=SubjectRef.from_subject(r.subject),
+                held=r.summary.held,
+                attended=r.summary.attended,
+                excused=r.summary.excused,
+                percentage=r.summary.percentage,
+            )
+            for r in rows
+        ],
+    )
+
+
+@router.get("/me/attendance/{section_id}")
+def my_section_attendance(section_id: uuid.UUID, campus: Campus, db: Db) -> MySectionAttendance:
+    detail = attendance.my_section_attendance(db, campus, section_id)
+    return MySectionAttendance(
+        section=SectionRef(id=detail.section.id, name=detail.section.name),
+        subject=SubjectRef.from_subject(detail.subject),
+        term=TermRef.from_term(detail.term),
+        is_demo=campus.college.is_demo,
+        held=detail.summary.held,
+        attended=detail.summary.attended,
+        excused=detail.summary.excused,
+        percentage=detail.summary.percentage,
+        sessions=[MySession(held_on=d, slot=s, status=st) for d, s, st in detail.sessions],
     )

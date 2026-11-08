@@ -14,7 +14,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date, datetime, time
 
-from sqlalchemy import Select, func, select
+from sqlalchemy import Select, exists, func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -23,6 +23,7 @@ from app.core.errors import Conflict, Forbidden, NotFound, ValidationFailed
 from app.core.pagination import Cursor, newest_first, split_page
 from app.models import (
     AcademicTerm,
+    AttendanceSession,
     ClassSection,
     CollegeMembership,
     Department,
@@ -59,12 +60,14 @@ def _violated(exc: IntegrityError) -> str | None:
     return getattr(diag, "constraint_name", None)
 
 
-def _audit(
+def audit_academic(
     db: Session,
     campus: CampusContext,
     action: str,
     target_type: str,
     target_id: uuid.UUID,
+    *,
+    reason: str | None = None,
     **data: object,
 ) -> None:
     record_audit(
@@ -74,6 +77,7 @@ def _audit(
         college_id=campus.college_id,
         target_type=target_type,
         target_id=str(target_id),
+        reason=reason,
         metadata=dict(data),
     )
 
@@ -138,7 +142,7 @@ def create_term(
             db.flush()
     except IntegrityError as exc:
         raise _term_conflict(exc) from None
-    _audit(db, campus, "term_created", "academic_term", term.id, is_current=is_current)
+    audit_academic(db, campus, "term_created", "academic_term", term.id, is_current=is_current)
     db.commit()
     return term
 
@@ -167,6 +171,13 @@ def update_term(
     new_end = ends_on if ends_on is not None else term.ends_on
     if new_start >= new_end:
         raise ValidationFailed.field("ends_on", "The term must end after it starts.")
+    if (new_start, new_end) != (term.starts_on, term.ends_on) and _has_sessions_outside(
+        db, term, new_start, new_end
+    ):
+        raise Conflict(
+            "Attendance is already recorded outside these dates. Keep the term around it.",
+            code="term_has_sessions_outside",
+        )
     changes = {
         field: value
         for field, value in (
@@ -187,9 +198,26 @@ def update_term(
             db.flush()
     except IntegrityError as exc:
         raise _term_conflict(exc) from None
-    _audit(db, campus, "term_updated", "academic_term", term.id, changes=sorted(changes))
+    audit_academic(db, campus, "term_updated", "academic_term", term.id, changes=sorted(changes))
     db.commit()
     return term
+
+
+def _has_sessions_outside(db: Session, term: AcademicTerm, starts_on: date, ends_on: date) -> bool:
+    """Would these dates leave recorded attendance outside its term (ACADEMIC-005)?"""
+    return bool(
+        db.execute(
+            select(
+                exists().where(
+                    AttendanceSession.college_id == term.college_id,
+                    AttendanceSession.section_id == ClassSection.id,
+                    ClassSection.college_id == term.college_id,
+                    ClassSection.term_id == term.id,
+                    (AttendanceSession.held_on < starts_on) | (AttendanceSession.held_on > ends_on),
+                )
+            )
+        ).scalar()
+    )
 
 
 def current_term(db: Session, college_id: uuid.UUID) -> AcademicTerm | None:
@@ -285,7 +313,7 @@ def create_subject(
             db.flush()
     except IntegrityError:
         raise Conflict("A subject with this code already exists.", code="code_taken") from None
-    _audit(db, campus, "subject_created", "subject", subject.id, code=code)
+    audit_academic(db, campus, "subject_created", "subject", subject.id, code=code)
     db.commit()
     return subject, department
 
@@ -299,7 +327,7 @@ def update_subject(
     if name != subject.name:
         subject.name = name
         subject.updated_at = now
-        _audit(db, campus, "subject_updated", "subject", subject.id, changes=["name"])
+        audit_academic(db, campus, "subject_updated", "subject", subject.id, changes=["name"])
         db.commit()
     return subject, department
 
@@ -316,7 +344,7 @@ def delete_subject(db: Session, campus: CampusContext, subject_id: uuid.UUID) ->
         raise Conflict(
             "This subject has sections. Delete them first.", code="subject_in_use"
         ) from None
-    _audit(db, campus, "subject_deleted", "subject", subject_id, code=subject.code)
+    audit_academic(db, campus, "subject_deleted", "subject", subject_id, code=subject.code)
     db.commit()
 
 
@@ -394,7 +422,7 @@ def _views(
     ]
 
 
-def _load_section(
+def load_section(
     db: Session, campus: CampusContext, section_id: uuid.UUID, *, lock: bool = False
 ) -> tuple[ClassSection, Subject]:
     query = (
@@ -412,7 +440,7 @@ def _load_section(
     return row[0], row[1]
 
 
-def _instructor_ids(db: Session, section: ClassSection) -> list[uuid.UUID]:
+def section_instructor_ids(db: Session, section: ClassSection) -> list[uuid.UUID]:
     return list(
         db.execute(
             select(SectionInstructor.membership_id).where(
@@ -427,8 +455,8 @@ def _readable_section(db: Session, campus: CampusContext, section_id: uuid.UUID)
     """The section if the caller may read it (managers of its department, its faculty)."""
     if not may_read_sections(campus):
         raise Forbidden()
-    section, subject = _load_section(db, campus, section_id)
-    if not can_read_section(campus, subject.department_id, _instructor_ids(db, section)):
+    section, subject = load_section(db, campus, section_id)
+    if not can_read_section(campus, subject.department_id, section_instructor_ids(db, section)):
         raise NotFound()
     return section
 
@@ -437,7 +465,7 @@ def _managed_section(
     db: Session, campus: CampusContext, section_id: uuid.UUID, *, lock: bool = False
 ) -> tuple[ClassSection, Subject]:
     _require_catalog_role(campus)
-    section, subject = _load_section(db, campus, section_id, lock=lock)
+    section, subject = load_section(db, campus, section_id, lock=lock)
     _authorize_catalog(campus, subject.department_id)
     return section, subject
 
@@ -522,7 +550,7 @@ def create_section(
         raise Conflict(
             "This subject already has a section with this name in this term.", code="section_exists"
         ) from None
-    _audit(db, campus, "section_created", "class_section", section.id)
+    audit_academic(db, campus, "section_created", "class_section", section.id)
     db.commit()
     return _view(db, campus, section.id)
 
@@ -542,7 +570,7 @@ def update_section(
                 "This subject already has a section with this name in this term.",
                 code="section_exists",
             ) from None
-        _audit(db, campus, "section_updated", "class_section", section.id, changes=["name"])
+        audit_academic(db, campus, "section_updated", "class_section", section.id, changes=["name"])
         db.commit()
     return _view(db, campus, section.id)
 
@@ -559,7 +587,7 @@ def delete_section(db: Session, campus: CampusContext, section_id: uuid.UUID) ->
             "This section has enrolled students. Remove them first.",
             code="section_has_enrollments",
         ) from None
-    _audit(db, campus, "section_deleted", "class_section", section_id)
+    audit_academic(db, campus, "section_deleted", "class_section", section_id)
     db.commit()
 
 
@@ -619,7 +647,7 @@ def set_instructors(
         for m in added
     )
     if removed or added:
-        _audit(
+        audit_academic(
             db,
             campus,
             "instructors_set",
@@ -670,7 +698,7 @@ def _enroll(
     enrolled = len(inserted)
     already = len(member_ids) - enrolled
     if enrolled:
-        _audit(
+        audit_academic(
             db,
             campus,
             "enrollments_added",
@@ -841,7 +869,7 @@ def remove_enrollment(db: Session, campus: CampusContext, enrollment_id: uuid.UU
             "This student already has attendance or results in this section.",
             code="enrollment_has_records",
         ) from None
-    _audit(db, campus, "enrollment_removed", "class_section", section.id)
+    audit_academic(db, campus, "enrollment_removed", "class_section", section.id)
     db.commit()
 
 
@@ -898,7 +926,7 @@ def add_timetable_entry(
             db.flush()
     except IntegrityError:
         raise _overlap() from None
-    _audit(db, campus, "timetable_entry_created", "timetable_entry", entry.id)
+    audit_academic(db, campus, "timetable_entry_created", "timetable_entry", entry.id)
     db.commit()
     return entry
 
@@ -952,7 +980,7 @@ def update_timetable_entry(
             db.flush()
     except IntegrityError:
         raise _overlap() from None
-    _audit(
+    audit_academic(
         db, campus, "timetable_entry_updated", "timetable_entry", entry.id, changes=sorted(changes)
     )
     db.commit()
@@ -962,7 +990,7 @@ def update_timetable_entry(
 def delete_timetable_entry(db: Session, campus: CampusContext, entry_id: uuid.UUID) -> None:
     entry = _managed_entry(db, campus, entry_id)
     db.delete(entry)
-    _audit(db, campus, "timetable_entry_deleted", "timetable_entry", entry_id)
+    audit_academic(db, campus, "timetable_entry_deleted", "timetable_entry", entry_id)
     db.commit()
 
 

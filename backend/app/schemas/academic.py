@@ -2,8 +2,8 @@
 are 422); roll numbers appear only where the caller manages the section's department."""
 
 import uuid
-from datetime import date, time
-from typing import Annotated, Self
+from datetime import date, datetime, time
+from typing import Annotated, Literal, Self
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, model_validator
 from pydantic_core import PydanticCustomError
@@ -289,3 +289,104 @@ class MyTimetable(BaseModel):
 class TeachingSections(BaseModel):
     term: TermRef | None
     items: list[SectionOut]
+
+
+# --- attendance (ACADEMIC-005…007) ---------------------------------------------------------
+
+Status = Literal["PRESENT", "ABSENT", "EXCUSED"]
+Slot = Annotated[int, Field(ge=1, le=12, description="The period of the day, 1-12")]
+MAX_MARKS = 1000
+
+
+class AttendanceMark(_Request):
+    enrollment_id: uuid.UUID
+    status: Status
+
+
+Marks = Annotated[list[AttendanceMark], Field(min_length=1, max_length=MAX_MARKS)]
+
+
+class AttendanceSessionCreate(_Request):
+    held_on: date
+    slot: Slot
+    records: Marks
+
+
+class AttendanceSessionEdit(_Request):
+    version: Annotated[int, Field(ge=1)]
+    records: Marks
+    reason: Annotated[str, Field(min_length=1, max_length=500)] | None = None
+
+
+class AttendanceCounts(BaseModel):
+    present: int
+    absent: int
+    excused: int
+
+
+class AttendanceSessionOut(BaseModel):
+    """`edit` says how the caller may change it now: "faculty" (inside the window), "correction"
+    (department admin, reason required), "window_closed", or null (read only)."""
+
+    id: uuid.UUID
+    section_id: uuid.UUID
+    held_on: date
+    slot: int
+    version: int
+    recorded_by: Person
+    counts: AttendanceCounts
+    edit: Literal["faculty", "correction", "window_closed"] | None
+    edit_window_closes_at: datetime
+    created_at: datetime
+    updated_at: datetime
+
+
+class AttendanceRecordOut(BaseModel):
+    enrollment_id: uuid.UUID
+    membership_id: uuid.UUID
+    display_name: str
+    status: str
+
+
+class AttendanceSessionDetail(AttendanceSessionOut):
+    records: list[AttendanceRecordOut]
+
+
+class AttendanceSessionPage(BaseModel):
+    items: list[AttendanceSessionOut]
+    next_cursor: str | None
+
+
+class AttendanceSummary(BaseModel):
+    """Held counts sessions with a record for the student; EXCUSED ones leave the
+    percentage's denominator (ACADEMIC-007). `percentage` is null until something counts."""
+
+    held: int
+    attended: int
+    excused: int
+    percentage: float | None
+
+
+class MyAttendanceItem(AttendanceSummary):
+    section: SectionRef
+    subject: SubjectRef
+
+
+class MyAttendance(BaseModel):
+    term: TermRef | None
+    is_demo: bool
+    items: list[MyAttendanceItem]
+
+
+class MySession(BaseModel):
+    held_on: date
+    slot: int
+    status: str
+
+
+class MySectionAttendance(AttendanceSummary):
+    section: SectionRef
+    subject: SubjectRef
+    term: TermRef
+    is_demo: bool
+    sessions: list[MySession]

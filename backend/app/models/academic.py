@@ -1,9 +1,10 @@
-"""Academic setup (ACADEMIC-001…004): terms, subjects, class sections, instructors, enrollments
-and timetable entries. College-scoped like every campus table (see app/models/college.py):
-references between them are composite (college_id, x_id) foreign keys."""
+"""Academic Hub tables (ACADEMIC-001…007): terms, subjects, class sections, instructors,
+enrollments, timetable entries and attendance. College-scoped like every campus table (see
+app/models/college.py): references between them are composite (college_id, x_id) foreign keys."""
 
 import uuid
 from datetime import date, datetime, time
+from enum import StrEnum
 
 from sqlalchemy import (
     Boolean,
@@ -13,6 +14,7 @@ from sqlalchemy import (
     ForeignKey,
     ForeignKeyConstraint,
     Index,
+    Integer,
     SmallInteger,
     Text,
     Time,
@@ -222,3 +224,77 @@ class TimetableEntry(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+
+
+class AttendanceStatus(StrEnum):
+    PRESENT = "PRESENT"
+    ABSENT = "ABSENT"
+    EXCUSED = "EXCUSED"
+
+
+class AttendanceSession(Base):
+    """One class session of a section (ACADEMIC-005): a date and a period (slot 1-12). At
+    most one per section, date and slot. `version` guards edits (ACADEMIC-006)."""
+
+    __tablename__ = "attendance_sessions"
+    __table_args__ = (
+        UniqueConstraint("college_id", "id"),
+        UniqueConstraint("section_id", "held_on", "slot"),
+        ForeignKeyConstraint(
+            ["college_id", "section_id"],
+            ["class_sections.college_id", "class_sections.id"],
+            name="fk_attendance_sessions_section",
+        ),
+        ForeignKeyConstraint(
+            ["college_id", "recorded_by_membership_id"],
+            ["college_memberships.college_id", "college_memberships.id"],
+            name="fk_attendance_sessions_recorded_by",
+        ),
+        CheckConstraint("slot BETWEEN 1 AND 12", name="slot"),
+        CheckConstraint("version >= 1", name="version_positive"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    college_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("colleges.id"))
+    section_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    held_on: Mapped[date] = mapped_column(Date)
+    slot: Mapped[int] = mapped_column(SmallInteger)
+    recorded_by_membership_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    version: Mapped[int] = mapped_column(Integer, server_default=text("1"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class AttendanceRecord(Base):
+    """One enrolled student's status in one session. Its enrollment can't be removed while it
+    exists (ACADEMIC-002: 409)."""
+
+    __tablename__ = "attendance_records"
+    __table_args__ = (
+        UniqueConstraint("college_id", "id"),
+        UniqueConstraint("session_id", "enrollment_id"),
+        ForeignKeyConstraint(
+            ["college_id", "session_id"],
+            ["attendance_sessions.college_id", "attendance_sessions.id"],
+            name="fk_attendance_records_session",
+        ),
+        ForeignKeyConstraint(
+            ["college_id", "enrollment_id"],
+            ["enrollments.college_id", "enrollments.id"],
+            name="fk_attendance_records_enrollment",
+        ),
+        CheckConstraint("status IN ('PRESENT', 'ABSENT', 'EXCUSED')", name="status"),
+        Index("ix_attendance_records_enrollment_id", "enrollment_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    college_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("colleges.id"))
+    session_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    enrollment_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    status: Mapped[str] = mapped_column(Text)
