@@ -150,6 +150,24 @@ export async function mockAuthApi(page: Page, initial: Partial<FakeAccount> = {}
   );
   // The shell's bell polls this on every signed-in screen; notifications.spec.ts overrides it.
   await page.route("**/api/v1/me/notifications/unread-count", (route) => json(route, 200, { unread: 0 }, "e2e-unread"));
+  // The home's blocks for this kind of member (homeApi.ts replaces this where a spec needs data).
+  await page.route("**/api/v1/campus/home", (route) => {
+    const empty = { status: "ok", term: { id: "t1", name: "2026-27 Odd semester", is_current: true }, items: [] };
+    return json(
+      route,
+      200,
+      {
+        today: "2026-10-21",
+        is_demo: true,
+        classes: account.admin ? null : empty,
+        attendance: account.admin || account.faculty ? null : empty,
+        needs_attendance: account.faculty ? { status: "ok", items: [] } : null,
+        my_issues: { status: "ok", open_count: 0, items: [] },
+        queues: account.admin ? { status: "ok", items: [{ kind: "membership_requests", count: 0 }] } : null,
+      },
+      "e2e-home",
+    );
+  });
   // Home lists current notices; noticesApi.ts replaces this with real ones where a spec needs them.
   await page.route("**/api/v1/campus/notices", (route) => json(route, 200, { items: [], next_cursor: null }, "e2e-no-notices"));
   await page.route("**/api/v1/colleges", (route) =>

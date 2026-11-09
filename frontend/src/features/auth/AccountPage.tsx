@@ -1,4 +1,4 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CircleCheck, TriangleAlert } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { useForm } from "react-hook-form";
@@ -13,13 +13,13 @@ import { Button } from "@/components/ui/button";
 import { KIND_LABEL, roleLabel } from "@/features/campus/labels";
 import { zodResolver } from "@/lib/zodResolver";
 
-import { changePassword, signOut, signOutEverywhere, type Me, type User } from "./api";
+import { changePassword, signOut, signOutEverywhere, updateProfile, type Me, type User } from "./api";
 import { AuthHeading } from "./AuthHeading";
 import { PASSWORD_RULES } from "./RegisterPage";
 import { ResendVerification } from "./ResendVerification";
-import { changePasswordSchema, type ChangePasswordValues } from "./schemas";
+import { changePasswordSchema, profileSchema, type ChangePasswordValues, type ProfileValues } from "./schemas";
 import { applyServerError } from "./serverErrors";
-import { SIGN_OUT_FAILED, useMe, useSignOut } from "./session";
+import { SIGN_OUT_FAILED, sessionQueryKey, useMe, useSignOut } from "./session";
 import type { SignInNotice } from "./SignInPage";
 
 function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {
@@ -33,14 +33,68 @@ function Section({ id, title, children }: { id: string; title: string; children:
   );
 }
 
+function DisplayName({ user }: { user: User }) {
+  const queryClient = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const form = useForm<ProfileValues>({ resolver: zodResolver(profileSchema), defaultValues: { display_name: user.display_name } });
+  const save = useMutation({
+    mutationFn: (values: ProfileValues) => updateProfile(values),
+    onSuccess: (updated) => {
+      queryClient.setQueryData<Me | null>(sessionQueryKey, (me) => (me ? { ...me, user: updated } : me));
+      setEditing(false);
+      setSaved(true);
+    },
+    onError: (error) => applyServerError(error, form.setError, ["display_name"]),
+  });
+  if (!editing) {
+    return (
+      <div>
+        <dt className="text-muted">Name</dt>
+        <dd className="flex flex-wrap items-center gap-x-3 gap-y-1 font-medium text-fg">
+          {user.display_name}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              form.reset({ display_name: user.display_name });
+              setSaved(false);
+              setEditing(true);
+            }}
+          >
+            Change
+          </Button>
+          {saved && <span className="text-sm font-normal text-success-fg">Saved.</span>}
+        </dd>
+      </div>
+    );
+  }
+  return (
+    <div>
+      <dt className="sr-only">Name</dt>
+      <dd>
+        <form aria-label="Change your name" noValidate onSubmit={(e) => void form.handleSubmit((v) => save.mutate(v))(e)} className="max-w-sm space-y-3">
+          <FormField id="display-name" label="Name" autoComplete="name" error={form.formState.errors.display_name?.message} {...form.register("display_name")} />
+          {form.formState.errors.root && <Callout tone="danger">{form.formState.errors.root.message}</Callout>}
+          <div className="flex gap-3">
+            <SubmitButton size="sm" pending={save.isPending} pendingLabel="Saving…">
+              Save name
+            </SubmitButton>
+            <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
+              Cancel
+            </Button>
+          </div>
+        </form>
+      </dd>
+    </div>
+  );
+}
+
 function Profile({ user }: { user: User }) {
   return (
     <Section id="profile-heading" title="Profile">
       <dl className="space-y-3 text-sm">
-        <div>
-          <dt className="text-muted">Name</dt>
-          <dd className="font-medium text-fg">{user.display_name}</dd>
-        </div>
+        <DisplayName user={user} />
         <div>
           <dt className="text-muted">Email</dt>
           <dd className="flex flex-wrap items-center gap-x-3 gap-y-1 font-medium break-all text-fg">

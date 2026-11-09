@@ -1,4 +1,4 @@
-import { apiGet, apiPost } from "@/lib/api";
+import { apiGet, apiPost, apiRequest } from "@/lib/api";
 
 /** Auth endpoints (backend app/api/v1/auth.py, me.py; architecture.md §11.1). */
 
@@ -55,6 +55,10 @@ export interface Me {
 }
 
 export const fetchMe = (signal?: AbortSignal) => apiGet<Me>("/api/v1/me", signal);
+
+/** PROFILE-001: change the display name (1–60 characters). */
+export const updateProfile = (body: { display_name: string }) =>
+  apiRequest<User>("/api/v1/me", { method: "PATCH", body: JSON.stringify(body), headers: { "Content-Type": "application/json" } });
 
 export const signIn = (body: { email: string; password: string }) =>
   apiPost<{ user: User; csrf_token: string }>(`${AUTH}/login`, body);

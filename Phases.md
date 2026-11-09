@@ -253,7 +253,7 @@ Decisions (2026-10-23, owner "go"): accepting an invite requires being signed in
 ---
 
 ## Phase 8 — Home screens, profile and cross-module integration
-**Status:** IN PROGRESS (started 2026-11-09 by Claude while the owner was away, on the owner's "continue and do more phases"; the split below is Claude's proposal, **owner to confirm**; built on top of the unmerged Phase 7 branches). Split: [x] 8a backend (on `phase8/home-backend`, awaiting review): `GET /campus/home` (blocks by role, each computed from the module services with its own error, nothing a module endpoint wouldn't show) and `PATCH /me` display name (1–60); [ ] 8b frontend: student, faculty and admin homes, profile edit, E2E landing per role (US-16).
+**Status:** IN PROGRESS (started 2026-11-09 by Claude while the owner was away, on the owner's "continue and do more phases"; the split below is Claude's proposal, **owner to confirm**; built on top of the unmerged Phase 7 branches). Split: [x] 8a backend (on `phase8/home-backend`, awaiting review): `GET /campus/home` (blocks by role, each computed from the module services with its own error, nothing a module endpoint wouldn't show) and `PATCH /me` display name (1–60); [x] 8b frontend (on `phase8/home-screens`, stacked on 8a, awaiting review): student, faculty and admin homes, profile edit, E2E landing per role (US-16).
 **Objective:** Each role lands on a useful home; flows connect.
 **Dependencies:** Phases 4–7.
 **Included:** HOME-001…004, PROFILE-001. (HOME-001's urgent and latest-notices blocks shipped early in Phase 4's member-screens pass, owner 2026-10-25; Phase 8 adds classes, attendance, issues and the faculty/admin homes.)
