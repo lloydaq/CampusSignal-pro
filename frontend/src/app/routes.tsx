@@ -2,7 +2,12 @@ import { Navigate, type RouteObject } from "react-router";
 
 import { AcademicsLayout } from "@/features/academic/AcademicsLayout";
 import { AttendanceTab, SubjectAttendancePage } from "@/features/academic/AttendanceTab";
+import { AssessmentPage } from "@/features/academic/AssessmentPage";
+import { AttendanceSessionPage, NewAttendancePage } from "@/features/academic/AttendanceSheet";
 import { ResultsTab } from "@/features/academic/ResultsTab";
+import { SectionPage } from "@/features/academic/SectionPage";
+import { TeachingGuard } from "@/features/academic/TeachingGuard";
+import { TeachingPage } from "@/features/academic/TeachingPage";
 import { TimetableTab } from "@/features/academic/TimetableTab";
 import { AuditTab } from "@/features/admin/AuditTab";
 import { DepartmentsTab } from "@/features/admin/DepartmentsTab";
@@ -94,6 +99,17 @@ export const routes: RouteObject[] = [
                   { path: "attendance", element: <AttendanceTab /> },
                   { path: "attendance/:sectionId", element: <SubjectAttendancePage /> },
                   { path: "results", element: <ResultsTab /> },
+                ],
+              },
+              {
+                path: "teaching",
+                element: <TeachingGuard />,
+                children: [
+                  { index: true, element: <TeachingPage /> },
+                  { path: "sections/:sectionId", element: <SectionPage /> },
+                  { path: "sections/:sectionId/attendance/new", element: <NewAttendancePage /> },
+                  { path: "sessions/:sessionId", element: <AttendanceSessionPage /> },
+                  { path: "assessments/:assessmentId", element: <AssessmentPage /> },
                 ],
               },
               { path: "community", element: <CommunityPage /> },
