@@ -1,4 +1,4 @@
-"""Academic Hub routes (architecture.md §11.1, ACADEMIC-001…007). The college comes from
+"""Academic Hub routes (architecture.md §11.1, ACADEMIC-001…009). The college comes from
 `Campus`; app/services/academic_setup.py loads objects inside it and applies
 app/policies/academic.py."""
 
@@ -10,6 +10,13 @@ from fastapi import APIRouter, Depends, Query, Response
 from app.api.deps import Campus, Db, Now, no_store
 from app.core.pagination import DEFAULT_LIMIT, MAX_LIMIT, decode_cursor
 from app.schemas.academic import (
+    AssessmentActions,
+    AssessmentCounts,
+    AssessmentCreate,
+    AssessmentOut,
+    AssessmentPage,
+    AssessmentPublish,
+    AssessmentResults,
     AttendanceCounts,
     AttendanceRecordOut,
     AttendanceSessionCreate,
@@ -26,10 +33,15 @@ from app.schemas.academic import (
     MyAttendance,
     MyAttendanceItem,
     MyClass,
+    MyResult,
+    MyResults,
     MySectionAttendance,
     MySession,
+    MySubjectResults,
     MyTimetable,
     Person,
+    ResultRow,
+    ResultsSave,
     SectionCreate,
     SectionOut,
     SectionPage,
@@ -53,7 +65,7 @@ from app.schemas.academic import (
 )
 from app.schemas.campus import DepartmentRef
 from app.services import academic_setup as service
-from app.services import attendance
+from app.services import attendance, results
 from app.services.academic_setup import SectionView
 
 router = APIRouter(prefix="/campus", tags=["academic"], dependencies=[Depends(no_store)])
@@ -488,4 +500,146 @@ def my_section_attendance(section_id: uuid.UUID, campus: Campus, db: Db) -> MySe
         excused=detail.summary.excused,
         percentage=detail.summary.percentage,
         sessions=[MySession(held_on=d, slot=s, status=st) for d, s, st in detail.sessions],
+    )
+
+
+# --- assessments and results (ACADEMIC-008, 009) -------------------------------------------
+
+
+def _number(value: object) -> float | None:
+    return None if value is None else float(value)  # type: ignore[arg-type]
+
+
+def _assessment_out(view: results.AssessmentView) -> AssessmentOut:
+    a = view.assessment
+    return AssessmentOut(
+        id=a.id,
+        section_id=a.section_id,
+        name=a.name,
+        kind=a.kind,
+        max_score=float(a.max_score),
+        held_on=a.held_on,
+        version=a.version,
+        published_at=a.published_at,
+        published_by=(
+            Person(membership_id=view.published_by[0], display_name=view.published_by[1])
+            if view.published_by
+            else None
+        ),
+        counts=AssessmentCounts(
+            enrolled=view.counts.enrolled,
+            entered=view.counts.entered,
+            absent=view.counts.absent,
+        ),
+        actions=AssessmentActions(enter_scores=view.may_enter_scores, publish=view.may_publish),
+        created_at=a.created_at,
+    )
+
+
+def _results_out(
+    view: results.AssessmentView, rows: list[results.ResultRowView]
+) -> AssessmentResults:
+    return AssessmentResults(
+        assessment=_assessment_out(view),
+        rows=[
+            ResultRow(
+                enrollment_id=r.enrollment_id,
+                membership_id=r.membership_id,
+                display_name=r.display_name,
+                score=_number(r.result.score) if r.result else None,
+                absent=bool(r.result and r.result.is_absent),
+                revised=bool(r.result and r.result.revised_at),
+            )
+            for r in rows
+        ],
+    )
+
+
+@router.post("/sections/{section_id}/assessments", status_code=201)
+def create_assessment(
+    section_id: uuid.UUID, body: AssessmentCreate, campus: Campus, db: Db, now: Now
+) -> AssessmentOut:
+    view = results.create_assessment(
+        db,
+        campus,
+        section_id,
+        name=body.name,
+        kind=body.kind,
+        max_score=body.max_score,
+        held_on=body.held_on,
+        now=now,
+    )
+    return _assessment_out(view)
+
+
+@router.get("/sections/{section_id}/assessments")
+def list_assessments(
+    section_id: uuid.UUID,
+    campus: Campus,
+    db: Db,
+    cursor: CursorParam = None,
+    limit: Limit = DEFAULT_LIMIT,
+) -> AssessmentPage:
+    views, next_cursor = results.list_assessments(
+        db, campus, section_id, cursor=decode_cursor(cursor), limit=limit
+    )
+    return AssessmentPage(items=[_assessment_out(v) for v in views], next_cursor=next_cursor)
+
+
+@router.get("/assessments/{assessment_id}/results")
+def get_assessment_results(assessment_id: uuid.UUID, campus: Campus, db: Db) -> AssessmentResults:
+    return _results_out(*results.get_results(db, campus, assessment_id))
+
+
+@router.put("/assessments/{assessment_id}/results")
+def save_assessment_results(
+    assessment_id: uuid.UUID, body: ResultsSave, campus: Campus, db: Db, now: Now
+) -> AssessmentResults:
+    view, rows = results.save_results(
+        db,
+        campus,
+        assessment_id,
+        version=body.version,
+        entries=[results.ScoreInput(e.enrollment_id, e.score, e.absent) for e in body.results],
+        reason=body.reason,
+        now=now,
+    )
+    return _results_out(view, rows)
+
+
+@router.post("/assessments/{assessment_id}/publish")
+def publish_assessment(
+    assessment_id: uuid.UUID, body: AssessmentPublish, campus: Campus, db: Db, now: Now
+) -> AssessmentOut:
+    view = results.publish_assessment(db, campus, assessment_id, version=body.version, now=now)
+    return _assessment_out(view)
+
+
+@router.get("/me/results")
+def my_results(campus: Campus, db: Db) -> MyResults:
+    term, groups = results.my_results(db, campus)
+    return MyResults(
+        term=TermRef.from_term(term) if term else None,
+        is_demo=campus.college.is_demo,
+        items=[
+            MySubjectResults(
+                section=SectionRef(id=g.section.id, name=g.section.name),
+                subject=SubjectRef.from_subject(g.subject),
+                assessments=[
+                    MyResult(
+                        id=r.assessment.id,
+                        name=r.assessment.name,
+                        kind=r.assessment.kind,
+                        max_score=float(r.assessment.max_score),
+                        held_on=r.assessment.held_on,
+                        published_at=r.assessment.published_at,  # type: ignore[arg-type]
+                        score=_number(r.result.score) if r.result else None,
+                        absent=bool(r.result and r.result.is_absent),
+                        revised=bool(r.result and r.result.revised_at),
+                    )
+                    for r in g.results
+                ],
+            )
+            for g in groups
+        ],
     )

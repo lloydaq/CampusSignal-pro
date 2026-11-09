@@ -132,3 +132,27 @@ def attendance_percentage(held: int, attended: int, excused: int) -> float | Non
     if counted <= 0:
         return None
     return round(100 * attended / counted, 1)
+
+
+# --- assessments and results (ACADEMIC-008, 009) -------------------------------------------
+
+
+def can_manage_assessments(campus: CampusContext, instructor_ids: Iterable[uuid.UUID]) -> bool:
+    """ACADEMIC-008: the section's assigned faculty create assessments and enter scores, before
+    and after publishing (owner decision 2026-11-08: department admins don't change scores)."""
+    return is_assigned_teacher(campus, instructor_ids)
+
+
+def can_publish_assessment(
+    campus: CampusContext, department_id: uuid.UUID, instructor_ids: Iterable[uuid.UUID]
+) -> bool:
+    """ACADEMIC-009: the section's assigned faculty, or a department admin of its department.
+    College admins read results but don't publish them (PRD §11)."""
+    return is_assigned_teacher(campus, instructor_ids) or department_id in administered_departments(
+        campus.grants
+    )
+
+
+def student_sees_assessment(published_at: datetime | None) -> bool:
+    """ACADEMIC-008: nothing about an assessment reaches students before it's published."""
+    return published_at is not None

@@ -400,6 +400,39 @@ CASES: dict[tuple[str, str], IsolationCase] = {
         lambda w: (f"{CAMPUS}/me/attendance/{w.river_section['id']}", None),
         who="student",
     ),
+    # assessments and results (Riverside has a published, scored assessment)
+    ("POST", f"{CAMPUS}/sections/{{section_id}}/assessments"): IsolationCase(
+        Kind.OBJECT,
+        lambda w: (
+            f"{CAMPUS}/sections/{w.river_section['id']}/assessments",
+            {"name": "Hacked", "kind": "QUIZ", "max_score": "10", "held_on": "2026-10-20"},
+        ),
+    ),
+    ("GET", f"{CAMPUS}/sections/{{section_id}}/assessments"): IsolationCase(
+        Kind.OBJECT, lambda w: (f"{CAMPUS}/sections/{w.river_section['id']}/assessments", None)
+    ),
+    ("GET", f"{CAMPUS}/assessments/{{assessment_id}}/results"): IsolationCase(
+        Kind.OBJECT, lambda w: (f"{CAMPUS}/assessments/{w.river_assessment['id']}/results", None)
+    ),
+    ("PUT", f"{CAMPUS}/assessments/{{assessment_id}}/results"): IsolationCase(
+        Kind.OBJECT,
+        lambda w: (
+            f"{CAMPUS}/assessments/{w.river_assessment['id']}/results",
+            {
+                "version": 3,
+                "reason": "x",
+                "results": [{"enrollment_id": w.river_enrollment["id"], "score": "0"}],
+            },
+        ),
+    ),
+    ("POST", f"{CAMPUS}/assessments/{{assessment_id}}/publish"): IsolationCase(
+        Kind.OBJECT,
+        lambda w: (f"{CAMPUS}/assessments/{w.river_assessment['id']}/publish", {"version": 3}),
+    ),
+    # A student's own results: Northfield's student, while Riverside's has a published one.
+    ("GET", f"{CAMPUS}/me/results"): IsolationCase(
+        Kind.LIST, _static(f"{CAMPUS}/me/results"), who="student"
+    ),
     # audit
     ("GET", f"{CAMPUS}/audit-log"): IsolationCase(Kind.LIST, _static(f"{CAMPUS}/audit-log")),
 }

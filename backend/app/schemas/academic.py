@@ -1,8 +1,9 @@
-"""Academic setup shapes (ACADEMIC-001…004). Requests never carry `college_id` (unknown fields
+"""Academic Hub shapes (ACADEMIC-001…009). Requests never carry `college_id` (unknown fields
 are 422); roll numbers appear only where the caller manages the section's department."""
 
 import uuid
 from datetime import date, datetime, time
+from decimal import Decimal
 from typing import Annotated, Literal, Self
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, model_validator
@@ -390,3 +391,120 @@ class MySectionAttendance(AttendanceSummary):
     term: TermRef
     is_demo: bool
     sessions: list[MySession]
+
+
+# --- assessments and results (ACADEMIC-008, 009) -------------------------------------------
+
+AssessmentKindName = Literal["QUIZ", "ASSIGNMENT", "LAB", "MIDTERM", "ENDTERM", "OTHER"]
+AssessmentName = Annotated[str, _short(80)]
+# numeric(6,2): up to 9999.99, two decimal places at most.
+Score = Annotated[Decimal, Field(ge=0, max_digits=6, decimal_places=2)]
+MaxScore = Annotated[Decimal, Field(gt=0, max_digits=6, decimal_places=2)]
+
+
+class AssessmentCreate(_Request):
+    name: AssessmentName
+    kind: AssessmentKindName
+    max_score: MaxScore
+    held_on: date
+
+
+class ScoreEntry(_Request):
+    """A score, or ABSENT (score null). Neither clears the entry (only before publishing)."""
+
+    enrollment_id: uuid.UUID
+    score: Score | None = None
+    absent: bool = False
+
+    @model_validator(mode="after")
+    def _score_or_absent(self) -> Self:
+        if self.absent and self.score is not None:
+            raise PydanticCustomError("score_and_absent", "Give a score or mark absent, not both.")
+        return self
+
+
+class ResultsSave(_Request):
+    """`reason` is required once the assessment is published and a score changes."""
+
+    version: Annotated[int, Field(ge=1)]
+    results: Annotated[list[ScoreEntry], Field(min_length=1, max_length=MAX_MARKS)]
+    reason: Annotated[str, Field(min_length=1, max_length=500)] | None = None
+
+
+class AssessmentPublish(_Request):
+    version: Annotated[int, Field(ge=1)]
+
+
+class AssessmentCounts(BaseModel):
+    enrolled: int
+    entered: int  # students with a score or ABSENT
+    absent: int
+
+
+class AssessmentActions(BaseModel):
+    """What the caller may do now (the page offers only these; every route still checks)."""
+
+    enter_scores: bool
+    publish: bool
+
+
+class AssessmentOut(BaseModel):
+    id: uuid.UUID
+    section_id: uuid.UUID
+    name: str
+    kind: str
+    max_score: float
+    held_on: date
+    version: int
+    published_at: datetime | None
+    published_by: Person | None
+    counts: AssessmentCounts
+    actions: AssessmentActions
+    created_at: datetime
+
+
+class AssessmentPage(BaseModel):
+    items: list[AssessmentOut]
+    next_cursor: str | None
+
+
+class ResultRow(BaseModel):
+    """Every enrolled student, entered or not (score and absent both empty = not entered)."""
+
+    enrollment_id: uuid.UUID
+    membership_id: uuid.UUID
+    display_name: str
+    score: float | None
+    absent: bool
+    revised: bool
+
+
+class AssessmentResults(BaseModel):
+    assessment: AssessmentOut
+    rows: list[ResultRow]
+
+
+class MyResult(BaseModel):
+    """A published assessment and the student's own result on it."""
+
+    id: uuid.UUID
+    name: str
+    kind: str
+    max_score: float
+    held_on: date
+    published_at: datetime
+    score: float | None
+    absent: bool
+    revised: bool
+
+
+class MySubjectResults(BaseModel):
+    section: SectionRef
+    subject: SubjectRef
+    assessments: list[MyResult]
+
+
+class MyResults(BaseModel):
+    term: TermRef | None
+    is_demo: bool
+    items: list[MySubjectResults]

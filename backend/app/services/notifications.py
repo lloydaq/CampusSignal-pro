@@ -14,7 +14,14 @@ from sqlalchemy.orm import Session
 
 from app.core.errors import NotFound
 from app.core.pagination import Cursor, newest_first, split_page
-from app.models import CollegeMembership, MembershipStatus, Notice, NoticePriority, NoticeScope
+from app.models import (
+    CollegeMembership,
+    Enrollment,
+    MembershipStatus,
+    Notice,
+    NoticePriority,
+    NoticeScope,
+)
 from app.models.notification import Notification, NotificationType
 from app.policies.notifications import can_read_notification
 
@@ -121,6 +128,73 @@ def notify_issue(
             title=_title(title),
             created_at=now,
         )
+    )
+
+
+def notify_assessment_published(
+    db: Session,
+    *,
+    college_id: uuid.UUID,
+    section_id: uuid.UUID,
+    assessment_id: uuid.UUID,
+    title: str,
+    now: datetime,
+) -> int:
+    """ACADEMIC-009: one notification per ACTIVE student enrolled in the section. The title
+    names the assessment, never a score (Rules R-2.11)."""
+    recipients = (
+        select(
+            CollegeMembership.user_id,
+            CollegeMembership.college_id,
+            literal(NotificationType.ASSESSMENT_PUBLISHED.value),
+            literal("ASSESSMENT"),
+            literal(assessment_id),
+            literal(_title(title)),
+            literal(now),
+        )
+        .join(
+            Enrollment,
+            (Enrollment.college_id == CollegeMembership.college_id)
+            & (Enrollment.membership_id == CollegeMembership.id),
+        )
+        .where(
+            Enrollment.college_id == college_id,
+            Enrollment.section_id == section_id,
+            CollegeMembership.status == MembershipStatus.ACTIVE,
+        )
+    )
+    statement = (
+        insert(Notification)
+        .from_select(
+            ["user_id", "college_id", "type", "subject_type", "subject_id", "title", "created_at"],
+            recipients,
+        )
+        .returning(Notification.id)
+    )
+    return len(db.execute(statement).all())
+
+
+def notify_result_revised(
+    db: Session,
+    *,
+    user_ids: list[uuid.UUID],
+    college_id: uuid.UUID,
+    assessment_id: uuid.UUID,
+    title: str,
+    now: datetime,
+) -> None:
+    """ACADEMIC-009, NOTIF-002: a student whose published result changed is told (no score)."""
+    db.add_all(
+        Notification(
+            user_id=user_id,
+            college_id=college_id,
+            type=NotificationType.ASSESSMENT_REVISED,
+            subject_type="ASSESSMENT",
+            subject_id=assessment_id,
+            title=_title(title),
+            created_at=now,
+        )
+        for user_id in user_ids
     )
 
 

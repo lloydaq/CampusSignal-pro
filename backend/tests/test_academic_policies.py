@@ -21,8 +21,10 @@ from app.policies.academic import (
     AttendanceEdit,
     attendance_edit,
     attendance_percentage,
+    can_manage_assessments,
     can_manage_catalog,
     can_manage_terms,
+    can_publish_assessment,
     can_read_section,
     can_record_attendance,
     edit_window_open,
@@ -33,6 +35,7 @@ from app.policies.academic import (
     managed_departments,
     manages_any_catalog,
     may_read_sections,
+    student_sees_assessment,
 )
 from app.policies.campus import CampusContext
 
@@ -206,3 +209,30 @@ def test_attendance_percentage(
     held: int, attended: int, excused: int, expected: float | None
 ) -> None:
     assert attendance_percentage(held, attended, excused) == expected
+
+
+# --- assessments and results (ACADEMIC-008, 009) -------------------------------------------
+
+
+def test_only_assigned_faculty_create_assessments_and_enter_scores() -> None:
+    assert can_manage_assessments(FACULTY, [ME])
+    assert not can_manage_assessments(FACULTY, [OTHER])
+    # Department admins publish but never change scores; college admins only read.
+    for other in (CSE_ADMIN, COLLEGE_ADMIN, STUDENT, STAFF, COORDINATOR):
+        assert not can_manage_assessments(other, [OTHER])
+    assert not can_manage_assessments(STUDENT, [ME])
+
+
+def test_who_publishes() -> None:
+    assert can_publish_assessment(FACULTY, MECH, [ME])  # assigned, whatever the department
+    assert can_publish_assessment(CSE_ADMIN, CSE, [OTHER])
+    assert not can_publish_assessment(CSE_ADMIN, MECH, [OTHER])
+    assert not can_publish_assessment(FACULTY, CSE, [OTHER])
+    assert not can_publish_assessment(COLLEGE_ADMIN, CSE, [OTHER])
+    for other in (STUDENT, STAFF, COORDINATOR):
+        assert not can_publish_assessment(other, CSE, [ME])
+
+
+def test_students_see_only_published_assessments() -> None:
+    assert not student_sees_assessment(None)
+    assert student_sees_assessment(datetime(2026, 10, 21, tzinfo=UTC))
