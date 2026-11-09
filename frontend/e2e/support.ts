@@ -139,7 +139,7 @@ export async function mockAuthApi(page: Page, initial: Partial<FakeAccount> = {}
             department: account.membership === "ACTIVE" && !account.admin ? { id: "d1", code: "CSE", name: "Computer Science" } : null,
           },
     roles: account.admin ? [{ role: "COLLEGE_ADMIN", department: null }] : [],
-    capabilities: account.platform ? ["platform"] : account.membership !== "ACTIVE" ? [] : account.admin ? ["campus", "manage_college", "review_memberships", "moderate_community"] : ["campus"],
+    capabilities: account.platform ? ["platform"] : account.membership !== "ACTIVE" ? [] : account.admin ? ["campus", "manage_college", "review_memberships", "moderate_community"] : ["campus", "academics"],
   });
   await mockBackend(page, "ready");
 

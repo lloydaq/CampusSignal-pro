@@ -1,5 +1,9 @@
 import { Navigate, type RouteObject } from "react-router";
 
+import { AcademicsLayout } from "@/features/academic/AcademicsLayout";
+import { AttendanceTab, SubjectAttendancePage } from "@/features/academic/AttendanceTab";
+import { ResultsTab } from "@/features/academic/ResultsTab";
+import { TimetableTab } from "@/features/academic/TimetableTab";
 import { AuditTab } from "@/features/admin/AuditTab";
 import { DepartmentsTab } from "@/features/admin/DepartmentsTab";
 import { InvitesTab } from "@/features/admin/InvitesTab";
@@ -81,6 +85,17 @@ export const routes: RouteObject[] = [
               { path: "notices/:noticeId", element: <NoticePage /> },
               { path: "notices/:noticeId/edit", element: <EditNoticePage /> },
               { path: "departments/:departmentId", element: <DepartmentPage /> },
+              {
+                path: "academics",
+                element: <AcademicsLayout />,
+                children: [
+                  { index: true, element: <Navigate to="timetable" replace /> },
+                  { path: "timetable", element: <TimetableTab /> },
+                  { path: "attendance", element: <AttendanceTab /> },
+                  { path: "attendance/:sectionId", element: <SubjectAttendancePage /> },
+                  { path: "results", element: <ResultsTab /> },
+                ],
+              },
               { path: "community", element: <CommunityPage /> },
               { path: "community/posts/:postId", element: <PostPage /> },
               { path: "issues", element: <IssuesPage /> },

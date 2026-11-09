@@ -137,7 +137,7 @@ def test_suspending_a_college_cuts_its_members_off(
     add_member(session, make_user(session, "s@northfield.example"), north)
     session.commit()
     student = Browser(app, "s@northfield.example")
-    assert student.get(f"{PREFIX}/me").json()["capabilities"] == ["campus"]
+    assert student.get(f"{PREFIX}/me").json()["capabilities"] == ["campus", "academics"]
 
     assert (
         ops.patch(

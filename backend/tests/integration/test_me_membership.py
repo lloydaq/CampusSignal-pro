@@ -68,7 +68,7 @@ def test_a_student(session: Session, client: TestClient) -> None:
         },
     }
     assert body["roles"] == []
-    assert body["capabilities"] == ["campus"]
+    assert body["capabilities"] == ["campus", "academics"]
     # Roster details (roll number, roster name) and request internals never appear here.
     for leaked in ("N-17", "roll", "roster", "verification_flag"):
         assert leaked not in str(body)
@@ -103,6 +103,7 @@ def test_roles_and_capabilities_of_admins(session: Session, client: TestClient) 
         "manage_college",
         "review_memberships",
         "moderate_community",
+        "teaching",
     ]
 
 

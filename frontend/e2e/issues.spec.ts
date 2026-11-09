@@ -19,10 +19,12 @@ async function asCoordinator(page: Page) {
 }
 
 test.describe("issues (J5)", () => {
-  test("a student reports an issue, finds it under My issues and comments on it", async ({ page }) => {
+  test("a student reports an issue, finds it under My issues and comments on it", async ({ page }, info) => {
     await asStudent(page);
     await page.goto("/home");
-    await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Issues" }).first().click();
+    // On phones a student's bar is Home · Notices · Academics · Community; Issues is under More.
+    if (info.project.name === "mobile") await page.getByRole("button", { name: "More" }).click();
+    await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Issues" }).locator("visible=true").first().click();
     await expect(page.getByRole("heading", { level: 1, name: "My issues" })).toBeVisible();
     await page.getByRole("link", { name: "Report an issue" }).click();
 
