@@ -42,6 +42,12 @@ class _Request(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class ProfileUpdate(_Request):
+    """PROFILE-001: the display name (1 to 60 characters)."""
+
+    display_name: DisplayName
+
+
 class RegisterRequest(_Request):
     email: Email
     password: Password

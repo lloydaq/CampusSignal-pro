@@ -203,6 +203,7 @@ def test_the_protected_operations_are_the_ones_we_expect(real_app: FastAPI) -> N
     assert protected == {
         "GET /api/v1/me",
         "POST /api/v1/me/password",
+        "PATCH /api/v1/me",
         "POST /api/v1/auth/logout",
         "POST /api/v1/auth/logout-all",
         "POST /api/v1/auth/resend-verification",
@@ -294,6 +295,7 @@ def test_the_protected_operations_are_the_ones_we_expect(real_app: FastAPI) -> N
         "PUT /api/v1/campus/assessments/{assessment_id}/results",
         "POST /api/v1/campus/assessments/{assessment_id}/publish",
         "GET /api/v1/campus/me/results",
+        "GET /api/v1/campus/home",
         "GET /api/v1/colleges",
         "POST /api/v1/me/membership-requests",
         "GET /api/v1/me/membership-requests",

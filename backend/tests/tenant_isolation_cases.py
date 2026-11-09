@@ -433,6 +433,9 @@ CASES: dict[tuple[str, str], IsolationCase] = {
     ("GET", f"{CAMPUS}/me/results"): IsolationCase(
         Kind.LIST, _static(f"{CAMPUS}/me/results"), who="student"
     ),
+    # The home (HOME-004): Northfield's admin, student and faculty while Riverside has an open
+    # report, a timetable, attendance and published results.
+    ("GET", f"{CAMPUS}/home"): IsolationCase(Kind.LIST, _static(f"{CAMPUS}/home")),
     # audit
     ("GET", f"{CAMPUS}/audit-log"): IsolationCase(Kind.LIST, _static(f"{CAMPUS}/audit-log")),
 }

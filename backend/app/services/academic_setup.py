@@ -1037,6 +1037,42 @@ def my_timetable(
     return term, [MyClassRow(e, s, subj) for e, s, subj in rows]
 
 
+def teaching_timetable(
+    db: Session, campus: CampusContext
+) -> tuple[AcademicTerm | None, list[MyClassRow]]:
+    """HOME-002: the timetable of the caller's assigned sections, current term only."""
+    if not is_teacher(campus):
+        raise Forbidden()
+    term = current_term(db, campus.college_id)
+    if term is None:
+        return None, []
+    rows = db.execute(
+        select(TimetableEntry, ClassSection, Subject)
+        .join(
+            ClassSection,
+            (ClassSection.college_id == TimetableEntry.college_id)
+            & (ClassSection.id == TimetableEntry.section_id),
+        )
+        .join(
+            Subject,
+            (Subject.college_id == ClassSection.college_id)
+            & (Subject.id == ClassSection.subject_id),
+        )
+        .join(
+            SectionInstructor,
+            (SectionInstructor.college_id == ClassSection.college_id)
+            & (SectionInstructor.section_id == ClassSection.id),
+        )
+        .where(
+            TimetableEntry.college_id == campus.college_id,
+            ClassSection.term_id == term.id,
+            SectionInstructor.membership_id == campus.membership.id,
+        )
+        .order_by(TimetableEntry.weekday, TimetableEntry.starts_at, TimetableEntry.id)
+    ).all()
+    return term, [MyClassRow(e, s, subj) for e, s, subj in rows]
+
+
 def teaching_sections(
     db: Session, campus: CampusContext
 ) -> tuple[AcademicTerm | None, list[SectionView]]:

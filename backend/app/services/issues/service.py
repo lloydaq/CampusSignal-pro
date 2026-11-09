@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 from enum import StrEnum
 from typing import Any
 
-from sqlalchemy import ColumnElement, Select, case, literal, select, tuple_
+from sqlalchemy import ColumnElement, Select, case, func, literal, select, tuple_
 from sqlalchemy.orm import Session
 
 from app.core.errors import Forbidden, NotFound, RateLimited
@@ -324,3 +324,41 @@ def list_issues(
         last_rank = int(queue and last.status != IssueStatus.SUBMITTED)
         next_cursor = encode_ranked_cursor(last_rank, last.created_at, last.id)
     return _views(db, campus, page), next_cursor
+
+
+OPEN_STATUSES = (IssueStatus.SUBMITTED, IssueStatus.ACKNOWLEDGED, IssueStatus.IN_PROGRESS)
+
+
+def my_open_issues(
+    db: Session, campus: CampusContext, *, limit: int
+) -> tuple[list[IssueView], int]:
+    """HOME-001: the caller's own open issues (the "mine" scope), newest first, and how many."""
+    mine = (
+        CampusIssue.college_id == campus.college_id,
+        CampusIssue.reporter_membership_id == campus.membership.id,
+        CampusIssue.status.in_(OPEN_STATUSES),
+    )
+    count = db.execute(select(func.count(CampusIssue.id)).where(*mine)).scalar_one()
+    rows = list(
+        db.execute(
+            select(CampusIssue)
+            .where(*mine)
+            .order_by(CampusIssue.created_at.desc(), CampusIssue.id.desc())
+            .limit(limit)
+        ).scalars()
+    )
+    return _views(db, campus, rows), int(count)
+
+
+def unacknowledged_count(db: Session, campus: CampusContext) -> int:
+    """HOME-003: SUBMITTED issues, for whoever sees the coordinator queue."""
+    if not can_see_queue(campus):
+        raise Forbidden()
+    return int(
+        db.execute(
+            select(func.count(CampusIssue.id)).where(
+                CampusIssue.college_id == campus.college_id,
+                CampusIssue.status == IssueStatus.SUBMITTED,
+            )
+        ).scalar_one()
+    )

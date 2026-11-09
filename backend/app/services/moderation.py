@@ -11,8 +11,9 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
+from typing import Any
 
-from sqlalchemy import ColumnElement, and_, func, literal, or_, select, text, tuple_, update
+from sqlalchemy import ColumnElement, Select, and_, func, literal, or_, select, text, tuple_, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
@@ -130,6 +131,40 @@ def _audience_clause(campus: CampusContext) -> ColumnElement[bool]:
     return or_(*clauses) if clauses else literal(False)
 
 
+def _queue_where(campus: CampusContext, status: ReportStatus) -> list[ColumnElement[bool]]:
+    return [
+        ContentReport.college_id == campus.college_id,
+        ContentReport.status == status,
+        Post.deleted_at.is_(None),
+        or_(ContentReport.comment_id.is_(None), Comment.deleted_at.is_(None)),
+        _audience_clause(campus),
+    ]
+
+
+def _queue_select(*columns: Any) -> Select[Any]:
+    return (
+        select(*columns)
+        .join(
+            Post, (Post.college_id == ContentReport.college_id) & (Post.id == ContentReport.post_id)
+        )
+        .outerjoin(
+            Comment,
+            (Comment.college_id == ContentReport.college_id)
+            & (Comment.id == ContentReport.comment_id),
+        )
+    )
+
+
+def open_report_count(db: Session, campus: CampusContext) -> int:
+    """HOME-003: open reports the caller moderates (the queue's own filter)."""
+    if not can_see_moderation_queue(campus):
+        raise Forbidden()
+    statement = _queue_select(func.count(ContentReport.id)).where(
+        *_queue_where(campus, ReportStatus.OPEN)
+    )
+    return int(db.execute(statement).scalar_one())
+
+
 def moderation_queue(
     db: Session,
     campus: CampusContext,
@@ -141,24 +176,7 @@ def moderation_queue(
     """Oldest first. Reports on deleted content leave the queue (there's nothing to moderate)."""
     if not can_see_moderation_queue(campus):
         raise Forbidden()
-    query = (
-        select(ContentReport, Post, Comment)
-        .join(
-            Post, (Post.college_id == ContentReport.college_id) & (Post.id == ContentReport.post_id)
-        )
-        .outerjoin(
-            Comment,
-            (Comment.college_id == ContentReport.college_id)
-            & (Comment.id == ContentReport.comment_id),
-        )
-        .where(
-            ContentReport.college_id == campus.college_id,
-            ContentReport.status == status,
-            Post.deleted_at.is_(None),
-            or_(ContentReport.comment_id.is_(None), Comment.deleted_at.is_(None)),
-            _audience_clause(campus),
-        )
-    )
+    query = _queue_select(ContentReport, Post, Comment).where(*_queue_where(campus, status))
     if cursor is not None:
         query = query.where(
             tuple_(ContentReport.created_at, ContentReport.id)
