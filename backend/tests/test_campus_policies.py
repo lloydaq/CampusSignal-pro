@@ -93,11 +93,18 @@ def test_department_admin_powers_cover_only_granted_departments() -> None:
         ((grant(Role.ISSUE_COORDINATOR),), ["campus", "academics"]),
         (
             (grant(Role.DEPARTMENT_ADMIN, MECH),),
-            ["campus", "review_memberships", "moderate_community", "academics"],
+            ["campus", "review_memberships", "moderate_community", "manage_academics", "academics"],
         ),
         (
             (grant(Role.COLLEGE_ADMIN),),
-            ["campus", "manage_college", "review_memberships", "moderate_community", "academics"],
+            [
+                "campus",
+                "manage_college",
+                "review_memberships",
+                "moderate_community",
+                "manage_academics",
+                "academics",
+            ],
         ),
     ],
 )

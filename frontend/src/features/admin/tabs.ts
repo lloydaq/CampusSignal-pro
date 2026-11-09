@@ -12,6 +12,7 @@ export const MANAGE_TABS: Tab[] = [
   { to: "requests", label: "Requests", needs: "review_memberships" },
   { to: "members", label: "Members", needs: "review_memberships" },
   { to: "moderation", label: "Moderation", needs: "moderate_community" },
+  { to: "academics", label: "Academics", needs: "manage_academics" },
   { to: "invites", label: "Invites", needs: "manage_college" },
   { to: "departments", label: "Departments", needs: "manage_college" },
   { to: "roster", label: "Roster", needs: "manage_college" },

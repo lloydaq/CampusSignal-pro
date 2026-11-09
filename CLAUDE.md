@@ -100,4 +100,4 @@ Add folders only when a feature needs them.
 - Update `memory.md` after completing work; never claim tests passed unless they ran.
 
 ## Current phase
-Phase 7 — Academic Hub: in progress (plan approved 2026-11-08; 7a setup and 7b attendance merged; 7c results backend, 7d student screens, 7e1 Teaching screens on review (stacked branches); 7e2 Manage → Academics + demo seed next). Phase 6 done 2026-11-06 (PRs #34–#37) except Release β on staging. Phase 5 done (PRs #29–#32). Phase 4 staging deployment still deferred; see `Phases.md`. Update this line as phases complete.
+Phase 7 — Academic Hub: in progress (plan approved 2026-11-08; 7a setup and 7b attendance merged; 7c–7e2 implemented on stacked branches awaiting review: results backend, student screens, Teaching, Manage → Academics + demo seed; then the second policy review before Phase 7 is done). Phase 6 done 2026-11-06 (PRs #34–#37) except Release β on staging. Phase 5 done (PRs #29–#32). Phase 4 staging deployment still deferred; see `Phases.md`. Update this line as phases complete.

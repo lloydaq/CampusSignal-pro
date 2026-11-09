@@ -86,6 +86,15 @@ export async function mockManageApi(page: Page) {
   ];
   const sameContent = (a: (typeof reports)[number], b: (typeof reports)[number]) => a.content.post_id === b.content.post_id && a.content.comment_id === b.content.comment_id;
 
+  // Academics setup (ACADEMIC-001…003): one current term, a subject, a section with nobody yet.
+  const TERM = { id: "t1", name: "2026-27 Odd semester", is_current: true, starts_on: "2026-07-01", ends_on: "2026-12-15" };
+  const subjects = [{ id: "s1", code: "CS301", name: "Compilers", department: CSE }];
+  const sections = [
+    { id: "sec1", name: "A", term: TERM, subject: { id: "s1", code: "CS301", name: "Compilers" }, department: CSE, instructors: [] as { membership_id: string; display_name: string }[], enrollment_count: 0 },
+  ];
+  const enrollments: { id: string; membership_id: string; display_name: string; roll_number: string; department: typeof CSE }[] = [];
+  const timetable: { id: string; section_id: string; weekday: number; starts_at: string; ends_at: string; room: string }[] = [];
+
   await page.route("**/api/v1/campus/**", (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -125,6 +134,42 @@ export async function mockManageApi(page: Page) {
       requests.splice(index, 1);
       record(verb === "approve" ? "membership.approved" : "membership.rejected", verb === "reject" ? body().reason ?? null : null);
       return reply(route, 200, { id, status: verb === "approve" ? "ACTIVE" : "REJECTED" });
+    }
+    if (path === "/terms" && method === "GET") return reply(route, 200, { items: [TERM] });
+    if (path === "/subjects" && method === "GET") return reply(route, 200, { items: subjects, next_cursor: null });
+    if (path === "/sections" && method === "GET") return reply(route, 200, { items: sections, next_cursor: null });
+    if (path === "/sections" && method === "POST") {
+      const { subject_id, name } = body();
+      const subject = subjects.find((s) => s.id === subject_id)!;
+      const created = { id: `sec${sections.length + 1}`, name: name!, term: TERM, subject: { id: subject.id, code: subject.code, name: subject.name }, department: subject.department, instructors: [], enrollment_count: 0 };
+      sections.push(created);
+      return reply(route, 201, created);
+    }
+    const sec = path.match(/^\/sections\/(\w+)(?:\/(instructors|enrollments|enrollments\/import|timetable))?$/);
+    const found = sec && sections.find((s) => s.id === sec[1]);
+    if (sec && !found) return problem(route, 404, "not_found", "Not found.");
+    if (found && !sec[2]) return reply(route, 200, found);
+    if (found && sec[2] === "instructors") {
+      const ids = (request.postDataJSON() as { membership_ids: string[] }).membership_ids;
+      found.instructors = members.filter((m) => ids.includes(m.id)).map((m) => ({ membership_id: m.id, display_name: m.display_name }));
+      return reply(route, 200, found);
+    }
+    if (found && sec[2] === "enrollments") return reply(route, 200, { items: enrollments, next_cursor: null });
+    if (found && sec[2] === "enrollments/import") {
+      const rolls = body().csv!.trim().split("\n").slice(1);
+      const unknown = rolls.findIndex((r) => !r.startsWith("CSE"));
+      if (unknown >= 0) return problem(route, 422, "enrollment_invalid", "The file has problems. Nobody was enrolled.", [{ row: unknown + 2, column: "roll_number", message: "No active student has this roll number." }]);
+      for (const roll of rolls) enrollments.push({ id: `e${enrollments.length + 1}`, membership_id: `m-${roll}`, display_name: `Student ${roll}`, roll_number: roll, department: CSE });
+      found.enrollment_count = enrollments.length;
+      return reply(route, 201, { enrolled: rolls.length, already_enrolled: 0 });
+    }
+    if (found && sec[2] === "timetable" && method === "GET") return reply(route, 200, { items: timetable });
+    if (found && sec[2] === "timetable") {
+      const entry = { id: `tt${timetable.length + 1}`, section_id: found.id, ...(request.postDataJSON() as { weekday: number; starts_at: string; ends_at: string; room: string }) };
+      entry.starts_at += ":00";
+      entry.ends_at += ":00";
+      timetable.push(entry);
+      return reply(route, 201, entry);
     }
     if (path === "/members" && method === "GET") {
       const kind = url.searchParams.get("kind");

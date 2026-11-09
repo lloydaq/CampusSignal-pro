@@ -16,6 +16,7 @@ import { Select } from "@/components/ui/select";
 import { ListLoading, LoadMore } from "@/features/admin/list";
 import { useCursorList } from "@/features/admin/useCursorList";
 import { applyServerError } from "@/features/auth/serverErrors";
+import { useMe } from "@/features/auth/session";
 import { usePageTitle } from "@/lib/usePageTitle";
 import { cn } from "@/lib/utils";
 
@@ -47,10 +48,13 @@ type Tab = (typeof TABS)[number]["id"];
 /**
  * Design.md §5 screen 16, the section page: tabs Attendance (sessions + Take attendance),
  * Assessments (list, create) and Students (roster). Department and college admins see the same
- * read-only views (ACADEMIC-010); `back` says where the section list is.
+ * read-only views (ACADEMIC-010).
  */
-export function SectionPage({ back = { to: "/teaching", label: "Your sections" } }: { back?: { to: string; label: string } }) {
+export function SectionPage() {
   const { sectionId = "" } = useParams();
+  const me = useMe();
+  // Faculty come from Teaching; admins who don't teach, from the section's setup in Manage.
+  const back = me.capabilities.includes("teaching") ? { to: "/teaching", label: "Your sections" } : { to: `/manage/academics/sections/${sectionId}`, label: "Section setup" };
   const [params] = useSearchParams();
   const tab: Tab = TABS.find((t) => t.id === params.get("tab"))?.id ?? "attendance";
   const query = useQuery({ queryKey: teachingKeys.section(sectionId), queryFn: ({ signal }) => fetchSection(sectionId, signal) });

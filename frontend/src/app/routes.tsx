@@ -1,11 +1,13 @@
 import { Navigate, type RouteObject } from "react-router";
 
+import { AcademicsAdminTab } from "@/features/academic/AcademicsAdminTab";
 import { AcademicsLayout } from "@/features/academic/AcademicsLayout";
 import { AttendanceTab, SubjectAttendancePage } from "@/features/academic/AttendanceTab";
 import { AssessmentPage } from "@/features/academic/AssessmentPage";
 import { AttendanceSessionPage, NewAttendancePage } from "@/features/academic/AttendanceSheet";
 import { ResultsTab } from "@/features/academic/ResultsTab";
 import { SectionPage } from "@/features/academic/SectionPage";
+import { SectionSetupPage } from "@/features/academic/SectionSetupPage";
 import { TeachingGuard } from "@/features/academic/TeachingGuard";
 import { TeachingPage } from "@/features/academic/TeachingPage";
 import { TimetableTab } from "@/features/academic/TimetableTab";
@@ -143,6 +145,8 @@ export const routes: RouteObject[] = [
               { index: true, element: <Navigate to="requests" replace /> },
               { path: "requests", element: <RequestsTab /> },
               { path: "members", element: <MembersTab /> },
+              { path: "academics", element: <RequireCapability needs="manage_academics"><AcademicsAdminTab /></RequireCapability> },
+              { path: "academics/sections/:sectionId", element: <RequireCapability needs="manage_academics"><SectionSetupPage /></RequireCapability> },
               { path: "moderation", element: <RequireCapability needs="moderate_community"><ModerationTab /></RequireCapability> },
               { path: "invites", element: <RequireCapability needs="manage_college"><InvitesTab /></RequireCapability> },
               { path: "departments", element: <RequireCapability needs="manage_college"><DepartmentsTab /></RequireCapability> },

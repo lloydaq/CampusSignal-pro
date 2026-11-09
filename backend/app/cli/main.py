@@ -112,6 +112,7 @@ def seed_demo(
     print(
         f"Added {report.colleges} colleges, {report.departments} departments, "
         f"{report.accounts} accounts and {report.roster_entries} roster entries. "
+        f"Academic setup: {report.terms} terms and {report.sections} sections. "
         "The demo accounts and roll numbers are listed in app/services/demo_seed.py.",
         file=out,
     )

@@ -87,6 +87,14 @@ def test_catalog_managers_are_college_admins_and_department_admins_of_that_depar
     assert manages_any_catalog(COLLEGE_ADMIN) and manages_any_catalog(CSE_ADMIN)
 
 
+def test_the_manage_academics_capability_matches_catalog_managers() -> None:
+    from app.policies.campus import MANAGE_ACADEMICS, capabilities
+
+    for campus in (COLLEGE_ADMIN, CSE_ADMIN, FACULTY, STUDENT, STAFF, COORDINATOR):
+        offered = capabilities(campus.user, campus.membership, campus.college, campus.grants)
+        assert (MANAGE_ACADEMICS in offered) is manages_any_catalog(campus)
+
+
 def test_managed_departments() -> None:
     assert managed_departments(COLLEGE_ADMIN) is None
     assert managed_departments(CSE_ADMIN) == frozenset({CSE})
