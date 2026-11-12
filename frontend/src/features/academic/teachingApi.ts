@@ -148,3 +148,8 @@ export const KIND_LABEL: Record<AssessmentKind, string> = {
   ENDTERM: "End-term",
   OTHER: "Other",
 };
+
+/** Correct a draft assessment (only the fields sent change) or delete it with its scores. */
+export const updateAssessment = (id: string, body: { version: number; name?: string; kind?: AssessmentKind; max_score?: string; held_on?: string }) =>
+  send<Assessment>("PATCH", `${CAMPUS}/assessments/${id}`, body);
+export const deleteAssessment = (id: string) => apiRequest<undefined>(`${CAMPUS}/assessments/${id}`, { method: "DELETE" });

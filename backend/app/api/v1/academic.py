@@ -17,6 +17,7 @@ from app.schemas.academic import (
     AssessmentPage,
     AssessmentPublish,
     AssessmentResults,
+    AssessmentUpdate,
     AttendanceCounts,
     AttendanceRecordOut,
     AttendanceSessionCreate,
@@ -584,6 +585,30 @@ def list_assessments(
         db, campus, section_id, cursor=decode_cursor(cursor), limit=limit
     )
     return AssessmentPage(items=[_assessment_out(v) for v in views], next_cursor=next_cursor)
+
+
+@router.patch("/assessments/{assessment_id}")
+def update_assessment(
+    assessment_id: uuid.UUID, body: AssessmentUpdate, campus: Campus, db: Db, now: Now
+) -> AssessmentOut:
+    view = results.update_assessment(
+        db,
+        campus,
+        assessment_id,
+        version=body.version,
+        name=body.name,
+        kind=body.kind,
+        max_score=body.max_score,
+        held_on=body.held_on,
+        now=now,
+    )
+    return _assessment_out(view)
+
+
+@router.delete("/assessments/{assessment_id}", status_code=204)
+def delete_assessment(assessment_id: uuid.UUID, campus: Campus, db: Db) -> Response:
+    results.delete_assessment(db, campus, assessment_id)
+    return Response(status_code=204)
 
 
 @router.get("/assessments/{assessment_id}/results")

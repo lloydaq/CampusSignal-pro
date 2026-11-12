@@ -248,6 +248,63 @@ describe("Assessments", () => {
     expect(screen.getByText("Revised")).toBeInTheDocument();
   });
 
+  it("corrects a draft's details and shows the server's reason when the maximum is too low", async () => {
+    let calls = 0;
+    const fetchMock = mockFetch({
+      [ME]: signedIn({}, FACULTY),
+      [`${C}/assessments/as1/results`]: () => json({ assessment: assessment({ counts: { enrolled: 2, entered: 1, absent: 0 } }), rows: [row("e1", "Ishita Verma", 18.5), row("e2", "Kabir Shah", null)] }),
+      [`PATCH ${C}/assessments/as1`]: () =>
+        ++calls === 1
+          ? envelope(422, "validation_error", "Check the highlighted fields.", [{ field: "max_score", message: "A score of 18.50 is already entered; the maximum can't be lower." }])
+          : json(assessment({ name: "Quiz 1 (retest)", version: 2 })),
+      [`${C}/sections/sec1/assessments`]: () => json({ items: [], next_cursor: null }),
+    });
+    renderRoute("/teaching/assessments/as1");
+    await userEvent.click(await screen.findByRole("button", { name: "Edit details" }));
+    const form = screen.getByRole("form", { name: "Edit assessment" });
+    await userEvent.clear(within(form).getByLabelText("Maximum score"));
+    await userEvent.type(within(form).getByLabelText("Maximum score"), "15");
+    await userEvent.click(within(form).getByRole("button", { name: "Save details" }));
+    expect(await within(form).findByText(/the maximum can't be lower/)).toBeInTheDocument();
+    await userEvent.clear(within(form).getByLabelText("Maximum score"));
+    await userEvent.type(within(form).getByLabelText("Maximum score"), "20");
+    await userEvent.clear(within(form).getByLabelText("Name"));
+    await userEvent.type(within(form).getByLabelText("Name"), "Quiz 1 (retest)");
+    await userEvent.click(within(form).getByRole("button", { name: "Save details" }));
+    expect(await screen.findByText("Details saved.")).toBeInTheDocument();
+    const patches = fetchMock.mock.calls.filter(([path, init]) => path === `${C}/assessments/as1` && init?.method === "PATCH");
+    expect(JSON.parse(patches[1]![1]!.body as string)).toEqual({ version: 1, name: "Quiz 1 (retest)", kind: "QUIZ", max_score: "20", held_on: "2026-10-20" });
+  });
+
+  it("deletes a draft after confirming and goes back to the assessments", async () => {
+    mockFetch({
+      [ME]: signedIn({}, FACULTY),
+      [`${C}/assessments/as1/results`]: () => json({ assessment: assessment({ counts: { enrolled: 2, entered: 1, absent: 0 } }), rows: [row("e1", "Ishita Verma", 18.5), row("e2", "Kabir Shah", null)] }),
+      [`DELETE ${C}/assessments/as1`]: () => new Response(null, { status: 204 }),
+      [`${C}/sections/sec1`]: () => json(SECTION),
+      [`${C}/sections/sec1/assessments`]: () => json({ items: [], next_cursor: null }),
+      [`${C}/sections/sec1/attendance-sessions`]: () => json({ items: [], next_cursor: null }),
+    });
+    const { router } = renderRoute("/teaching/assessments/as1");
+    await userEvent.click(await screen.findByRole("button", { name: "Delete" }));
+    const dialog = screen.getByRole("dialog", { name: "Delete Quiz 1?" });
+    expect(dialog).toHaveTextContent("Its 1 entered scores go with it.");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Delete assessment" }));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/teaching/sections/sec1"));
+    expect(router.state.location.search).toBe("?tab=assessments");
+  });
+
+  it("offers no edit or delete once published", async () => {
+    mockFetch({
+      [ME]: signedIn({}, FACULTY),
+      [`${C}/assessments/as1/results`]: () => json({ assessment: assessment({ published_at: "2026-10-21T12:00:00Z", published_by: { membership_id: MINE, display_name: "Aarav Nair" }, actions: { enter_scores: true, publish: false } }), rows: [row("e1", "Ishita Verma", 18.5)] }),
+    });
+    renderRoute("/teaching/assessments/as1");
+    expect(await screen.findByText("Published")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Edit details" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Delete" })).not.toBeInTheDocument();
+  });
+
   it("shows a department admin the scores read-only, with Publish", async () => {
     mockFetch({
       [ME]: signedIn({}, DEPT_ADMIN),

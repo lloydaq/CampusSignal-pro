@@ -409,6 +409,16 @@ class AssessmentCreate(_Request):
     held_on: date
 
 
+class AssessmentUpdate(_Request):
+    """Corrects a draft (unpublished) assessment; only the fields sent change."""
+
+    version: Annotated[int, Field(ge=1)]
+    name: AssessmentName | None = None
+    kind: AssessmentKindName | None = None
+    max_score: MaxScore | None = None
+    held_on: date | None = None
+
+
 class ScoreEntry(_Request):
     """A score, or ABSENT (score null). Neither clears the entry (only before publishing)."""
 

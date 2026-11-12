@@ -82,6 +82,17 @@ export async function mockTeachingApi(page: Page) {
       return s ? reply(route, detail(s)) : reply(route, { error: { code: "not_found", message: "Not found.", details: null, request_id: "x" } }, 404);
     }
     if (path === "/sections/sec1/assessments") return reply(route, { items: assessments.map(out), next_cursor: null });
+    const draft = path.match(/^\/assessments\/(\w+)$/);
+    const target = draft && assessments.find((x) => x.id === draft[1]);
+    if (target && method === "PATCH") {
+      const body = request.postDataJSON() as { name?: string; kind?: string; max_score?: string; held_on?: string };
+      Object.assign(target, { ...body, ...(body.max_score ? { max_score: Number(body.max_score) } : {}), version: target.version + 1 });
+      return reply(route, out(target));
+    }
+    if (target && method === "DELETE") {
+      assessments.splice(assessments.indexOf(target), 1);
+      return route.fulfill({ status: 204 });
+    }
     const res = path.match(/^\/assessments\/(\w+)\/(results|publish)$/);
     const a = res && assessments.find((x) => x.id === res[1]);
     if (a && res[2] === "results" && method === "PUT") {
