@@ -217,7 +217,7 @@ function Grid({ data, notice, onNotice }: { data: AssessmentResults; notice: str
       {publish.isError && <Callout tone="danger">{errorText(publish.error)}</Callout>}
 
       {(editable || assessment.actions.publish) && rows.length > 0 && (
-        <div className="sticky bottom-18 z-10 -mx-4 flex flex-wrap items-center justify-between gap-3 border-t border-border bg-surface px-4 py-3 sm:mx-0 sm:rounded-sm sm:border lg:bottom-0">
+        <div className="sticky bottom-18 z-10 typing:bottom-0 -mx-4 flex flex-wrap items-center justify-between gap-3 border-t border-border bg-surface px-4 py-3 sm:mx-0 sm:rounded-sm sm:border lg:bottom-0">
           <p className="text-sm text-muted tabular-nums" aria-live="polite">
             <span className="font-mono font-medium text-fg">{entered}</span> of <span className="font-mono">{rows.length}</span> entered
             {changed.length > 0 && ` · ${changed.length === 1 ? "1 unsaved change" : `${changed.length} unsaved changes`}`}
