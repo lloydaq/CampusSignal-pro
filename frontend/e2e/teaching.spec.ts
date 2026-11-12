@@ -71,6 +71,14 @@ const SCREENS: { name: string; path: string; ready: (page: Page) => Promise<void
   { name: "take attendance", path: "/teaching/sections/sec1/attendance/new", ready: (p) => expect(p.getByRole("list", { name: "Class list" })).toBeVisible() },
   { name: "closed session", path: "/teaching/sessions/ses2", ready: (p) => expect(p.getByText("Edit window closed — ask your department admin")).toBeVisible() },
   { name: "score grid", path: "/teaching/assessments/as1", ready: (p) => expect(p.getByRole("table", { name: "Scores" })).toBeVisible() },
+  {
+    name: "editing a draft",
+    path: "/teaching/assessments/as1",
+    ready: async (p) => {
+      await p.getByRole("button", { name: "Edit details" }).click();
+      await expect(p.getByRole("form", { name: "Edit assessment" })).toBeVisible();
+    },
+  },
   { name: "published assessment", path: "/teaching/assessments/as2", ready: (p) => expect(p.getByText("Changing a published score needs a reason.", { exact: false })).toBeVisible() },
 ];
 

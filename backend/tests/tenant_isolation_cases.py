@@ -411,6 +411,16 @@ CASES: dict[tuple[str, str], IsolationCase] = {
     ("GET", f"{CAMPUS}/sections/{{section_id}}/assessments"): IsolationCase(
         Kind.OBJECT, lambda w: (f"{CAMPUS}/sections/{w.river_section['id']}/assessments", None)
     ),
+    ("PATCH", f"{CAMPUS}/assessments/{{assessment_id}}"): IsolationCase(
+        Kind.OBJECT,
+        lambda w: (
+            f"{CAMPUS}/assessments/{w.river_assessment['id']}",
+            {"version": 3, "name": "Hacked"},
+        ),
+    ),
+    ("DELETE", f"{CAMPUS}/assessments/{{assessment_id}}"): IsolationCase(
+        Kind.OBJECT, lambda w: (f"{CAMPUS}/assessments/{w.river_assessment['id']}", None)
+    ),
     ("GET", f"{CAMPUS}/assessments/{{assessment_id}}/results"): IsolationCase(
         Kind.OBJECT, lambda w: (f"{CAMPUS}/assessments/{w.river_assessment['id']}/results", None)
     ),
