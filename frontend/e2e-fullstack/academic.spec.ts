@@ -47,7 +47,7 @@ test("faculty record attendance and publish scores; the student sees only their 
   await expect(page).toHaveURL(/\/academics\/results$/);
   const results = page.getByRole("region", { name: "CS301 Compilers" });
   await expect(results).toContainText("18.5 / 20");
-  await expect(results).not.toContainText("12");
+  await expect(results).not.toContainText("12 / 20"); // the classmate's score (dates can contain "12")
   await page.getByRole("navigation", { name: "Academics" }).getByRole("link", { name: "Attendance" }).click();
   await expect(page.getByRole("table", { name: "Attendance by subject" }).getByRole("row", { name: /CS301/ })).toContainText("100%");
 
