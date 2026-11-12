@@ -3,6 +3,7 @@ import { Navigate, NavLink, Outlet } from "react-router";
 import { landingPath } from "@/features/auth/landing";
 import { useMe } from "@/features/auth/session";
 import { cn } from "@/lib/utils";
+import { RouteSuspense } from "@/app/lazy";
 
 const TABS = [
   { to: "colleges", label: "Colleges" },
@@ -41,7 +42,9 @@ export function PlatformLayout() {
           ))}
         </ul>
       </nav>
-      <Outlet />
+      <RouteSuspense>
+        <Outlet />
+      </RouteSuspense>
     </div>
   );
 }
