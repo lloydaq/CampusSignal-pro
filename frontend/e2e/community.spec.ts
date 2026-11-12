@@ -70,6 +70,19 @@ test.describe("community", () => {
   });
 });
 
+test("on phones the bottom bar steps aside while typing (Design.md §4)", async ({ page }, info) => {
+  test.skip(info.project.name !== "mobile", "the bar exists on phones only");
+  await asStudent(page);
+  await page.goto("/community");
+  const bar = page.getByRole("navigation", { name: "Main" }).filter({ visible: true });
+  await expect(bar).toBeVisible();
+  await page.getByRole("button", { name: "Write a post…" }).click();
+  await page.getByRole("form", { name: "Write a post" }).getByLabel("Your post").fill("Typing");
+  await expect(page.getByRole("navigation", { name: "Main" }).filter({ visible: true })).toHaveCount(0);
+  await page.getByRole("heading", { level: 1, name: "Community" }).click(); // focus leaves the field
+  await expect(bar).toBeVisible();
+});
+
 const SCREENS: { name: string; path: string; ready: (page: Page) => Promise<void> }[] = [
   { name: "college feed", path: "/community", ready: (p) => expect(p.getByRole("article").first()).toBeVisible() },
   {
