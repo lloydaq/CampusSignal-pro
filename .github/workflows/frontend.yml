@@ -38,6 +38,9 @@ jobs:
       - name: Install dependencies (lockfile)
         run: npm ci
 
+      - name: Dependency audit (shipped dependencies, high and critical, Phase 9a)
+        run: npm audit --omit=dev --audit-level=high
+
       - name: ESLint
         run: npm run lint
 

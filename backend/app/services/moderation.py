@@ -9,7 +9,7 @@ content closes, and the action is audited. Reporters stay anonymous to moderator
 
 import uuid
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import StrEnum
 from typing import Any
 
@@ -17,8 +17,10 @@ from sqlalchemy import ColumnElement, Select, and_, func, literal, or_, select, 
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
+from app.core import ratelimit
 from app.core.errors import Conflict, Forbidden, NotFound
 from app.core.pagination import Cursor, encode_cursor
+from app.core.ratelimit import Limit
 from app.models import (
     CollegeMembership,
     Comment,
@@ -45,6 +47,7 @@ from app.services.community import Author, authors_of, load_comment, load_post
 
 ACTION_HIDDEN = "community.content_hidden"
 ACTION_DISMISSED = "community.reports_dismissed"
+REPORTS = Limit("report:member", 20, timedelta(hours=1))  # Rules R-2.12 (Phase 9a)
 
 
 class Resolution(StrEnum):
@@ -84,6 +87,8 @@ def report_content(
         raise NotFound()
     if not can_report(campus, post, comment):
         raise Forbidden("You can't report this.")
+    # Rules R-2.12 (Phase 9a): reports are user-created content.
+    ratelimit.consume(db, REPORTS, str(campus.membership.id), now)
     created = db.execute(
         insert(ContentReport)
         .values(

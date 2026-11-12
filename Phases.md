@@ -270,7 +270,7 @@ Decisions (2026-10-23, owner "go"): accepting an invite requires being signed in
 ---
 
 ## Phase 9 — Hardening: security, accessibility, responsiveness, performance
-**Status:** IN PROGRESS. Split proposed by Claude 2026-11-10 (owner to confirm): [ ] 9a security audit: walk Rules.md §2 route by route, dependency audit (npm audit; Python advisories), CSP and security headers on the built app, rate-limit coverage, record the RLS (ADR-10) re-evaluation; [ ] 9b coverage thresholds enforced in CI (backend and frontend, set at today's measured level minus a margin); [ ] 9c responsive sweep: screenshots at 360/390/768/1280 for every screen, fix what breaks; [ ] 9d performance: synthetic 20k members / 100k posts seed for a local DB, p95 timings of the hot reads, bundle budget. Owner: manual keyboard + NVDA pass on J1–J5; cookie flags on staging (needs Phase 4d).
+**Status:** IN PROGRESS. Split proposed by Claude 2026-11-10 (owner to confirm): [x] 9a security audit (on `phase9/security-audit`; findings in memory.md §10): walk Rules.md §2 route by route, dependency audit (npm audit; Python advisories), CSP and security headers on the built app, rate-limit coverage, record the RLS (ADR-10) re-evaluation; [ ] 9b coverage thresholds enforced in CI (backend and frontend, set at today's measured level minus a margin); [ ] 9c responsive sweep: screenshots at 360/390/768/1280 for every screen, fix what breaks; [ ] 9d performance: synthetic 20k members / 100k posts seed for a local DB, p95 timings of the hot reads, bundle budget. Owner: manual keyboard + NVDA pass on J1–J5; cookie flags on staging (needs Phase 4d).
 **Objective:** Meet NFRs and release criteria evidence.
 **Dependencies:** Phase 8.
 

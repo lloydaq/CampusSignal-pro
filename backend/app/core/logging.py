@@ -8,7 +8,9 @@ arguments whose keys look sensitive; it cannot inspect free-form message text.
 import json
 import logging
 import sys
+import traceback
 from datetime import UTC, datetime
+from types import TracebackType
 from typing import Any
 
 from app.core.request_context import current_request_id
@@ -66,6 +68,25 @@ class ScrubFilter(logging.Filter):
         return True
 
 
+def safe_exception_text(
+    exc_info: tuple[type[BaseException], BaseException, TracebackType | None]
+    | tuple[None, None, None],
+) -> str:
+    """The stack of an exception and of everything chained to it, with every exception's
+    message withheld (Rules R-2.11): a database error's text can quote the failing values,
+    such as an email, a roll number or a score, which the scrubber can't see."""
+    exc = exc_info[1]
+    blocks: list[str] = []
+    seen: set[int] = set()
+    while exc is not None and id(exc) not in seen:
+        seen.add(id(exc))
+        name = f"{type(exc).__module__}.{type(exc).__qualname__}"
+        stack = "".join(traceback.format_tb(exc.__traceback__))
+        blocks.append(f"Traceback (most recent call last):\n{stack}{name}: [message withheld]")
+        exc = exc.__cause__ or (None if exc.__suppress_context__ else exc.__context__)
+    return "\n\nThe above was raised while handling or caused by:\n\n".join(reversed(blocks))
+
+
 class JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         payload: dict[str, Any] = {
@@ -79,7 +100,7 @@ class JsonFormatter(logging.Formatter):
             if key not in _STANDARD_ATTRS and key not in payload:
                 payload[key] = value
         if record.exc_info:
-            payload["exc_info"] = self.formatException(record.exc_info)
+            payload["exc_info"] = safe_exception_text(record.exc_info)
         return json.dumps(payload, default=str)
 
 

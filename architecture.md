@@ -542,7 +542,7 @@ Factories in `tests/factories.py` create users, colleges, memberships with grant
 | `/readyz` | API | Readiness for the platform's health checks and the signed-out page's service status. Public by design: it returns only `ready` / `not_ready` with `database: unreachable` or `migrations: pending`, never hosts, versions or error text. Rate-limit at the proxy if it is abused |
 | everything else | `frontend/dist` (static) | SPA fallback: unknown paths serve `index.html`, and the client router renders "Page not found". Hashed assets under `/assets/` get long-lived cache headers; `index.html` is served with `Cache-Control: no-cache` |
 
-The proxy also sets the security headers in NFR-SEC-001/002 (HSTS, CSP without inline scripts — the SPA ships none — `nosniff`, `Referrer-Policy`, `frame-ancestors 'none'`). `/api/v1/docs` and the OpenAPI schema are already disabled by the app outside `local`/`ci`. In development, `frontend/vite.config.ts` proxies the same three API paths to uvicorn (§6).
+The proxy also sets the security headers in NFR-SEC-001/002 (HSTS, CSP without inline scripts — the SPA ships none — `nosniff`, `Referrer-Policy`, `frame-ancestors 'none'`). The CSP value (verified against the built app by `frontend/e2e/csp.spec.ts`, which must stay in step): `default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'`. No `'unsafe-eval'`: zod runs `jitless` (`src/lib/zodConfig.ts`). `/api/v1/docs` and the OpenAPI schema are already disabled by the app outside `local`/`ci`. In development, `frontend/vite.config.ts` proxies the same three API paths to uvicorn (§6).
 
 ## 19. Environment configuration
 

@@ -34,6 +34,8 @@ from app.services.audit import record_audit
 
 INVITE_TTL = timedelta(days=7)
 INVITE_ATTEMPTS_IP = Limit("invite:ip", 30, timedelta(minutes=15))
+# Rules R-2.12 (Phase 9a): each invite emails someone; per sender (college or platform admin).
+INVITES_SENT = Limit("invite:sent", 30, timedelta(hours=1))
 ACTION_INVITE_ACCEPTED = "membership.invite_accepted"
 
 _FORBIDDEN_MESSAGES = {
@@ -57,7 +59,9 @@ def create_invite(
     invited_by: User,
     now: datetime,
 ) -> tuple[Invite, str]:
-    """Add an invite (the caller commits) and return it with the token for the email."""
+    """Add an invite (the caller commits) and return it with the token for the email. Counts
+    toward the sender's hourly limit first (429 past it; that count is committed)."""
+    ratelimit.consume(db, INVITES_SENT, str(invited_by.id), now)
     db.execute(
         update(Invite)
         .where(

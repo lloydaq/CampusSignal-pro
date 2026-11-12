@@ -64,6 +64,11 @@ jobs:
         working-directory: .
         run: git diff --check "$(git hash-object -t tree /dev/null)" HEAD
 
+      - name: Dependency audit (known vulnerabilities in the locked set, Phase 9a)
+        run: |
+          uv export --frozen --no-hashes --no-emit-project --format requirements-txt > "$RUNNER_TEMP/requirements.txt"
+          uvx pip-audit==2.9.0 -r "$RUNNER_TEMP/requirements.txt" --no-deps --disable-pip
+
       - name: Ruff lint
         run: uv run ruff check .
 

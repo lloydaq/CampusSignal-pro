@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.core.mailer import InMemoryMailer
 from tests.integration.auth_helpers import PREFIX, error_of
 from tests.integration.campus_world import CAMPUS, World, build_world
+from tests.integration.conftest import Clock
 from tests.integration.platform_helpers import Browser
 from tests.integration.tenancy import make_user
 
@@ -125,3 +126,22 @@ def test_the_audit_log_filters_by_action_and_actor(world: World) -> None:
 @pytest.mark.parametrize("who", ["dept_admin", "faculty", "student"])
 def test_only_college_admins_read_the_audit_log(world: World, who: str) -> None:
     assert world.browser(who).get(AUDIT).status_code == 403
+
+
+def test_thirty_invites_an_hour_per_sender_then_429(
+    world: World, mailer: InMemoryMailer, clock: Clock
+) -> None:
+    """Rules R-2.12 (Phase 9a): every invite sends an email, so sending is rate-limited."""
+    admin = world.browser("admin")
+    for n in range(30):
+        sent = admin.post(INVITES, {"email": f"staff{n}@northfield.example", "kind": "STAFF"})
+        assert sent.status_code == 201, sent.text
+    refused = admin.post(INVITES, {"email": "one-more@northfield.example", "kind": "STAFF"})
+    assert refused.status_code == 429
+    assert int(refused.headers["Retry-After"]) > 0
+    assert len(mailer.outbox) == 30  # nothing sent for the refused one
+    clock.advance(hours=1)
+    assert (
+        admin.post(INVITES, {"email": "later@northfield.example", "kind": "STAFF"}).status_code
+        == 201
+    )
