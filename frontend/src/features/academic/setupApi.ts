@@ -44,6 +44,11 @@ export const fetchTerms = (signal?: AbortSignal) => apiGet<{ items: Term[] }>(`$
 export const createTerm = (body: { name: string; starts_on: string; ends_on: string; is_current: boolean }) => apiPost<Term>(`${CAMPUS}/terms`, body);
 export const makeTermCurrent = (id: string) => send<Term>("PATCH", `${CAMPUS}/terms/${id}`, { is_current: true });
 
+/** ACADEMIC-006, P-5: how long faculty may edit a recorded attendance session (college admins). */
+export const fetchSettings = (signal?: AbortSignal) => apiGet<{ attendance_edit_window_hours: number }>(`${CAMPUS}/settings`, signal);
+export const updateSettings = (hours: number) =>
+  send<{ attendance_edit_window_hours: number }>("PATCH", `${CAMPUS}/settings`, { attendance_edit_window_hours: hours });
+
 export const fetchSubjects = (cursor: string | null, signal?: AbortSignal) => apiGet<Page<Subject>>(`${CAMPUS}/subjects${query({ cursor, limit: "100" })}`, signal);
 export const createSubject = (body: { department_id: string; code: string; name: string }) => apiPost<Subject>(`${CAMPUS}/subjects`, body);
 
@@ -63,6 +68,7 @@ export const deleteTimetableEntry = (id: string) => send<undefined>("DELETE", `$
 
 export const setupKeys = {
   terms: ["setup", "terms"] as const,
+  settings: ["setup", "settings"] as const,
   subjects: ["setup", "subjects"] as const,
   sections: (termId: string) => ["setup", "sections", termId] as const,
   timetable: (sectionId: string) => ["setup", "timetable", sectionId] as const,

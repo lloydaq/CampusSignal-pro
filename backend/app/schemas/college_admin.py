@@ -233,3 +233,16 @@ class CollegeAuditEntry(BaseModel):
 class CollegeAuditPage(BaseModel):
     items: list[CollegeAuditEntry]
     next_cursor: str | None
+
+
+# --- college settings (ACADEMIC-006, P-5) --------------------------------------------------
+
+EditWindowHours = Annotated[int, Field(strict=True, ge=1, le=720, description="1 hour to 30 days")]
+
+
+class CollegeSettingsUpdate(_Request):
+    attendance_edit_window_hours: EditWindowHours
+
+
+class CollegeSettingsOut(BaseModel):
+    attendance_edit_window_hours: int

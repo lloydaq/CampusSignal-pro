@@ -93,6 +93,7 @@ export async function mockManageApi(page: Page) {
     { id: "sec1", name: "A", term: TERM, subject: { id: "s1", code: "CS301", name: "Compilers" }, department: CSE, instructors: [] as { membership_id: string; display_name: string }[], enrollment_count: 0 },
   ];
   const enrollments: { id: string; membership_id: string; display_name: string; roll_number: string; department: typeof CSE }[] = [];
+  const settings = { attendance_edit_window_hours: 48 };
   const timetable: { id: string; section_id: string; weekday: number; starts_at: string; ends_at: string; room: string }[] = [];
 
   await page.route("**/api/v1/campus/**", (route) => {
@@ -136,6 +137,10 @@ export async function mockManageApi(page: Page) {
       return reply(route, 200, { id, status: verb === "approve" ? "ACTIVE" : "REJECTED" });
     }
     if (path === "/terms" && method === "GET") return reply(route, 200, { items: [TERM] });
+    if (path === "/settings") {
+      if (method === "PATCH") settings.attendance_edit_window_hours = Number(body().attendance_edit_window_hours);
+      return reply(route, 200, settings);
+    }
     if (path === "/subjects" && method === "GET") return reply(route, 200, { items: subjects, next_cursor: null });
     if (path === "/sections" && method === "GET") return reply(route, 200, { items: sections, next_cursor: null });
     if (path === "/sections" && method === "POST") {
