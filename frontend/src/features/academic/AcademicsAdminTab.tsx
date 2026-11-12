@@ -21,7 +21,19 @@ import { fieldErrors } from "@/lib/api";
 import { usePageTitle } from "@/lib/usePageTitle";
 
 import { formatDay } from "./format";
-import { createSection, createSubject, createTerm, fetchSections, fetchSubjects, fetchTerms, makeTermCurrent, setupKeys, type Term } from "./setupApi";
+import {
+  createSection,
+  createSubject,
+  createTerm,
+  fetchSections,
+  fetchSettings,
+  fetchSubjects,
+  fetchTerms,
+  makeTermCurrent,
+  setupKeys,
+  updateSettings,
+  type Term,
+} from "./setupApi";
 
 const VIEWS = [
   { id: "sections", label: "Sections" },
@@ -296,6 +308,7 @@ function TermsView() {
   const errors = fieldErrors(create.error);
   return (
     <div className="space-y-4">
+      {collegeAdmin && <EditWindowSetting />}
       {collegeAdmin ? (
         <AddForm label="Add term" pending={create.isPending} error={create.error} onSubmit={() => create.mutate()}>
           <Field label="Name" error={errors.name}>
@@ -345,5 +358,66 @@ function TermsView() {
         />
       )}
     </div>
+  );
+}
+
+/** ACADEMIC-006, P-5: the college's attendance edit window (1 hour to 30 days). */
+function EditWindowSetting() {
+  const queryClient = useQueryClient();
+  const id = useId();
+  const settings = useQuery({ queryKey: setupKeys.settings, queryFn: ({ signal }) => fetchSettings(signal) });
+  const [hours, setHours] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+  const save = useMutation({
+    mutationFn: (value: number) => updateSettings(value),
+    onSuccess: (next) => {
+      queryClient.setQueryData(setupKeys.settings, next);
+      setHours(null);
+      setSaved(true);
+    },
+  });
+  if (settings.isPending) return <ListLoading label="Loading settings" />;
+  if (settings.isError) return <ErrorState title="Couldn't load the college settings." error={settings.error} onRetry={() => void settings.refetch()} retrying={settings.isFetching} />;
+  const value = hours ?? String(settings.data.attendance_edit_window_hours);
+  const number = Number(value);
+  const valid = /^\d+$/.test(value) && number >= 1 && number <= 720;
+  return (
+    <form
+      aria-label="Attendance edit window"
+      noValidate
+      onSubmit={(e: FormEvent) => {
+        e.preventDefault();
+        if (valid) save.mutate(number);
+      }}
+      className="space-y-3 rounded-sm border border-border p-4"
+    >
+      <div className="max-w-xs space-y-1.5">
+        <label htmlFor={id} className="block text-sm font-medium">
+          Attendance edit window (hours)
+        </label>
+        <Input
+          id={id}
+          inputMode="numeric"
+          className="font-mono"
+          value={value}
+          onChange={(e) => {
+            setSaved(false);
+            setHours(e.target.value);
+          }}
+          aria-invalid={!valid || undefined}
+          aria-describedby={`${id}-help`}
+        />
+        <p id={`${id}-help`} className={valid ? "text-sm text-muted" : "text-sm text-danger-fg"}>
+          {valid ? "How long faculty can change a session after recording it. After that, a department admin corrects it with a reason." : "Use a whole number from 1 to 720 (30 days)."}
+        </p>
+      </div>
+      {save.isError && <Callout tone="danger">{errorText(save.error)}</Callout>}
+      <div className="flex items-center gap-3">
+        <SubmitButton size="sm" pending={save.isPending} pendingLabel="Saving…" disabled={!valid || hours === null}>
+          Save
+        </SubmitButton>
+        {saved && <span className="text-sm text-success-fg">Saved. It applies to every session, including ones already recorded.</span>}
+      </div>
+    </form>
   );
 }

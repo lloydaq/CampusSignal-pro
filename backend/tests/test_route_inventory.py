@@ -296,6 +296,8 @@ def test_the_protected_operations_are_the_ones_we_expect(real_app: FastAPI) -> N
         "POST /api/v1/campus/assessments/{assessment_id}/publish",
         "GET /api/v1/campus/me/results",
         "GET /api/v1/campus/home",
+        "GET /api/v1/campus/settings",
+        "PATCH /api/v1/campus/settings",
         "GET /api/v1/colleges",
         "POST /api/v1/me/membership-requests",
         "GET /api/v1/me/membership-requests",
