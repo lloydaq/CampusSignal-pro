@@ -2,6 +2,7 @@ import { Navigate, Outlet } from "react-router";
 
 import { landingPath } from "@/features/auth/landing";
 import { useMe } from "@/features/auth/session";
+import { RouteSuspense } from "@/app/lazy";
 
 /**
  * Section pages are for faculty (Teaching) and for the department and college admins who read
@@ -10,5 +11,9 @@ import { useMe } from "@/features/auth/session";
 export function TeachingGuard() {
   const me = useMe();
   if (!me.capabilities.includes("teaching") && !me.capabilities.includes("review_memberships")) return <Navigate to={landingPath(me)} replace />;
-  return <Outlet />;
+  return (
+    <RouteSuspense>
+      <Outlet />
+    </RouteSuspense>
+  );
 }

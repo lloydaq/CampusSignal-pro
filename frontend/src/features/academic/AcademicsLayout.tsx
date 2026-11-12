@@ -8,6 +8,7 @@ import { useMe } from "@/features/auth/session";
 import { cn } from "@/lib/utils";
 
 import type { TermRef } from "./api";
+import { RouteSuspense } from "@/app/lazy";
 
 const TABS = [
   { to: "timetable", label: "Timetable" },
@@ -43,7 +44,9 @@ export function AcademicsLayout() {
           ))}
         </ul>
       </nav>
-      <Outlet />
+      <RouteSuspense>
+        <Outlet />
+      </RouteSuspense>
     </div>
   );
 }

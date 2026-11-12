@@ -7,6 +7,7 @@ import { useMe } from "@/features/auth/session";
 import { cn } from "@/lib/utils";
 
 import { MANAGE_TABS } from "./tabs";
+import { RouteSuspense } from "@/app/lazy";
 
 /** Hides what the account can't use; the backend enforces it (Rules §2). */
 export function ManageLayout() {
@@ -37,7 +38,9 @@ export function ManageLayout() {
           ))}
         </ul>
       </nav>
-      <Outlet />
+      <RouteSuspense>
+        <Outlet />
+      </RouteSuspense>
     </div>
   );
 }
