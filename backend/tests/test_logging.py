@@ -64,3 +64,39 @@ def test_configure_logging_quiets_alembic_info() -> None:
     configure_logging("INFO")
     assert not logging.getLogger("alembic.runtime.migration").isEnabledFor(logging.INFO)
     assert logging.getLogger("alembic.runtime.migration").isEnabledFor(logging.WARNING)
+
+
+def _logged_exception(exc: BaseException) -> dict[str, object]:
+    try:
+        raise exc
+    except BaseException:
+        import sys
+
+        record = logging.LogRecord("t", logging.ERROR, __file__, 1, "boom", (), sys.exc_info())
+    result: dict[str, object] = json.loads(JsonFormatter().format(record))
+    return result
+
+
+def test_exception_messages_never_reach_the_log() -> None:
+    """Rules R-2.11 (Phase 9a): a database error's text can quote the failing values (an
+    email, a roll number, a score). The log keeps the type and the stack, not the message,
+    for the exception and everything chained to it."""
+
+    class UniqueViolation(Exception):
+        pass
+
+    # The values arrive at runtime (the stack quotes source lines, never values).
+    inner_text = "roll_number N-001 for aarav@northfield.example"
+    outer_text = 'duplicate key (email)=(aarav@northfield.example) [parameters: {"score": 18.5}]'
+    try:
+        try:
+            raise ValueError(inner_text)
+        except ValueError as inner:
+            raise UniqueViolation(outer_text) from inner
+    except UniqueViolation as outer:
+        payload = _logged_exception(outer)
+    text = str(payload["exc_info"])
+    for secret in ("aarav@northfield.example", "N-001", "18.5", "duplicate key"):
+        assert secret not in text, secret
+    assert "UniqueViolation" in text and "ValueError" in text
+    assert "test_exception_messages_never_reach_the_log" in text  # the stack is still there

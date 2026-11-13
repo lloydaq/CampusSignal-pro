@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Last updated | 2026-10-25 |
-| Current phase | **Phase 7 — Academic Hub, NOT STARTED** (plan needs owner approval first). Phase 6 done 2026-11-06, `master` `b90bb58` (PRs #34–#37), except Release β on staging and pilot feedback, which wait with Phase 4's deferred staging deployment |
+| Current phase | **Phase 9 — Hardening, IN PROGRESS** (plan proposed by Claude 2026-11-10 on the owner's "continue"; to confirm). Phase 8 done 2026-11-10 (PRs #45, #46). Phase 7 merged (PRs #39–#44), awaiting the second policy review. Phase 4's staging deployment is still deferred |
 
 Status values: `NOT STARTED` · `IN PROGRESS` · `DONE (verified <date>)`. A phase is DONE only per §4 and `Rules.md` §8 — never because files exist.
 
@@ -253,7 +253,7 @@ Decisions (2026-10-23, owner "go"): accepting an invite requires being signed in
 ---
 
 ## Phase 8 — Home screens, profile and cross-module integration
-**Status:** IN PROGRESS (started 2026-11-09 by Claude while the owner was away, on the owner's "continue and do more phases"; the split below is Claude's proposal, **owner to confirm**; built on top of the unmerged Phase 7 branches). Split: [x] 8a backend (on `phase8/home-backend`, awaiting review): `GET /campus/home` (blocks by role, each computed from the module services with its own error, nothing a module endpoint wouldn't show) and `PATCH /me` display name (1–60); [x] 8b frontend (on `phase8/home-screens`, stacked on 8a, awaiting review): student, faculty and admin homes, profile edit, E2E landing per role (US-16).
+**Status:** DONE 2026-11-10 (`master` `618458d`; 8a PR #45, 8b PR #46; US-16 green). History: started 2026-11-09 by Claude while the owner was away, on the owner's "continue and do more phases"; the split below is Claude's proposal, **owner to confirm**; built on top of the unmerged Phase 7 branches). Split: [x] 8a backend (PR #45): `GET /campus/home` (blocks by role, each computed from the module services with its own error, nothing a module endpoint wouldn't show) and `PATCH /me` display name (1–60); [x] 8b frontend (PR #46): student, faculty and admin homes, profile edit, E2E landing per role (US-16).
 **Objective:** Each role lands on a useful home; flows connect.
 **Dependencies:** Phases 4–7.
 **Included:** HOME-001…004, PROFILE-001. (HOME-001's urgent and latest-notices blocks shipped early in Phase 4's member-screens pass, owner 2026-10-25; Phase 8 adds classes, attendance, issues and the faculty/admin homes.)
@@ -270,7 +270,7 @@ Decisions (2026-10-23, owner "go"): accepting an invite requires being signed in
 ---
 
 ## Phase 9 — Hardening: security, accessibility, responsiveness, performance
-**Status:** NOT STARTED
+**Status:** IN PROGRESS. Split proposed by Claude 2026-11-10 (owner to confirm): [x] 9a security audit (on `phase9/security-audit`; findings in memory.md §10): walk Rules.md §2 route by route, dependency audit (npm audit; Python advisories), CSP and security headers on the built app, rate-limit coverage, record the RLS (ADR-10) re-evaluation; [ ] 9b coverage thresholds enforced in CI (backend and frontend, set at today's measured level minus a margin); [ ] 9c responsive sweep: screenshots at 360/390/768/1280 for every screen, fix what breaks; [ ] 9d performance: synthetic 20k members / 100k posts seed for a local DB, p95 timings of the hot reads, bundle budget. Owner: manual keyboard + NVDA pass on J1–J5; cookie flags on staging (needs Phase 4d).
 **Objective:** Meet NFRs and release criteria evidence.
 **Dependencies:** Phase 8.
 

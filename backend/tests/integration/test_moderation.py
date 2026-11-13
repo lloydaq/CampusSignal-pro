@@ -244,3 +244,18 @@ def test_deleted_content_leaves_the_queue(world: World) -> None:
     gone = resolve(world.browser("admin"), first["id"], "HIDE")
     assert gone.status_code == 409 and error_of(gone)["code"] == "content_deleted"
     assert resolve(world.browser("admin"), first["id"], "DISMISS", None).status_code == 200
+
+
+def test_twenty_reports_an_hour_per_member_then_429(world: World, clock: Clock) -> None:
+    """Rules R-2.12 (Phase 9a): reporting is user-created content, so it's rate-limited."""
+    targets = [post(world.browser("student"), f"Post {n}") for n in range(10)]
+    targets += [post(world.browser("faculty"), f"Faculty post {n}") for n in range(10)]
+    targets.append(post(world.browser("admin"), "Admin post"))
+    reporter = world.browser("mech_student")
+    for target in targets[:20]:
+        reported(reporter, post_id=target["id"])
+    refused = report(reporter, post_id=targets[20]["id"])
+    assert refused.status_code == 429
+    reported(world.browser("dept_admin"), post_id=targets[20]["id"])  # per member
+    clock.advance(hours=1)
+    reported(reporter, post_id=targets[20]["id"])
