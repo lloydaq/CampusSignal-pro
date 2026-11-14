@@ -361,3 +361,84 @@ def test_another_colleges_student_sees_nothing(world: World, cs: dict[str, Any])
     scored_and_published(world, cs)
     theirs = my_results(world, "river_student")
     assert theirs["items"] == [] and "Quiz 1" not in str(theirs)
+
+
+# --- correcting a draft (edit / delete before publishing) ----------------------------------
+
+
+def edit(world: World, assessment: dict[str, Any], who: str = "faculty", **body: Any) -> Any:
+    return world.browser(who).patch(
+        f"{ASSESSMENTS}/{assessment['id']}", {"version": assessment["version"]} | body
+    )
+
+
+def test_faculty_correct_a_draft_assessment(
+    world: World, cs: dict[str, Any], conn: Connection
+) -> None:
+    assessment = created(world, cs)
+    changed = ok(
+        edit(world, assessment, name="Quiz 1 (retest)", kind="OTHER", held_on="2026-10-19")
+    )
+    assert (changed["name"], changed["kind"], changed["held_on"]) == (
+        "Quiz 1 (retest)",
+        "OTHER",
+        "2026-10-19",
+    )
+    assert changed["version"] == assessment["version"] + 1
+    assert (
+        scalar(conn, "SELECT count(*) FROM audit_log WHERE action = 'academic.assessment_updated'")
+        == 1
+    )
+    stale = edit(world, assessment, name="Again")
+    assert stale.status_code == 409 and error_of(stale)["code"] == "version_conflict"
+
+
+def test_the_maximum_cannot_drop_below_an_entered_score(world: World, cs: dict[str, Any]) -> None:
+    assessment = created(world, cs)
+    grid = entered(world, assessment, results=scores(cs, student="18.5", mech="12"))["assessment"]
+    too_low = edit(world, grid, max_score="18")
+    assert too_low.status_code == 422
+    assert error_of(too_low)["details"][0]["field"] == "max_score"
+    after = ok(edit(world, grid, max_score="18.5"))
+    assert after["max_score"] == 18.5
+    assert edit(world, after, held_on="2026-06-30").status_code == 422  # outside the term
+
+
+def test_a_published_assessment_is_not_edited_or_deleted(world: World, cs: dict[str, Any]) -> None:
+    published = scored_and_published(world, cs)
+    refused = edit(world, published, name="Renamed")
+    assert refused.status_code == 409 and error_of(refused)["code"] == "already_published"
+    gone = world.browser("faculty").send("DELETE", f"{ASSESSMENTS}/{published['id']}")
+    assert gone.status_code == 409 and error_of(gone)["code"] == "already_published"
+
+
+def test_faculty_delete_a_draft_with_its_scores(
+    world: World, cs: dict[str, Any], conn: Connection
+) -> None:
+    assessment = created(world, cs)
+    entered(world, assessment, results=scores(cs))
+    deleted = world.browser("faculty").send("DELETE", f"{ASSESSMENTS}/{assessment['id']}")
+    assert deleted.status_code == 204
+    listed = ok(world.browser("faculty").get(f"{SECTIONS}/{cs['section']['id']}/assessments"))
+    assert listed["items"] == []
+    assert scalar(conn, "SELECT count(*) FROM assessment_results") == 0
+    assert (
+        scalar(conn, "SELECT count(*) FROM audit_log WHERE action = 'academic.assessment_deleted'")
+        == 1
+    )
+    # Its students could now leave the section (nothing of theirs remains).
+    removed = world.browser("admin").send("DELETE", f"{CAMPUS}/enrollments/{cs['mech_student']}")
+    assert removed.status_code == 204
+
+
+def test_who_may_correct_a_draft(world: World, cs: dict[str, Any]) -> None:
+    assessment = created(world, cs)
+    assert not_found(edit(world, assessment, "other_faculty", name="X"))
+    assert not_found(
+        world.browser("other_faculty").send("DELETE", f"{ASSESSMENTS}/{assessment['id']}")
+    )
+    for who in ("dept_admin", "admin", "student"):
+        assert edit(world, assessment, who, name="X").status_code == 403, who
+        response = world.browser(who).send("DELETE", f"{ASSESSMENTS}/{assessment['id']}")
+        assert response.status_code == 403, who
+    assert edit(world, assessment, name="X", college_id="anything").status_code == 422

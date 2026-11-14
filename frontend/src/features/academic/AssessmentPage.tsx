@@ -16,6 +16,7 @@ import { ApiError, fieldErrors } from "@/lib/api";
 import { usePageTitle } from "@/lib/usePageTitle";
 import { cn } from "@/lib/utils";
 
+import { DraftAssessmentActions } from "./DraftAssessmentActions";
 import { formatDay, formatScore } from "./format";
 import { fetchResults, KIND_LABEL, publishAssessment, saveResults, teachingKeys, type AssessmentResults, type ResultRow, type ScoreEntry } from "./teachingApi";
 
@@ -124,6 +125,7 @@ function Grid({ data, notice, onNotice }: { data: AssessmentResults; notice: str
           {published && assessment.published_by && ` · published ${formatDateTime(assessment.published_at!, timeZone)} by ${assessment.published_by.display_name}`}
         </p>
       </div>
+      {!published && editable && <DraftAssessmentActions assessment={assessment} onChanged={onNotice} />}
       {notice && <Callout tone="success">{notice}</Callout>}
       {!published && <Callout tone="info">Students can't see these scores until you publish them.</Callout>}
       {published && editable && <Callout tone="info">Changing a published score needs a reason. The student is told their result was revised.</Callout>}

@@ -19,7 +19,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.core.errors import Conflict, Forbidden, NotFound, ValidationFailed
@@ -262,6 +262,97 @@ def list_assessments(
     ).scalars()
     page, next_cursor = split_page(list(rows), limit, lambda a: (a.created_at, a.id))
     return _views(db, campus, access, page), next_cursor
+
+
+def _draft_for_faculty(
+    db: Session, campus: CampusContext, assessment_id: uuid.UUID
+) -> tuple[Assessment, SectionAccess]:
+    """A draft the caller teaches, locked: published ones only change through revisions."""
+    assessment, access = _readable_assessment(db, campus, assessment_id, lock=True)
+    if not can_manage_assessments(campus, access.instructor_ids):
+        raise Forbidden("Only the section's assigned faculty change assessments.")
+    if assessment.published_at is not None:
+        raise Conflict(
+            "Published results can't be edited or deleted; change a score with a reason instead.",
+            code="already_published",
+        )
+    return assessment, access
+
+
+def update_assessment(
+    db: Session,
+    campus: CampusContext,
+    assessment_id: uuid.UUID,
+    *,
+    version: int,
+    name: str | None,
+    kind: str | None,
+    max_score: Decimal | None,
+    held_on: date | None,
+    now: datetime,
+) -> AssessmentView:
+    """Correct a draft: its name, kind, date (in the term) or maximum (not below a score
+    already entered)."""
+    assessment, access = _draft_for_faculty(db, campus, assessment_id)
+    _check_version(assessment, version)
+    if held_on is not None:
+        term = db.execute(
+            select(AcademicTerm).where(
+                AcademicTerm.college_id == campus.college_id,
+                AcademicTerm.id == access.section.term_id,
+            )
+        ).scalar_one()
+        if not term.starts_on <= held_on <= term.ends_on:
+            raise ValidationFailed.field(
+                "held_on", f"Pick a date in the term ({term.starts_on} to {term.ends_on})."
+            )
+    if max_score is not None:
+        highest = db.execute(
+            select(func.max(AssessmentResult.score)).where(
+                AssessmentResult.college_id == campus.college_id,
+                AssessmentResult.assessment_id == assessment.id,
+            )
+        ).scalar_one()
+        if highest is not None and max_score < highest:
+            raise ValidationFailed.field(
+                "max_score", f"A score of {highest} is already entered; the maximum can't be lower."
+            )
+    changes = {
+        k: v
+        for k, v in (("name", name), ("kind", kind), ("max_score", max_score), ("held_on", held_on))
+        if v is not None and getattr(assessment, k) != v
+    }
+    if changes:
+        for field, value in changes.items():
+            setattr(assessment, field, value)
+        assessment.version += 1
+        assessment.updated_at = now
+        audit_academic(
+            db, campus, "assessment_updated", "assessment", assessment.id, fields=sorted(changes)
+        )
+    db.commit()
+    return _views(db, campus, access, [assessment])[0]
+
+
+def delete_assessment(db: Session, campus: CampusContext, assessment_id: uuid.UUID) -> None:
+    """Remove a draft and its entered scores (students never saw them)."""
+    assessment, access = _draft_for_faculty(db, campus, assessment_id)
+    db.execute(
+        delete(AssessmentResult).where(
+            AssessmentResult.college_id == campus.college_id,
+            AssessmentResult.assessment_id == assessment.id,
+        )
+    )
+    db.delete(assessment)
+    audit_academic(
+        db,
+        campus,
+        "assessment_deleted",
+        "assessment",
+        assessment.id,
+        section_id=str(access.section.id),
+    )
+    db.commit()
 
 
 def get_results(
