@@ -24,7 +24,7 @@ Every college gets its own private space. People only ever see their own college
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/readme/features-dark.svg">
-  <img alt="Six areas and their status. Built: accounts and sessions; colleges, roles and joining. In progress: notices and notifications. Planned: campus issue reporting, moderated community, Academic Hub." src="docs/readme/features-light.svg" width="100%">
+  <img alt="Six areas of CampusSignal, all built: accounts and sessions; colleges, roles and joining; notices and notifications; campus issue reporting; the moderated community; the Academic Hub." src="docs/readme/features-light.svg" width="100%">
 </picture>
 
 | Area | Status | What's there |
@@ -33,8 +33,9 @@ Every college gets its own private space. People only ever see their own college
 | 🏫 Colleges, roles, joining | ✅ Built | Colleges onboarded by platform admins; students join by roll number against the college roster, staff by invitation; approval queue; college and department admins; the **Manage** and **Platform** screens |
 | 📢 Notices and notifications | ✅ Built | College and department notices with drafts, urgent pins, expiry and withdrawal; department pages; in-app notifications with a bell and unread count |
 | 🛠️ Campus issue reporting | ✅ Built | Report a problem and follow its status; coordinators work the queue, assign faculty or staff, mark duplicates; internal notes; the reporter is notified of every status change |
-| 👥 Moderated community | Planned | College and department feeds with reactions, reports and moderation (Phase 6) |
-| 📚 Academic Hub | Planned | Timetable, attendance and results, shown only to the right people (Phase 7) |
+| 👥 Moderated community | ✅ Built | College and department feeds with posts, comments and one reaction per member; reports, a moderation queue, hiding and restoring, and member restrictions |
+| 📚 Academic Hub | ✅ Built | Terms, subjects, sections and the weekly timetable; faculty record attendance (with an edit window and audited corrections) and enter, publish and revise assessment scores; students see only their own timetable, attendance and published results |
+| 🏠 Home and settings | ✅ Built | Role-aware home screens, a profile page, and college settings such as the attendance edit window |
 
 Academic data in development and demos is synthetic and labelled "Demo data". CampusSignal never connects to college ERPs.
 
@@ -89,7 +90,7 @@ Details and the reasons behind each choice are in [`architecture.md`](architectu
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/readme/roadmap-dark.svg">
-  <img alt="Phases 0 to 3 are done, phase 4 (notices and notifications) is in progress, phases 5 to 11 are next. Release alpha after phase 4, beta after phase 6, MVP after phase 10." src="docs/readme/roadmap-light.svg" width="100%">
+  <img alt="Phases 0 to 6 and 8 are done; phases 7 (Academic Hub) and 9 (hardening) are built and await sign-off; phases 10 and 11 are next. Release alpha after phase 4, beta after phase 6, MVP after phase 10." src="docs/readme/roadmap-light.svg" width="100%">
 </picture>
 
 * [x] **Phase 0–1:** requirements, architecture, design system; backend, database, frontend shell and CI
@@ -97,7 +98,12 @@ Details and the reasons behind each choice are in [`architecture.md`](architectu
 * [x] **Phase 3:** colleges, departments, roster, joining and approval, roles, tenant isolation, Manage and Platform screens, `seed-demo`
 * [x] **Phase 4:** notices, department pages, in-app notifications (staging deployment deferred)
 * [x] **Phase 5:** campus issues: reporting, the coordinator queue, assignment, duplicates, internal notes
-* [ ] **Phase 6–11:** community, Academic Hub, home screens, hardening, launch
+* [x] **Phase 6:** moderated community: feeds, posts, comments, reactions, reports, moderation queue, restrictions
+* [ ] **Phase 7:** Academic Hub: timetable, attendance, results (merged; awaiting the second human policy review)
+* [x] **Phase 8:** role-aware home screens and profile editing
+* [ ] **Phase 9:** hardening: security audit, coverage gate, responsive pass, performance and bundle budgets (merged; awaiting owner sign-off and a manual screen-reader pass)
+* [ ] **Phase 10:** launch with a pilot college (needs hosting, a data agreement and staging)
+* [ ] **Phase 11:** post-MVP
 
 The checklist is updated only when work is completed and verified. [`Phases.md`](Phases.md) has every phase's tasks and definition of done.
 
@@ -215,8 +221,9 @@ uv run python -m app.cli create-platform-admin --email ops@example.org --display
 
 # Add three demo colleges (Northfield Institute, Riverside College, and Mangalore Institute of
 # Technology and Engineering with made-up people), each with departments,
-# a college admin, a department-admin faculty member and a student roster. You're asked
-# for one password, used for all the demo accounts. Only with APP_ENV=local or ci.
+# a college admin, a department-admin faculty member and a student roster, plus a current
+# demo term with subjects, sections and a weekly timetable. You're asked for one
+# password, used for all the demo accounts. Only with APP_ENV=local or ci.
 uv run python -m app.cli seed-demo
 
 # Run the retention purges. The deployment scheduler runs this every hour.
@@ -225,7 +232,7 @@ uv run python -m app.jobs run-due
 
 Platform admins can only be created this way, not through the app or the API. The command creates a new, already-verified account. It refuses an email that already has an account: an existing account is never promoted, so platform admins stay separate from college members. The password can't be passed as an argument, which keeps it out of shell history.
 
-`seed-demo` adds only what is missing, so running it again is safe. The demo accounts and roll numbers are listed at the top of `backend/app/services/demo_seed.py`. The students on the rosters have no accounts: to try joining, register with a roster email (for example `nf-cse-002@northfield.example`), verify it, then join Northfield with the roll number `NF-CSE-002`. `NF-CSE-001` has no roster email, so that request waits in the approval queue.
+`seed-demo` adds only what is missing, so running it again is safe. The demo accounts and roll numbers are listed at the top of `backend/app/services/demo_seed.py`. The students on the rosters have no accounts: to try joining, register with a roster email (for example `nf-cse-002@northfield.example`), verify it, then join Northfield with the roll number `NF-CSE-002`. `NF-CSE-001` has no roster email, so that request waits in the approval queue. Nobody is enrolled in the demo sections, so there is no attendance or results yet: once a demo student has joined, a department admin enrols them from the Manage screen. All academic data is synthetic and labelled "Demo data".
 
 `run-due` deletes:
 
@@ -248,6 +255,8 @@ uv run pytest -q                                  # unit tests; integration test
 uv run ruff check . ; uv run ruff format --check . ; uv run mypy
 ```
 
+CI also runs the suite with coverage and `scripts/coverage_gate.py`, which fails below 98% for `app/policies`, 95% for `app/services` and 95% overall, and checks dependencies with `pip-audit`. `uv run python scripts/perf_check.py` (against a disposable `*_test` database) seeds a large college and reports p95 latency for the busiest lists.
+
 Frontend, from `frontend/`:
 
 ```bash
@@ -255,7 +264,10 @@ npm test             # Vitest: components, API client, theme, WCAG token contras
 npm run lint
 npm run typecheck
 npm run build
+npm run check:bundle # after a build: the initial JavaScript must stay under 250 KB
 ```
+
+CI also runs `npm audit --omit=dev --audit-level=high`.
 
 Browser smoke tests (Playwright + axe), from `frontend/`. The first run needs the Chromium build:
 
@@ -264,7 +276,7 @@ npx playwright install chromium
 npm run e2e
 ```
 
-The browser tests build the app, serve it on port 4173 and mock every backend call, so they don't need the backend or a database. They run at 1280 px and 390 px (touch) and fail on any WCAG A/AA violation that axe finds.
+The browser tests build the app, serve it on port 4173 and mock every backend call, so they don't need the backend or a database. They run at 1280 px and 390 px (touch) and fail on any WCAG A/AA violation that axe finds. A responsive spec walks every screen at 360 px and 768 px looking for horizontal scrolling, and a CSP spec checks the production Content-Security-Policy blocks nothing the app needs.
 
 ### Integration tests
 
@@ -286,11 +298,11 @@ TEST_DATABASE_URL="postgresql+psycopg://postgres:postgres@localhost:5432/campuss
 
 ### Full-stack E2E (real API, database and email)
 
-These tests run against the real backend: the account journeys (register, open the verification link from the email, sign in and out, reset a password) and the Phase 3 exit demo (a platform admin creates a college and invites its admin, the admin accepts, adds a department and imports the roster, and a student registers with a roster email and joins by roll number).
+These tests run against the real backend: the account journeys (register, open the verification link from the email, sign in and out, reset a password), the Phase 3 exit demo (a platform admin creates a college and invites its admin, the admin accepts, adds a department and imports the roster, and a student registers with a roster email and joins by roll number), and journeys through the community (a reported post is hidden by a moderator and its author sees why), campus issues (an issue is acknowledged, assigned and resolved) and the Academic Hub (faculty record attendance and publish scores; the student sees only their own).
 
 * Emails are caught by [Mailpit](https://mailpit.axllent.org/), and the test reads them through Mailpit's API.
 * The run writes accounts to the database. Use a **separate** disposable database whose name ends in `_test`, on `localhost`; the config refuses anything else.
-* Each run registers six accounts from one address. The API allows 10 registrations per address per hour, so run it once an hour locally, or empty the `rate_limit_counters` table of the test database between runs.
+* Each run registers several accounts from one address and the API limits registrations per address per hour, so empty the `rate_limit_counters` table of the test database between local runs.
 * GitHub Actions runs it on every push and pull request, using Postgres and Mailpit service containers.
 
 To run it yourself, start Mailpit (the standalone binary, no Docker needed) and create an empty database such as `campussignal_e2e_test`. Then, from `frontend/`:
