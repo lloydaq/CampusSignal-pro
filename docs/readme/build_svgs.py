@@ -187,10 +187,10 @@ def hero(c: dict[str, str]) -> str:
 FEATURES = [
     ("key", "Accounts and sessions", ["Registration, email verification, password", "reset, server-side sessions with CSRF."], "built"),
     ("school", "Colleges, roles, joining", ["Roster or invite to join, approval queue,", "college and department admins."], "built"),
-    ("megaphone", "Notices and notifications", ["College and department notices with", "urgent pins. Notification bell next."], "progress"),
-    ("wrench", "Campus issue reporting", ["Report a problem, follow its status,", "coordinators work the queue."], "planned"),
-    ("users", "Moderated community", ["College and department feeds with", "reactions, reports and moderation."], "planned"),
-    ("book", "Academic Hub", ["Timetable, attendance and results,", "visible only to the right people."], "planned"),
+    ("megaphone", "Notices and notifications", ["College and department notices with", "urgent pins and a notification bell."], "built"),
+    ("wrench", "Campus issue reporting", ["Report a problem, follow its status,", "coordinators work the queue."], "built"),
+    ("users", "Moderated community", ["College and department feeds with", "reactions, reports and moderation."], "built"),
+    ("book", "Academic Hub", ["Timetable, attendance and results,", "visible only to the right people."], "built"),
 ]
 
 
@@ -221,7 +221,7 @@ def features(c: dict[str, str]) -> str:
         for j, line in enumerate(lines):
             parts.append(t(x + 22, y + 134 + j * 22, line, size=15, fill=c["muted"]))
         parts.append("</g>")
-    return doc(w, h, "Features", "Six areas of CampusSignal and their status: accounts and colleges are built, notices and notifications are in progress, issues, community and the Academic Hub are planned.", "".join(parts), c)
+    return doc(w, h, "Features", "Six areas of CampusSignal, all built: accounts and sessions; colleges, roles and joining; notices and notifications; campus issue reporting; the moderated community; the Academic Hub.", "".join(parts), c)
 
 
 # --- 3. tenant isolation --------------------------------------------------------------------------
@@ -336,9 +336,9 @@ def architecture(c: dict[str, str]) -> str:
 
 PHASES = [
     ("0", "Setup", "done"), ("1", "Foundation", "done"), ("2", "Identity", "done"),
-    ("3", "Colleges", "done"), ("4", "Notices", "now"), ("5", "Issues", "next"),
-    ("6", "Community", "next"), ("7", "Academic", "next"), ("8", "Home", "next"),
-    ("9", "Hardening", "next"), ("10", "Launch", "next"), ("11", "Post-MVP", "next"),
+    ("3", "Colleges", "done"), ("4", "Notices", "done"), ("5", "Issues", "done"),
+    ("6", "Community", "done"), ("7", "Academic", "now"), ("8", "Home", "done"),
+    ("9", "Hardening", "now"), ("10", "Launch", "next"), ("11", "Post-MVP", "next"),
 ]
 RELEASES = {"4": "Release α", "6": "Release β", "10": "MVP"}
 
@@ -346,10 +346,11 @@ RELEASES = {"4": "Release α", "6": "Release β", "10": "MVP"}
 def roadmap(c: dict[str, str]) -> str:
     w, h = 1280, 290
     parts = [t(40, 58, "Roadmap", size=28, fill=c["text"], weight=700, family=HEAD)]
-    parts.append(t(40, 86, "Phase 4 in progress: notices are built; the notification bell is next.", size=16, fill=c["muted"]))
+    parts.append(t(40, 86, "Phases 0 to 9 are built; 7 and 9 await sign-off. Launch needs hosting and a pilot college.", size=16, fill=c["muted"]))
     left, right, y = 90, 1190, 170
     step = (right - left) / (len(PHASES) - 1)
-    done_x = left + step * 4
+    reached = max(i for i, (_, _, state) in enumerate(PHASES) if state != "next")
+    done_x = left + step * reached
     parts.append(f'<line x1="{left}" y1="{y}" x2="{right}" y2="{y}" stroke="{c["border"]}" stroke-width="4" stroke-linecap="round"/>')
     parts.append(f'<line x1="{left}" y1="{y}" x2="{done_x}" y2="{y}" stroke="{c["primary"]}" stroke-width="4" stroke-linecap="round"/>')
     for i, (num, name, state) in enumerate(PHASES):
@@ -370,7 +371,7 @@ def roadmap(c: dict[str, str]) -> str:
             svg, pw = pill(0, 0, RELEASES[num], fg=c["primary"], bg=c["primary_subtle"], size=11)
             parts.append(f'<g transform="translate({x - pw / 2:.0f} {y - 52})">{svg}</g>')
         parts.append("</g>")
-    return doc(w, h, "Roadmap", "Phases 0 to 3 are done, phase 4 (notices and notifications) is in progress, phases 5 to 11 are next. Release alpha after phase 4, beta after phase 6, MVP after phase 10.", "".join(parts), c)
+    return doc(w, h, "Roadmap", "Phases 0 to 6 and 8 are done; phases 7 (Academic Hub) and 9 (hardening) are built and await sign-off; phases 10 and 11 are next. Release alpha after phase 4, beta after phase 6, MVP after phase 10.", "".join(parts), c)
 
 
 PICTURES = {
