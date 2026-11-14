@@ -51,6 +51,18 @@ test.describe("teaching", () => {
   });
 });
 
+test("on phones the save bar sits at the bottom while a score is typed", async ({ page }, info) => {
+  test.skip(info.project.name !== "mobile", "the bar exists on phones only");
+  await asFaculty(page);
+  await page.goto("/teaching/assessments/as1");
+  const saveBar = page.locator("div.sticky", { hasText: "entered" });
+  const bottom = () => saveBar.evaluate((el) => getComputedStyle(el).bottom);
+  expect(await bottom()).not.toBe("0px"); // above the phone bar
+  await page.getByLabel("Score for Ishita Verma").fill("18");
+  await expect(page.getByRole("navigation", { name: "Main" }).filter({ visible: true })).toHaveCount(0);
+  await expect.poll(bottom).toBe("0px");
+});
+
 const SCREENS: { name: string; path: string; ready: (page: Page) => Promise<void> }[] = [
   { name: "sections", path: "/teaching", ready: (p) => expect(p.getByRole("list", { name: "Your sections" })).toBeVisible() },
   { name: "section attendance", path: "/teaching/sections/sec1", ready: (p) => expect(p.getByRole("list", { name: "Attendance sessions" })).toBeVisible() },

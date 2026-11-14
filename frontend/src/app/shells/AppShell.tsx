@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 
 import { navItems, splitForBar, type NavItem } from "./nav";
 import { RouteSuspense } from "@/app/lazy";
+import { useTypingFlag } from "@/lib/useTypingFlag";
 
 function CollegeName({ me, className }: { me: Me; className?: string }) {
   const college = me.membership?.status === "ACTIVE" ? me.membership.college : null;
@@ -91,6 +92,7 @@ const BAR_ACTIVE = "text-primary before:absolute before:inset-x-6 before:top-0 b
  * are more than five. The sheet closes when a link is chosen, on Escape or on a tap outside it.
  */
 function BottomBar({ items }: { items: NavItem[] }) {
+  useTypingFlag();
   const { bar, more } = splitForBar(items);
   const location = useLocation();
   const [open, setOpen] = useState(false);
@@ -103,7 +105,7 @@ function BottomBar({ items }: { items: NavItem[] }) {
     return () => document.removeEventListener("keydown", close);
   }, [open]);
   return (
-    <nav aria-label="Main" className="fixed inset-x-0 bottom-0 lg:hidden">
+    <nav aria-label="Main" className="fixed inset-x-0 bottom-0 typing:hidden lg:hidden">
       {open && (
         <>
           {/* The scrim sits behind the sheet and the bar (it paints over the page only). */}

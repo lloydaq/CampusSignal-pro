@@ -1,6 +1,9 @@
 @import "tailwindcss";
 @import "./tokens.css";
 
+/* Design.md §4: while someone types, the phone's bottom bar steps aside (src/lib/useTypingFlag.ts). */
+@custom-variant typing (html[data-typing] &);
+
 /* Self-hosted fonts, Latin subset only (Design.md §3.4). */
 @import "@fontsource/space-grotesk/latin-500.css";
 @import "@fontsource/space-grotesk/latin-600.css";

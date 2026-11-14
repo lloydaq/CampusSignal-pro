@@ -282,7 +282,7 @@ function Sheet({ section, students, session }: { section: Section; students: Stu
       )}
 
       {editable && students.length > 0 && (
-        <div className="sticky bottom-18 z-10 -mx-4 flex flex-wrap items-center justify-between gap-3 border-t border-border bg-surface px-4 py-3 sm:mx-0 sm:rounded-sm sm:border lg:bottom-0">
+        <div className="sticky bottom-18 z-10 typing:bottom-0 -mx-4 flex flex-wrap items-center justify-between gap-3 border-t border-border bg-surface px-4 py-3 sm:mx-0 sm:rounded-sm sm:border lg:bottom-0">
           <p className="text-sm tabular-nums" aria-live="polite">
             {counts.map((c, i) => (
               <span key={c.value}>
