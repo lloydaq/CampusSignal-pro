@@ -82,11 +82,11 @@ jobs:
         run: uv run python -m compileall -q app alembic tests
 
       - name: Unit tests
-        run: uv run pytest -q -m "not integration" -W error::DeprecationWarning
+        run: uv run pytest -q -m "not integration" -W error::DeprecationWarning --cov --cov-report=
 
       - name: Integration tests (disposable PostgreSQL 17)
         run: |
-          uv run pytest -q -m integration -rs -W error::DeprecationWarning --junitxml=integration.xml
+          uv run pytest -q -m integration -rs -W error::DeprecationWarning --junitxml=integration.xml --cov --cov-append --cov-report=
           uv run python - <<'PY'
           import xml.etree.ElementTree as ET
           suite = ET.parse("integration.xml").getroot().find("testsuite")
@@ -95,6 +95,9 @@ jobs:
           if tests < 6 or skipped:
               raise SystemExit("integration tests did not all run")
           PY
+
+      - name: Coverage (NFR-MAINT-001; floors in scripts/coverage_gate.py)
+        run: uv run python scripts/coverage_gate.py
 
       - name: Failed integration tests (annotations)
         if: failure()
