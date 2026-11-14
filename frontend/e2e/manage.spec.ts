@@ -171,7 +171,14 @@ const SCREENS: { name: string; path: string; ready: (page: Page) => Promise<void
   { name: "audit log", path: "/manage/audit", ready: (page) => expect(page.getByText("Nothing recorded yet.")).toBeVisible() },
   { name: "academics sections", path: "/manage/academics", ready: (page) => expect(page.getByRole("table", { name: "Sections" })).toBeVisible() },
   { name: "academics subjects", path: "/manage/academics?view=subjects", ready: (page) => expect(page.getByRole("table", { name: "Subjects" })).toBeVisible() },
-  { name: "academics terms", path: "/manage/academics?view=terms", ready: (page) => expect(page.getByRole("table", { name: "Terms" })).toBeVisible() },
+  {
+    name: "academics terms",
+    path: "/manage/academics?view=terms",
+    ready: async (page) => {
+      await expect(page.getByRole("table", { name: "Terms" })).toBeVisible();
+      await expect(page.getByLabel("Attendance edit window (hours)")).toHaveValue("48");
+    },
+  },
   { name: "section setup", path: "/manage/academics/sections/sec1", ready: (page) => expect(page.getByRole("form", { name: "Add a class" })).toBeVisible() },
   { name: "moderation queue", path: "/manage/moderation", ready: (page) => expect(page.getByRole("list", { name: "Open reports" })).toBeVisible() },
   {

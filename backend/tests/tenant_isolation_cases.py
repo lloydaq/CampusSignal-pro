@@ -436,6 +436,15 @@ CASES: dict[tuple[str, str], IsolationCase] = {
     # The home (HOME-004): Northfield's admin, student and faculty while Riverside has an open
     # report, a timetable, attendance and published results.
     ("GET", f"{CAMPUS}/home"): IsolationCase(Kind.LIST, _static(f"{CAMPUS}/home")),
+    # college settings (the college is the session's; naming another one is refused)
+    ("GET", f"{CAMPUS}/settings"): IsolationCase(Kind.LIST, _static(f"{CAMPUS}/settings")),
+    ("PATCH", f"{CAMPUS}/settings"): IsolationCase(
+        Kind.CREATE,
+        lambda w: (
+            f"{CAMPUS}/settings",
+            {"attendance_edit_window_hours": 24, "college_id": str(w.river.id)},
+        ),
+    ),
     # audit
     ("GET", f"{CAMPUS}/audit-log"): IsolationCase(Kind.LIST, _static(f"{CAMPUS}/audit-log")),
 }

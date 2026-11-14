@@ -38,6 +38,7 @@ export const AUDIT_ACTIONS: Record<string, string> = {
   "college.membership_ended": "Membership ended",
   "college.role_granted": "Role given",
   "college.role_revoked": "Role removed",
+  "college.settings_changed": "College settings changed",
   "community.content_hidden": "Post or comment hidden",
   "community.reports_dismissed": "Reports dismissed",
 };

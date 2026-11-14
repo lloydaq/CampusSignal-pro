@@ -17,6 +17,8 @@ from app.schemas.college_admin import (
     ActorRef,
     CollegeAuditEntry,
     CollegeAuditPage,
+    CollegeSettingsOut,
+    CollegeSettingsUpdate,
     DepartmentCreate,
     DepartmentList,
     DepartmentOut,
@@ -43,7 +45,14 @@ from app.schemas.membership import (
     Requester,
     RosterEvidence,
 )
-from app.services import college_audit, departments, members, membership_requests, roster
+from app.services import (
+    college_audit,
+    college_settings,
+    departments,
+    members,
+    membership_requests,
+    roster,
+)
 from app.services import invites as invite_service
 from app.services import notices as notice_service
 from app.services.members import MemberRow
@@ -331,3 +340,22 @@ def audit_log(
         ],
         next_cursor=next_cursor,
     )
+
+
+# --- college settings (ACADEMIC-006, P-5) --------------------------------------------------
+
+
+@router.get("/settings")
+def get_college_settings(campus: Campus) -> CollegeSettingsOut:
+    college = college_settings.get_settings(campus)
+    return CollegeSettingsOut(attendance_edit_window_hours=college.attendance_edit_window_hours)
+
+
+@router.patch("/settings")
+def update_college_settings(
+    body: CollegeSettingsUpdate, campus: Campus, db: Db
+) -> CollegeSettingsOut:
+    college = college_settings.update_settings(
+        db, campus, edit_window_hours=body.attendance_edit_window_hours
+    )
+    return CollegeSettingsOut(attendance_edit_window_hours=college.attendance_edit_window_hours)

@@ -104,6 +104,7 @@ describe("Manage → Academics", () => {
       [ME]: signedIn({}, COLLEGE_ADMIN),
       [`${C}/terms`]: () => json({ items: TERMS }),
       [`${C}/departments`]: () => json({ items: [CSE, MECH] }),
+      [`${C}/settings`]: () => json({ attendance_edit_window_hours: 48 }),
       [`PATCH ${C}/terms/t1`]: () => json({ ...TERMS[1], is_current: true }),
     });
     renderRoute("/manage/academics?view=terms");
@@ -112,6 +113,28 @@ describe("Manage → Academics", () => {
     await userEvent.click(within(table).getByRole("button", { name: "Make current" }));
     await waitFor(() => expect(bodyOf(fetchMock, "PATCH", `${C}/terms/t1`)).toEqual({ is_current: true }));
     expect(screen.getByRole("form", { name: "Add term" })).toBeInTheDocument();
+  });
+
+  it("lets college admins change the attendance edit window (1 to 720 hours)", async () => {
+    const fetchMock = mockFetch({
+      [ME]: signedIn({}, COLLEGE_ADMIN),
+      [`${C}/terms`]: () => json({ items: TERMS }),
+      [`${C}/settings`]: (init) => json({ attendance_edit_window_hours: init?.method === "PATCH" ? 24 : 48 }),
+    });
+    renderRoute("/manage/academics?view=terms");
+    const form = await screen.findByRole("form", { name: "Attendance edit window" });
+    const field = within(form).getByLabelText("Attendance edit window (hours)");
+    expect(field).toHaveValue("48");
+    expect(within(form).getByRole("button", { name: "Save" })).toBeDisabled();
+    await userEvent.clear(field);
+    await userEvent.type(field, "721");
+    expect(within(form).getByText("Use a whole number from 1 to 720 (30 days).")).toBeInTheDocument();
+    expect(within(form).getByRole("button", { name: "Save" })).toBeDisabled();
+    await userEvent.clear(field);
+    await userEvent.type(field, "24");
+    await userEvent.click(within(form).getByRole("button", { name: "Save" }));
+    expect(await within(form).findByText(/Saved\. It applies to every session/)).toBeInTheDocument();
+    expect(bodyOf(fetchMock, "PATCH", `${C}/settings`)).toEqual({ attendance_edit_window_hours: 24 });
   });
 
   it("tells department admins that college admins run terms", async () => {
