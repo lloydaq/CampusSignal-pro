@@ -1,24 +1,8 @@
 import { Navigate, type RouteObject } from "react-router";
 
-import { AcademicsAdminTab } from "@/features/academic/AcademicsAdminTab";
 import { AcademicsLayout } from "@/features/academic/AcademicsLayout";
-import { AttendanceTab, SubjectAttendancePage } from "@/features/academic/AttendanceTab";
-import { AssessmentPage } from "@/features/academic/AssessmentPage";
-import { AttendanceSessionPage, NewAttendancePage } from "@/features/academic/AttendanceSheet";
-import { ResultsTab } from "@/features/academic/ResultsTab";
-import { SectionPage } from "@/features/academic/SectionPage";
-import { SectionSetupPage } from "@/features/academic/SectionSetupPage";
 import { TeachingGuard } from "@/features/academic/TeachingGuard";
-import { TeachingPage } from "@/features/academic/TeachingPage";
-import { TimetableTab } from "@/features/academic/TimetableTab";
-import { AuditTab } from "@/features/admin/AuditTab";
-import { DepartmentsTab } from "@/features/admin/DepartmentsTab";
-import { InvitesTab } from "@/features/admin/InvitesTab";
 import { ManageLayout, RequireCapability } from "@/features/admin/ManageLayout";
-import { MembersTab } from "@/features/admin/MembersTab";
-import { ModerationTab } from "@/features/admin/ModerationTab";
-import { RequestsTab } from "@/features/admin/RequestsTab";
-import { RosterTab } from "@/features/admin/RosterTab";
 import { AccountPage } from "@/features/auth/AccountPage";
 import { CheckEmailPage } from "@/features/auth/CheckEmailPage";
 import { ForgotPasswordPage } from "@/features/auth/ForgotPasswordPage";
@@ -31,23 +15,44 @@ import { VerifyEmailPage } from "@/features/auth/VerifyEmailPage";
 import { HomePage } from "@/features/campus/HomePage";
 import { InviteAcceptPage } from "@/features/campus/InviteAcceptPage";
 import { JoinPage } from "@/features/campus/JoinPage";
-import { CollegeDetailPage } from "@/features/platform/CollegeDetailPage";
-import { CollegesTab } from "@/features/platform/CollegesTab";
-import { PlatformAuditTab } from "@/features/platform/AuditTab";
 import { PlatformLayout } from "@/features/platform/PlatformLayout";
-import { UsersTab } from "@/features/platform/UsersTab";
 import { CommunityPage } from "@/features/community/CommunityPage";
 import { PostPage } from "@/features/community/PostPage";
 import { IssuePage } from "@/features/issues/IssuePage";
 import { IssuesPage } from "@/features/issues/IssuesPage";
 import { ReportIssuePage } from "@/features/issues/ReportIssuePage";
 import { DepartmentPage } from "@/features/notices/DepartmentPage";
-import { EditNoticePage, NewNoticePage } from "@/features/notices/NoticeEditorPage";
 import { NoticePage } from "@/features/notices/NoticePage";
 import { NoticesPage } from "@/features/notices/NoticesPage";
 import { NotificationsPage } from "@/features/notifications/NotificationsPage";
 import { StatusPage } from "@/features/system-status/StatusPage";
 
+import {
+  AcademicsAdminTab,
+  AssessmentPage,
+  AttendanceSessionPage,
+  AttendanceTab,
+  AuditTab,
+  CollegeDetailPage,
+  CollegesTab,
+  DepartmentsTab,
+  EditNoticePage,
+  InvitesTab,
+  MembersTab,
+  ModerationTab,
+  NewAttendancePage,
+  NewNoticePage,
+  PlatformAuditTab,
+  RequestsTab,
+  ResultsTab,
+  RosterTab,
+  SectionPage,
+  SectionSetupPage,
+  SubjectAttendancePage,
+  TeachingPage,
+  TimetableTab,
+  UsersTab,
+} from "./lazyRoutes";
 import { AppShell } from "./shells/AppShell";
 import { AuthShell } from "./shells/AuthShell";
 

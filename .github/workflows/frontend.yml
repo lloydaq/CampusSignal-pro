@@ -53,6 +53,9 @@ jobs:
       - name: Production build
         run: npm run build
 
+      - name: Initial bundle budget (NFR-PERF-002, 250 KB gzipped)
+        run: npm run check:bundle
+
   e2e:
     runs-on: ubuntu-24.04
     timeout-minutes: 15

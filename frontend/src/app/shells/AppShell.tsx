@@ -9,6 +9,7 @@ import { RailNotificationBell, TopBarNotificationBell } from "@/features/notific
 import { cn } from "@/lib/utils";
 
 import { navItems, splitForBar, type NavItem } from "./nav";
+import { RouteSuspense } from "@/app/lazy";
 
 function CollegeName({ me, className }: { me: Me; className?: string }) {
   const college = me.membership?.status === "ACTIVE" ? me.membership.college : null;
@@ -71,7 +72,9 @@ export function AppShell() {
 
       <main className="flex-1 px-4 pt-8 pb-28 sm:px-6 lg:px-10 lg:pt-10 lg:pb-12">
         <div className={cn("mx-auto", wide ? "max-w-content" : "max-w-reading")}>
-          <Outlet />
+          <RouteSuspense>
+            <Outlet />
+          </RouteSuspense>
         </div>
       </main>
 
