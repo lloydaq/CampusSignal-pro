@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Last updated | 2026-10-25 |
-| Current phase | **Phase 9 — Hardening, IN PROGRESS** (plan proposed by Claude 2026-11-10 on the owner's "continue"; to confirm). Phase 8 done 2026-11-10 (PRs #45, #46). Phase 7 merged (PRs #39–#44), awaiting the second policy review. Phase 4's staging deployment is still deferred |
+| Current phase | **Phase 9 — Hardening, IMPLEMENTED and merged 2026-11-14** (`master` `86668a1`; PRs #48–#50, #55, #56); DONE when the owner accepts the open findings and does the manual accessibility pass. Phase 10 blocked on P-1 hosting, P-3 pilot agreement and the deferred staging deployment (4d). Phase 7 awaits its second policy review |
 
 Status values: `NOT STARTED` · `IN PROGRESS` · `DONE (verified <date>)`. A phase is DONE only per §4 and `Rules.md` §8 — never because files exist.
 
@@ -270,7 +270,7 @@ Decisions (2026-10-23, owner "go"): accepting an invite requires being signed in
 ---
 
 ## Phase 9 — Hardening: security, accessibility, responsiveness, performance
-**Status:** IN PROGRESS. Split proposed by Claude 2026-11-10 (owner to confirm): [x] 9a security audit (on `phase9/security-audit`; findings in memory.md §10): walk Rules.md §2 route by route, dependency audit (npm audit; Python advisories), CSP and security headers on the built app, rate-limit coverage, record the RLS (ADR-10) re-evaluation; [x] 9b coverage thresholds enforced in CI (on `phase9/coverage`, stacked on 9a) (backend and frontend, set at today's measured level minus a margin); [x] 9c responsive sweep (on `phase9/responsive`, stacked on 9b): 33 screens × 360/768 px in `e2e/responsive.spec.ts` (390/1280 already in each spec), no fixes needed; [x] 9d performance (on `phase9/performance`, stacked on 9c): route-level code splitting + CI bundle budget (initial JS 190 KB gzipped of 250); `scripts/perf_check.py` seeds 20k members / 100k posts locally, worst single-client p95 72.9 ms; the NFR's 50-user measurement waits for Phase 10's reference deployment. Owner: manual keyboard + NVDA pass on J1–J5; cookie flags on staging (needs Phase 4d).
+**Status:** IMPLEMENTED, merged 2026-11-14 (PRs #48, #49, #50, #55, #56); DONE once the owner accepts the open findings and does the manual pass. Split proposed by Claude 2026-11-10 (owner to confirm): [x] 9a security audit (PR #48, follow-ups #55; findings in memory.md §10): walk Rules.md §2 route by route, dependency audit (npm audit; Python advisories), CSP and security headers on the built app, rate-limit coverage, record the RLS (ADR-10) re-evaluation; [x] 9b coverage thresholds enforced in CI (PR #49) (backend and frontend, set at today's measured level minus a margin); [x] 9c responsive sweep (PR #50): 33 screens × 360/768 px in `e2e/responsive.spec.ts` (390/1280 already in each spec), no fixes needed; [x] 9d performance (PR #56): route-level code splitting + CI bundle budget (initial JS 190 KB gzipped of 250); `scripts/perf_check.py` seeds 20k members / 100k posts locally, worst single-client p95 72.9 ms; the NFR's 50-user measurement waits for Phase 10's reference deployment. Owner: manual keyboard + NVDA pass on J1–J5; cookie flags on staging (needs Phase 4d).
 **Objective:** Meet NFRs and release criteria evidence.
 **Dependencies:** Phase 8.
 

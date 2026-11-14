@@ -100,4 +100,4 @@ Add folders only when a feature needs them.
 - Update `memory.md` after completing work; never claim tests passed unless they ran.
 
 ## Current phase
-Phase 9 — Hardening: in progress (split proposed by Claude 2026-11-10, owner to confirm: 9a security audit, 9b coverage in CI, 9c responsive sweep, 9d performance). Phase 8 done 2026-11-10 (PRs #45, #46). Phase 7 merged (PRs #39–#44), awaiting the human second policy review. Phase 6 done 2026-11-06 (PRs #34–#37) except Release β on staging. Phase 5 done (PRs #29–#32). Phase 4 staging deployment still deferred; see `Phases.md`. Update this line as phases complete.
+Phase 9 — Hardening: implemented and merged 2026-11-14 (PRs #48–#50, #55, #56; plus #52–#54); done once the owner accepts the open findings and does the manual accessibility pass. Phase 10 is blocked on owner decisions (P-1, P-3, staging). Phase 8 done 2026-11-10 (PRs #45, #46). Phase 7 merged (PRs #39–#44), awaiting the human second policy review. Phase 6 done 2026-11-06 (PRs #34–#37) except Release β on staging. Phase 5 done (PRs #29–#32). Phase 4 staging deployment still deferred; see `Phases.md`. Update this line as phases complete.
